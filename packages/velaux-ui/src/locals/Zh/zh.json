@@ -674,5 +674,7 @@
   "No quota": "无配额",
   "Cannot be changed once deployed": "部署后不可更改",
   "Abstract": "抽象",
-  "extends": "继承自"
+  "extends": "继承自",
+  "Pending": "等待中",
+  "Pending: waits for the workload to be healthy": "等待中：等待工作负载健康后生效"
 }
