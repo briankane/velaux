@@ -14,6 +14,10 @@ enableImpersonation: *[ if parameter["enableImpersonation"] {
 	"--feature-gates=EnableImpersonation=true"
 }] | []
 
+enableCelExpressions: *[ if parameter["enableCelExpressions"] {
+	"--enable-cel-expressions"
+}] | []
+
 _nginxTrait: *[
 		if parameter["domain"] != _|_ && parameter["gatewayDriver"] == "nginx" {
 		{
@@ -71,7 +75,7 @@ server: {
 			exposeType: parameter["serviceType"]
 		}
 
-		cmd: ["server", "--datastore-type=" + parameter["dbType"], "--feature-gates=EnableCacheJSFile=true"] + database + dbURL + enableImpersonation
+		cmd: ["server", "--datastore-type=" + parameter["dbType"], "--feature-gates=EnableCacheJSFile=true"] + database + dbURL + enableImpersonation + enableCelExpressions
 		ports: [
 			{
 				port:     8000
