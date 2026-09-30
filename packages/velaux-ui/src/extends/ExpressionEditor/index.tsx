@@ -6,7 +6,7 @@ import { v4 as uuid } from 'uuid';
 
 import { checkExpression } from '../../api/application';
 import type { ExpressionEnv } from './completion';
-import { expressionSpans, suggest } from './completion';
+import { expressionSpans, hoverAt, suggest } from './completion';
 import './index.less';
 
 export type { ExpressionEnv, ExpressionVariable } from './completion';
@@ -34,6 +34,27 @@ function register() {
         [/\b(true|false|null|in)\b/, 'keyword'],
         [/\b(context|source)\b/, 'type'],
       ],
+    },
+  });
+  monaco.languages.registerHoverProvider(language, {
+    provideHover: (model, position) => {
+      const text = model.getLineContent(position.lineNumber);
+      const hovered = hoverAt(text, position.column - 1, envs.get(model.uri.toString()));
+      if (!hovered) {
+        return undefined;
+      }
+      const { variable, path } = hovered;
+      const contents = [{ value: `**${path.join('.')}**: \`${variable.type}\`` }];
+      if (variable.description) {
+        contents.push({ value: variable.description });
+      }
+      if (variable.schema && variable.schema !== variable.type) {
+        contents.push({ value: '```cue\n' + variable.schema + '\n```' });
+      }
+      return {
+        range: new monaco.Range(position.lineNumber, hovered.start + 1, position.lineNumber, hovered.end + 1),
+        contents,
+      };
     },
   });
   monaco.languages.registerCompletionItemProvider(language, {

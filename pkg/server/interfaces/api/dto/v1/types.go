@@ -1956,10 +1956,12 @@ type ExpressionEnvResponse struct {
 
 // ExpressionVariable is a value an expression can read, and its fields.
 type ExpressionVariable struct {
-	Name        string                `json:"name"`
-	Type        string                `json:"type"`
-	Description string                `json:"description,omitempty"`
-	Children    []*ExpressionVariable `json:"children,omitempty"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Description string `json:"description,omitempty"`
+	// Schema is the value's type as its CUE schema declares it.
+	Schema   string                `json:"schema,omitempty"`
+	Children []*ExpressionVariable `json:"children,omitempty"`
 }
 
 // ExpressionOptInRequest turns an application's reading of $( ) expressions

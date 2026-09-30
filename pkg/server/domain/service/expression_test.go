@@ -80,6 +80,9 @@ func TestExpressionEnv(t *testing.T) {
 	}
 	require.Contains(t, fields, "traitType", "a trait reads its own type")
 	assert.Equal(t, "string", fields["appName"].Type)
+	assert.Equal(t, "string", fields["appName"].Schema)
+	assert.Contains(t, fields["clusterVersion"].Schema, "minor")
+	assert.NotContains(t, fields["clusterVersion"].Schema, "_#def")
 	assert.NotEmpty(t, fields["appName"].Description)
 	require.Contains(t, fields, "clusterVersion")
 	assert.NotEmpty(t, fields["clusterVersion"].Children)

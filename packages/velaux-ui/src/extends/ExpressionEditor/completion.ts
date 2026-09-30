@@ -5,6 +5,8 @@ export type ExpressionVariable = {
   name: string;
   type: string;
   description?: string;
+  // schema is the value's type as its CUE schema declares it.
+  schema?: string;
   children?: ExpressionVariable[];
 };
 
@@ -204,4 +206,49 @@ export function expressionSpans(text: string): Array<[number, number]> {
     spans.push([start, text.length]);
   }
   return spans;
+}
+
+// Hovered is the variable under the cursor: its dotted path and where the
+// hovered name sits in the value.
+export type Hovered = {
+  path: string[];
+  variable: ExpressionVariable;
+  start: number;
+  end: number;
+};
+
+const identChar = /[A-Za-z0-9_]/;
+
+// hoverAt finds the variable named at an offset in a value: the name under the
+// offset, read with the names before it in a dotted chain, inside a $( ).
+export function hoverAt(text: string, offset: number, env?: ExpressionEnv): Hovered | undefined {
+  if (!expressionSpans(text).some(([s, e]) => offset >= s + 2 && offset < e)) {
+    return undefined;
+  }
+  let start = offset;
+  while (start > 0 && identChar.test(text[start - 1])) {
+    start--;
+  }
+  let end = offset;
+  while (end < text.length && identChar.test(text[end])) {
+    end++;
+  }
+  if (start === end) {
+    return undefined;
+  }
+  const path = [text.substring(start, end)];
+  let i = start;
+  while (text[i - 1] === '.') {
+    let j = i - 1;
+    while (j > 0 && identChar.test(text[j - 1])) {
+      j--;
+    }
+    if (j === i - 1) {
+      break;
+    }
+    path.unshift(text.substring(j, i - 1));
+    i = j;
+  }
+  const variable = find(env?.variables, path);
+  return variable ? { path, variable, start, end } : undefined;
 }

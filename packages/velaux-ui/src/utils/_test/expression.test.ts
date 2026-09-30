@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 
 import type { ExpressionEnv } from '../../extends/ExpressionEditor/completion';
-import { expressionSpans, openExpression, suggest } from '../../extends/ExpressionEditor/completion';
+import { expressionSpans, hoverAt, openExpression, suggest } from '../../extends/ExpressionEditor/completion';
 
 const env: ExpressionEnv = {
   enabled: true,
@@ -60,5 +60,23 @@ describe('expression spans', () => {
   });
   it('runs an unclosed expression to the end', () => {
     expect(expressionSpans('x $(context.')).to.deep.equal([[2, 12]]);
+  });
+});
+
+describe('expression hover', () => {
+  const value = 'img/$(context.clusterVersion.minor)';
+  it('names the hovered field with the path before it', () => {
+    const at = value.indexOf('minor') + 2;
+    const hovered = hoverAt(value, at, env);
+    expect(hovered?.path).to.deep.equal(['context', 'clusterVersion', 'minor']);
+    expect(hovered?.variable.type).to.equal('int');
+    expect([hovered?.start, hovered?.end]).to.deep.equal([value.indexOf('minor'), value.indexOf('minor') + 5]);
+  });
+  it('names a segment in the middle of a chain', () => {
+    expect(hoverAt(value, value.indexOf('clusterVersion') + 1, env)?.path).to.deep.equal(['context', 'clusterVersion']);
+  });
+  it('names nothing outside an expression or for an unknown name', () => {
+    expect(hoverAt(value, 1, env)).to.equal(undefined);
+    expect(hoverAt('$(context.nope)', 11, env)).to.equal(undefined);
   });
 });

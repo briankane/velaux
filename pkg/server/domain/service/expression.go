@@ -112,7 +112,7 @@ func (e *expressionServiceImpl) Env(ctx context.Context, app *model.Application,
 const maxVariableDepth = 6
 
 func variableOf(name string, v cue.Value, depth int) *apisv1.ExpressionVariable {
-	out := &apisv1.ExpressionVariable{Name: name, Type: kindName(v), Description: usage(v)}
+	out := &apisv1.ExpressionVariable{Name: name, Type: kindName(v), Description: usage(v), Schema: schemaText(v)}
 	if depth >= maxVariableDepth || v.IncompleteKind() != cue.StructKind {
 		return out
 	}
@@ -128,6 +128,24 @@ func variableOf(name string, v cue.Value, depth int) *apisv1.ExpressionVariable 
 		out.Children = append(out.Children, variableOf(label, it.Value(), depth+1))
 	}
 	return out
+}
+
+// maxSchemaText bounds the CUE shown for one value.
+const maxSchemaText = 400
+
+// schemaText is the CUE declaring a value as written, without its comments.
+// Raw keeps constraints and defaults, and leaves out the _#def wrapper an
+// exported closed definition otherwise carries.
+func schemaText(v cue.Value) string {
+	b, err := format.Node(v.Syntax(cue.Raw(), cue.Docs(false), cue.Optional(true)))
+	if err != nil {
+		return ""
+	}
+	text := strings.TrimSpace(string(b))
+	if len(text) > maxSchemaText {
+		text = text[:maxSchemaText] + " ..."
+	}
+	return text
 }
 
 func kindName(v cue.Value) string {
