@@ -277,10 +277,33 @@ class Structs extends React.Component<Props, State> {
     });
   };
 
+  // duplicateKeys are the row keys more than one item has.
+  duplicateKeys = (): string[] => {
+    const { rowKey } = this.props;
+    if (!rowKey) {
+      return [];
+    }
+    const values: any = this.field.getValues();
+    const seen = new Set<string>();
+    const dups = new Set<string>();
+    Object.keys(values).forEach((k) => {
+      const v = values[k]?.[rowKey];
+      if (v === undefined || v === '') {
+        return;
+      }
+      if (seen.has(String(v))) {
+        dups.add(String(v));
+      }
+      seen.add(String(v));
+    });
+    return Array.from(dups);
+  };
+
   render() {
     const { structList } = this.state;
     const { param, parameterGroupOption = [], label } = this.props;
     const { init } = this.field;
+    const dups = this.duplicateKeys();
     return (
       <div className="struct-plan-container">
         <div className="struct-plan-group">
@@ -314,6 +337,9 @@ class Structs extends React.Component<Props, State> {
               );
             })}
           </Form>
+          <If condition={dups.length > 0}>
+            <div className="struct-plan-error">{`${dups.join(', ')} is used by more than one item`}</div>
+          </If>
         </div>
         <div className="struct-plan-option">
           <If condition={parameterGroupOption.length === 0}>

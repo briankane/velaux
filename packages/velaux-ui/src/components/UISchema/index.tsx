@@ -62,6 +62,31 @@ type Props = {
   parentScope?: Scope;
 };
 
+// toJSRegExp compiles a CUE (RE2) pattern for the browser. A leading inline
+// flag group such as (?i) becomes a JavaScript flag; a pattern JavaScript
+// still cannot compile is not checked here, since the controller checks every
+// value against the definition anyway.
+export function toJSRegExp(pattern: string): RegExp | undefined {
+  let source = pattern;
+  let flags = '';
+  const inline = /^\(\?([ims]+)\)/.exec(source);
+  if (inline) {
+    flags = Array.from(new Set(inline[1].split(''))).join('');
+    source = source.substring(inline[0].length);
+  }
+  // RE2 spellings with a JavaScript equivalent: \A and \z anchor the whole
+  // text (JavaScript would read them as the letters), (?P<name> names a group.
+  source = source
+    .replace(/(^|[^\\])\\A/g, '$1^')
+    .replace(/(^|[^\\])\\z/g, '$1$$')
+    .replace(/\(\?P</g, '(?<');
+  try {
+    return new RegExp(source, flags);
+  } catch (e) {
+    return undefined;
+  }
+}
+
 function convertRule(validate?: UIParamValidate) {
   const rules: Rule[] = [];
   if (!validate) {
@@ -97,9 +122,10 @@ function convertRule(validate?: UIParamValidate) {
       message: `Enter a maximum of ${validate.maxLength} characters.`,
     });
   }
-  if (validate.pattern) {
+  const pattern = validate.pattern && toJSRegExp(validate.pattern);
+  if (pattern) {
     rules.push({
-      pattern: new RegExp(validate.pattern),
+      pattern: pattern,
       message: `Please enter a value that conforms to the specification. ` + validate.pattern,
     });
   }
@@ -466,6 +492,7 @@ class UISchema extends Component<Props, State> {
                   disabled={disableEdit}
                   hasClear
                   style={{ width: '100%' }}
+                  locale={locale().Select}
                   placeholder={param.style?.placeholder}
                   dataSource={(param.validate?.options || []).map((o) => ({ label: o.label, value: o.value }))}
                   {...init(param.jsonKey, {
