@@ -60,6 +60,8 @@ export interface UIParam {
     itemLabel?: string;
     placeholder?: string;
     advanced?: boolean;
+    section?: string;
+    optionsFrom?: string;
   };
   disable?: boolean;
   conditions?: ParamCondition[];
@@ -92,6 +94,7 @@ export interface UIParamValidate {
   defaultValue?: any;
   options?: Array<{ label: string; value: string }>;
   immutable?: boolean;
+  message?: string;
 }
 
 export interface ApplicationDeployRequest {

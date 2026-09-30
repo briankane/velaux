@@ -4,7 +4,7 @@ import { Translation } from '../Translation';
 import type { ParamCondition, UIParam, UIParamValidate , Definition } from '@velaux/data';
 
 import type { Rule } from '@alifd/field';
-import { Form, Input, Select, Field, Switch, Grid, Divider } from '@alifd/next';
+import { Form, Input, Select, Field, Switch, Grid, Divider, Collapse } from '@alifd/next';
 
 import './index.less';
 import i18n from 'i18next';
@@ -32,6 +32,7 @@ import Strings from '../../extends/Strings';
 import Numbers from '../../extends/Numbers';
 import Structs from '../../extends/Structs';
 import StructMap from '../../extends/StructMap';
+import OptionsFromSelect, { isOptionsSource } from '../../extends/OptionsFromSelect';
 import { checkImageName, replaceUrl } from '../../utils/common';
 import { locale } from '../../utils/locale';
 import { getValue } from '../../utils/utils';
@@ -101,32 +102,32 @@ function convertRule(validate?: UIParamValidate) {
   if (validate.min != undefined) {
     rules.push({
       min: validate.min,
-      message: 'Enter a number greater than ' + validate.min,
+      message: validate.message || 'Enter a number greater than ' + validate.min,
     });
   }
   if (validate.max != undefined) {
     rules.push({
       max: validate.max,
-      message: 'Enter a number less than ' + validate.max,
+      message: validate.message || 'Enter a number less than ' + validate.max,
     });
   }
   if (validate.minLength != undefined) {
     rules.push({
       minLength: validate.minLength,
-      message: `Enter a minimum of ${validate.minLength} characters.`,
+      message: validate.message || `Enter a minimum of ${validate.minLength} characters.`,
     });
   }
   if (validate.maxLength != undefined) {
     rules.push({
       maxLength: validate.maxLength,
-      message: `Enter a maximum of ${validate.maxLength} characters.`,
+      message: validate.message || `Enter a maximum of ${validate.maxLength} characters.`,
     });
   }
   const pattern = validate.pattern && toJSRegExp(validate.pattern);
   if (pattern) {
     rules.push({
       pattern: pattern,
-      message: `Please enter a value that conforms to the specification. ` + validate.pattern,
+      message: validate.message || `Please enter a value that conforms to the specification. ` + validate.pattern,
     });
   }
   return rules;
@@ -223,6 +224,44 @@ class UISchema extends Component<Props, State> {
   };
 
   scope = (): Scope => ({ getValues: () => this.form.getValues(), parent: this.props.parentScope });
+
+  // inSections gathers the rendered params of each named section into one
+  // collapsible panel, placed where the section's first param is.
+  inSections = (uiSchema: UIParam[], items: Array<React.ReactElement | undefined>) => {
+    const sections: Record<string, React.ReactElement[]> = {};
+    uiSchema.forEach((param, i) => {
+      const section = param.style?.section;
+      if (section && items[i]) {
+        (sections[section] = sections[section] || []).push(items[i] as React.ReactElement);
+      }
+    });
+    const out: React.ReactNode[] = [];
+    const placed = new Set<string>();
+    uiSchema.forEach((param, i) => {
+      const section = param.style?.section;
+      if (!items[i]) {
+        return;
+      }
+      if (!section) {
+        out.push(items[i]);
+        return;
+      }
+      if (placed.has(section)) {
+        return;
+      }
+      placed.add(section);
+      out.push(
+        <Col key={`section-${section}`} span={24} style={{ padding: '0 4px', marginBottom: '16px' }}>
+          <Collapse defaultExpandedKeys={[section]}>
+            <Collapse.Panel key={section} title={section}>
+              <Row wrap={true}>{sections[section]}</Row>
+            </Collapse.Panel>
+          </Collapse>
+        </Col>
+      );
+    });
+    return out;
+  };
 
   conditionAllowRender = (conditions?: ParamCondition[]) => {
     if (!conditions || conditions.length == 0) {
@@ -430,6 +469,27 @@ class UISchema extends Component<Props, State> {
       };
 
       const item = () => {
+        if (isOptionsSource(param.style?.optionsFrom)) {
+          return (
+            <Form.Item
+              required={required}
+              labelAlign={inline ? 'inset' : 'left'}
+              label={label}
+              key={param.jsonKey}
+              extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+            >
+              <OptionsFromSelect
+                source={param.style?.optionsFrom || ''}
+                disabled={disableEdit}
+                placeholder={param.style?.placeholder}
+                {...init(param.jsonKey, {
+                  initValue: initValue,
+                  rules: convertRule(param.validate),
+                })}
+              />
+            </Form.Item>
+          );
+        }
         switch (param.uiType) {
           case 'Switch':
             const getDefaultSwitchValue = (validate: any) => {
@@ -448,7 +508,7 @@ class UISchema extends Component<Props, State> {
                 required={required}
                 key={param.jsonKey}
                 label={<span title={description}>{label}</span>}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
                 <Switch
                   disabled={disableEdit}
@@ -466,7 +526,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 label={label}
                 key={param.jsonKey}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
                 <Input
                   disabled={disableEdit}
@@ -486,7 +546,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 label={label}
                 key={param.jsonKey}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
                 <Select.AutoComplete
                   disabled={disableEdit}
@@ -509,7 +569,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 label={label}
                 key={param.jsonKey}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
                 <Input
                   disabled={disableEdit}
@@ -529,7 +589,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 label={label}
                 key={param.jsonKey}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
                 <Select
                   disabled={disableEdit}
@@ -549,7 +609,7 @@ class UISchema extends Component<Props, State> {
                 required={required}
                 label={label}
                 key={param.jsonKey}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
                 <Input
                   disabled={disableEdit}
@@ -593,7 +653,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 key={param.jsonKey}
               >
                 <HelmChartSelect
@@ -617,7 +677,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 key={param.jsonKey}
               >
                 <HelmChartVersionSelect
@@ -641,7 +701,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 key={param.jsonKey}
               >
                 <HelmRepoSelect
@@ -719,7 +779,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -741,7 +801,7 @@ class UISchema extends Component<Props, State> {
                 required={required}
                 labelAlign={inline ? 'inset' : 'left'}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -760,7 +820,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -784,7 +844,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -808,7 +868,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -952,7 +1012,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -975,7 +1035,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -994,7 +1054,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -1013,7 +1073,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -1039,7 +1099,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
                 label={label}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -1084,7 +1144,7 @@ class UISchema extends Component<Props, State> {
       <Form field={this.form} className="ui-schema-container">
         <If condition={disableRenderRow}>{items}</If>
         <If condition={!disableRenderRow}>
-          <Row wrap={true}>{items}</Row>
+          <Row wrap={true}>{this.inSections(uiSchema, items)}</Row>
           <If condition={onlyShowRequired || explicitAdvanced}>
             <Divider />
             <If condition={showAdvancedButton}>
