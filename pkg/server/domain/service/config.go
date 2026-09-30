@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"sort"
 
-	"cuelang.org/go/cue"
 	"github.com/pkg/errors"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -380,12 +379,10 @@ func (u *configServiceImpl) DeleteConfig(ctx context.Context, project, name stri
 // configTemplateUISchema generates the form from the template's parameter,
 // or derives it from the OpenAPI schema where the parameter cannot be read.
 func configTemplateUISchema(ctx context.Context, template *config.Template) []*schema.UIParameter {
-	if val, err := template.Template.ParseToValueWithCueX(ctx); err == nil {
-		ps, err := paramschema.GenerateParameterSchemasFromValue(val.LookupPath(cue.ParsePath("template")), string(template.Template))
-		if err == nil {
-			return ps.UI
-		}
-		klog.Warningf("deriving the form of config template %s from its OpenAPI schema: %s", template.Name, err.Error())
+	ps, err := paramschema.GenerateParameterSchemasAt(ctx, string(template.Template), "template")
+	if err == nil {
+		return ps.UI
 	}
+	klog.Warningf("deriving the form of config template %s from its OpenAPI schema: %s", template.Name, err.Error())
 	return renderDefaultUISchema(template.Schema)
 }

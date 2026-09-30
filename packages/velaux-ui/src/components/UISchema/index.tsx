@@ -31,6 +31,7 @@ import SecretSelect from '../../extends/SecretSelect';
 import Strings from '../../extends/Strings';
 import Numbers from '../../extends/Numbers';
 import Structs from '../../extends/Structs';
+import StructMap from '../../extends/StructMap';
 import { checkImageName, replaceUrl } from '../../utils/common';
 import { locale } from '../../utils/locale';
 import { getValue } from '../../utils/utils';
@@ -40,7 +41,7 @@ import { If } from '../If';
 const { Col, Row } = Grid;
 
 // Scope is an enclosing form, which a condition reaches with `../`.
-type Scope = {
+export type Scope = {
   getValues: () => any;
   parent?: Scope;
 };
@@ -324,6 +325,8 @@ class UISchema extends Component<Props, State> {
     if (couldShowParamCount > 5) {
       onlyShowRequired = true;
     }
+    // A schema that marks its advanced params hides exactly those.
+    const explicitAdvanced = uiSchema.some((param) => param.style?.advanced);
 
     let couldBeDisabledParamCount = 0;
     let requiredParamCount = 0;
@@ -344,7 +347,7 @@ class UISchema extends Component<Props, State> {
         requiredParamCount += 1;
       }
 
-      if (onlyShowRequired && !required && !advanced) {
+      if (explicitAdvanced ? param.style?.advanced && !advanced : onlyShowRequired && !required && !advanced) {
         return;
       }
 
@@ -442,6 +445,29 @@ class UISchema extends Component<Props, State> {
                 <Input
                   disabled={disableEdit}
                   autoComplete="off"
+                  placeholder={param.style?.placeholder}
+                  {...init(param.jsonKey, {
+                    initValue: initValue,
+                    rules: convertRule(param.validate),
+                  })}
+                />
+              </Form.Item>
+            );
+          case 'Suggest':
+            return (
+              <Form.Item
+                required={required}
+                labelAlign={inline ? 'inset' : 'left'}
+                label={label}
+                key={param.jsonKey}
+                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+              >
+                <Select.AutoComplete
+                  disabled={disableEdit}
+                  hasClear
+                  style={{ width: '100%' }}
+                  placeholder={param.style?.placeholder}
+                  dataSource={(param.validate?.options || []).map((o) => ({ label: o.label, value: o.value }))}
                   {...init(param.jsonKey, {
                     initValue: initValue,
                     rules: convertRule(param.validate),
@@ -784,6 +810,7 @@ class UISchema extends Component<Props, State> {
                   title={label}
                   closed={true}
                   required={required}
+                  emptyValue={{}}
                   field={this.form}
                   jsonKey={param.jsonKey || ''}
                   propertyValue={this.props.value}
@@ -821,6 +848,36 @@ class UISchema extends Component<Props, State> {
                   label={label}
                   param={param.subParameters}
                   parameterGroupOption={param.subParameterGroupOption}
+                  parentScope={this.scope()}
+                  format={param.style?.format}
+                  rowKey={param.style?.rowKey}
+                  itemLabel={param.style?.itemLabel}
+                  registerForm={(form: Field) => {
+                    this.onRegisterForm(param.jsonKey, form);
+                  }}
+                  mode={this.props.mode}
+                  {...init(param.jsonKey, {
+                    initValue: initValue,
+                    rules: [
+                      {
+                        validator: validator,
+                        message: `Please check ${label} config`,
+                      },
+                    ],
+                  })}
+                />
+              );
+            }
+            return <div />;
+          case 'StructMap':
+            if (param.subParameters && param.subParameters.length > 0) {
+              return getGroup(
+                <StructMap
+                  key={param.jsonKey}
+                  label={label}
+                  param={param.subParameters}
+                  parentScope={this.scope()}
+                  format={param.style?.format}
                   registerForm={(form: Field) => {
                     this.onRegisterForm(param.jsonKey, form);
                   }}
@@ -994,13 +1051,14 @@ class UISchema extends Component<Props, State> {
       },
     };
 
-    const showAdvancedButton = couldBeDisabledParamCount != couldShowParamCount || requiredParamCount === 0;
+    const showAdvancedButton =
+      explicitAdvanced || couldBeDisabledParamCount != couldShowParamCount || requiredParamCount === 0;
     return ( 
       <Form field={this.form} className="ui-schema-container">
         <If condition={disableRenderRow}>{items}</If>
         <If condition={!disableRenderRow}>
           <Row wrap={true}>{items}</Row>
-          <If condition={onlyShowRequired}>
+          <If condition={onlyShowRequired || explicitAdvanced}>
             <Divider />
             <If condition={showAdvancedButton}>
               <Form {...formItemLayout} style={{ width: '100%' }} fullWidth={true}>

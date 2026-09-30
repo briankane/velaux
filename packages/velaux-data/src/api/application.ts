@@ -55,6 +55,11 @@ export interface UIParam {
   uiType: string;
   style?: {
     colSpan: number;
+    format?: 'table';
+    rowKey?: string;
+    itemLabel?: string;
+    placeholder?: string;
+    advanced?: boolean;
   };
   disable?: boolean;
   conditions?: ParamCondition[];
