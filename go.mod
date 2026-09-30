@@ -359,4 +359,4 @@ replace (
 	sigs.k8s.io/apiserver-runtime => github.com/kmodules/apiserver-runtime v1.1.2-0.20250422194347-c5ac4abaf2ae
 )
 
-replace github.com/oam-dev/kubevela => github.com/briankane/kubevela v0.0.0-20260930213003-aea457d06eac
+replace github.com/oam-dev/kubevela => github.com/briankane/kubevela v0.0.0-20260930231656-a506fd8b5fd5

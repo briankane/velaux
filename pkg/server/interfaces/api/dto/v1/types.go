@@ -246,6 +246,9 @@ type ConfigTemplateDetail struct {
 	ConfigTemplate
 	APISchema *openapi3.Schema `json:"schema"`
 	UISchema  schema.UISchema  `json:"uiSchema"`
+	// OutputSchema is a source definition's `schema`: the value an
+	// Application reads with $(source.<name>).
+	OutputSchema *openapi3.Schema `json:"outputSchema,omitempty"`
 }
 
 // Config define the metadata of a config
@@ -916,6 +919,9 @@ type DetailDefinitionResponse struct {
 	DefinitionBase
 	APISchema *openapi3.Schema `json:"schema"`
 	UISchema  schema.UISchema  `json:"uiSchema"`
+	// OutputSchema is a source definition's `schema`: the value an
+	// Application reads with $(source.<name>).
+	OutputSchema *openapi3.Schema `json:"outputSchema,omitempty"`
 }
 
 // UpdateUISchemaRequest the request body struct about updated ui schema
@@ -949,6 +955,7 @@ type DefinitionBase struct {
 	Component    *v1beta1.ComponentDefinitionSpec    `json:"component,omitempty"`
 	Policy       *v1beta1.PolicyDefinitionSpec       `json:"policy,omitempty"`
 	WorkflowStep *v1beta1.WorkflowStepDefinitionSpec `json:"workflowStep,omitempty"`
+	Source       *v1beta1.SourceDefinitionSpec       `json:"source,omitempty"`
 }
 
 // CreatePolicyRequest create app policy
@@ -964,6 +971,35 @@ type CreatePolicyRequest struct {
 
 	// Bind this policy to workflow
 	WorkflowPolicyBindings []WorkflowPolicyBinding `json:"workflowPolicyBind"`
+}
+
+// SourceBase is a source of an application: an external value its
+// properties read with $(source.<name>).
+type SourceBase struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+	// Properties is the source's parameter, as a JSON object.
+	Properties *model.JSONStruct `json:"properties,omitempty"`
+}
+
+// ListApplicationSourceResponse lists the sources of an application
+type ListApplicationSourceResponse struct {
+	Sources []*SourceBase `json:"sources"`
+}
+
+// CreateSourceRequest adds a source to an application
+type CreateSourceRequest struct {
+	Name string `json:"name" validate:"checkname"`
+	Type string `json:"type" validate:"checkname"`
+	// Properties json data
+	Properties string `json:"properties"`
+}
+
+// UpdateSourceRequest changes the type or parameter of an application source
+type UpdateSourceRequest struct {
+	Type string `json:"type" validate:"checkname"`
+	// Properties json data
+	Properties string `json:"properties"`
 }
 
 // WorkflowPolicyBinding define the relation binding relationShip between policy and workflowStep

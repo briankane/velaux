@@ -86,6 +86,10 @@ type ApplicationService interface {
 	UpdateComponent(ctx context.Context, app *model.Application, component *model.ApplicationComponent, req apisv1.UpdateApplicationComponentRequest) (*apisv1.ComponentBase, error)
 	ListPolicies(ctx context.Context, app *model.Application) ([]*apisv1.PolicyBase, error)
 	CreatePolicy(ctx context.Context, app *model.Application, policy apisv1.CreatePolicyRequest) (*apisv1.PolicyBase, error)
+	ListSources(ctx context.Context, app *model.Application) []*apisv1.SourceBase
+	CreateSource(ctx context.Context, app *model.Application, req apisv1.CreateSourceRequest) (*apisv1.SourceBase, error)
+	UpdateSource(ctx context.Context, app *model.Application, name string, req apisv1.UpdateSourceRequest) (*apisv1.SourceBase, error)
+	DeleteSource(ctx context.Context, app *model.Application, name string) error
 	DetailPolicy(ctx context.Context, app *model.Application, policyName string) (*apisv1.DetailPolicyResponse, error)
 	DeletePolicy(ctx context.Context, app *model.Application, policyName string, force bool) error
 	UpdatePolicy(ctx context.Context, app *model.Application, policyName string, policy apisv1.UpdatePolicyRequest) (*apisv1.DetailPolicyResponse, error)
@@ -1001,6 +1005,7 @@ func (c *applicationServiceImpl) renderOAMApplication(ctx context.Context, appMo
 		}
 		application.Spec.Policies = append(application.Spec.Policies, appPolicy)
 	}
+	application.Spec.Sources = appModel.Sources
 	if workflow != nil {
 		application.Annotations[oam.AnnotationWorkflowName] = workflow.Name
 		var steps []wfTypesv1alpha1.WorkflowStep
