@@ -22,6 +22,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/oam-dev/kubevela/apis/core.oam.dev/common"
+	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
+	"github.com/oam-dev/kubevela/apis/types"
+	common2 "github.com/oam-dev/kubevela/pkg/utils/common"
 
 	"github.com/kubevela/velaux/pkg/server/domain/model"
 	apisv1 "github.com/kubevela/velaux/pkg/server/interfaces/api/dto/v1"
@@ -94,4 +101,42 @@ func TestExpressionEnv(t *testing.T) {
 
 	_, err = (&expressionServiceImpl{enabled: true}).Env(context.Background(), app, "nowhere")
 	assert.Error(t, err)
+}
+
+func TestExpressionEnvReadsAuthoredSources(t *testing.T) {
+	def := &v1beta1.SourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: "db-lookup", Namespace: types.DefaultKubeVelaNS},
+		Spec: v1beta1.SourceDefinitionSpec{Schematic: &common.Schematic{CUE: &common.CUE{Template: `
+parameter: secret: string
+schema: {
+	host: string
+	port: int
+}
+output: host: "db"
+`}}},
+	}
+	svc := &expressionServiceImpl{enabled: true, KubeClient: fake.NewClientBuilder().WithScheme(common2.Scheme).WithObjects(def).Build()}
+	app := &model.Application{
+		Name:        "demo",
+		Annotations: map[string]string{"app.oam.dev/cel-expressions": "true"},
+		Sources:     []v1beta1.ApplicationSource{{Name: "db", Type: "db-lookup"}},
+	}
+
+	env, err := svc.Env(context.Background(), app, "component")
+	require.NoError(t, err)
+	require.Len(t, env.Variables, 2)
+	sources := env.Variables[1]
+	require.Len(t, sources.Children, 1, "a source counts before the application is deployed")
+	db := sources.Children[0]
+	assert.Equal(t, "db", db.Name)
+	var fields []string
+	for _, f := range db.Children {
+		fields = append(fields, f.Name+":"+f.Type)
+	}
+	assert.Equal(t, []string{"host:string", "port:int"}, fields)
+
+	got, err := svc.Check(context.Background(), app, apisv1.ExpressionCheckRequest{Surface: "component", Value: "$(source.db.port)", Kind: "integer"})
+	require.NoError(t, err)
+	assert.Empty(t, got.Issues)
+	assert.Equal(t, "int", got.Type)
 }

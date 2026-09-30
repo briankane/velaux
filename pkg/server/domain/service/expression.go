@@ -192,12 +192,29 @@ func usage(v cue.Value) string {
 	return strings.TrimSpace(doc)
 }
 
-// sourceSchemas reads the source bindings of the application as deployed, and
-// the CUE of each binding's SourceDefinition schema. VelaUX does not model
-// spec.sources itself, so an application not yet deployed has none.
+// sourceSchemas maps each source binding of the application to the CUE of its
+// definition's schema: the sources the application declares, then any only its
+// deployed Applications carry.
 func (e *expressionServiceImpl) sourceSchemas(ctx context.Context, app *model.Application) map[string]string {
 	out := map[string]string{}
-	if e.EnvBindingService == nil || e.KubeClient == nil {
+	if e.KubeClient == nil {
+		return out
+	}
+	add := func(src v1beta1.ApplicationSource, namespace string) {
+		if _, done := out[src.Name]; done {
+			return
+		}
+		text, err := e.sourceSchema(ctx, src.Type, namespace)
+		if err != nil {
+			klog.V(4).Infof("no schema for source %s of %s: %v", src.Name, app.Name, err)
+			return
+		}
+		out[src.Name] = text
+	}
+	for _, src := range app.Sources {
+		add(src, types.DefaultKubeVelaNS)
+	}
+	if e.EnvBindingService == nil {
 		return out
 	}
 	bindings, err := e.EnvBindingService.GetEnvBindings(ctx, app)
@@ -210,15 +227,7 @@ func (e *expressionServiceImpl) sourceSchemas(ctx context.Context, app *model.Ap
 			continue
 		}
 		for _, src := range cr.Spec.Sources {
-			if _, done := out[src.Name]; done {
-				continue
-			}
-			text, err := e.sourceSchema(ctx, src.Type, cr.Namespace)
-			if err != nil {
-				klog.V(4).Infof("no schema for source %s of %s: %v", src.Name, app.Name, err)
-				continue
-			}
-			out[src.Name] = text
+			add(src, cr.Namespace)
 		}
 	}
 	return out
