@@ -1940,3 +1940,52 @@ type InstallPluginRequest struct {
 	Disable bool                   `json:"disable,omitempty"`
 	Options *velacommon.HTTPOption `json:"options,omitempty"`
 }
+
+// ExpressionEnvResponse is what a form needs to edit $( ) expressions for one
+// surface of an application.
+type ExpressionEnvResponse struct {
+	// Enabled says this server offers expression editing at all.
+	Enabled bool `json:"enabled"`
+	// OptedIn says the application reads expressions: it carries the
+	// app.oam.dev/cel-expressions annotation.
+	OptedIn bool   `json:"optedIn"`
+	Surface string `json:"surface"`
+	// Variables are the roots an expression may read, with their fields.
+	Variables []*ExpressionVariable `json:"variables"`
+}
+
+// ExpressionVariable is a value an expression can read, and its fields.
+type ExpressionVariable struct {
+	Name        string                `json:"name"`
+	Type        string                `json:"type"`
+	Description string                `json:"description,omitempty"`
+	Children    []*ExpressionVariable `json:"children,omitempty"`
+}
+
+// ExpressionCheckRequest asks whether a property value's expressions compile
+// and what its value's type is.
+type ExpressionCheckRequest struct {
+	Surface string `json:"surface" validate:"required"`
+	// Value is the property value as written, $( ) and all.
+	Value string `json:"value"`
+	// Kind is the type the parameter expects: string, integer, number,
+	// boolean, or empty for any.
+	Kind string `json:"kind,omitempty"`
+}
+
+// ExpressionCheckResponse reports on a property value's expressions.
+type ExpressionCheckResponse struct {
+	// Type is the value's type once its expressions are evaluated.
+	Type   string             `json:"type,omitempty"`
+	Issues []*ExpressionIssue `json:"issues,omitempty"`
+}
+
+// ExpressionIssue is a problem in a property value, at a position in it.
+type ExpressionIssue struct {
+	Message string `json:"message"`
+	// Start and End are character offsets into the value.
+	Start int `json:"start"`
+	End   int `json:"end"`
+	// Warning is set for an issue that does not stop the value being used.
+	Warning bool `json:"warning,omitempty"`
+}
