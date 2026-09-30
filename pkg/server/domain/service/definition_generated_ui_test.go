@@ -17,11 +17,18 @@ limitations under the License.
 package service
 
 import (
+	"context"
 	"testing"
 
-	"github.com/oam-dev/kubevela/apis/types"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/oam-dev/kubevela/apis/types"
+	pkgaddon "github.com/oam-dev/kubevela/pkg/addon"
+	"github.com/oam-dev/kubevela/pkg/config"
+	"github.com/oam-dev/kubevela/pkg/cue/script"
+	"github.com/oam-dev/kubevela/pkg/utils/schema"
 )
 
 func TestGeneratedUISchema(t *testing.T) {
@@ -35,4 +42,34 @@ func TestGeneratedUISchema(t *testing.T) {
 
 	assert.Nil(t, generatedUISchema(v1.ConfigMap{}), "a controller that writes none leaves VelaUX to derive the form")
 	assert.Nil(t, generatedUISchema(v1.ConfigMap{Data: map[string]string{types.DefaultUISchema: "not json"}}))
+}
+
+func TestAddonDefaultUISchema(t *testing.T) {
+	generated := []*schema.UIParameter{{JSONKey: "port", Conditions: []schema.Condition{{JSONKey: "tls", Op: "!=", Value: nil}}}}
+	assert.Equal(t, generated, addonDefaultUISchema(&pkgaddon.UIData{DefaultUISchema: generated}))
+
+	derived := addonDefaultUISchema(&pkgaddon.UIData{APISchema: &openapi3.Schema{
+		Properties: openapi3.Schemas{"image": openapi3.NewSchemaRef("", openapi3.NewStringSchema())},
+	}})
+	if assert.Len(t, derived, 1) {
+		assert.Equal(t, "image", derived[0].JSONKey)
+	}
+}
+
+func TestConfigTemplateUISchema(t *testing.T) {
+	tmpl := &config.Template{Template: script.CUE(`
+metadata: name: "demo"
+template: parameter: {
+	kind: "token" | "basic"
+	if kind == "token" { token: string }
+	if kind == "basic" { user: string, password: string }
+}
+`)}
+	ui := configTemplateUISchema(context.Background(), tmpl)
+	var keys []string
+	for _, p := range ui {
+		keys = append(keys, p.JSONKey)
+	}
+	assert.Equal(t, []string{"kind", "token", "user", "password"}, keys)
+	assert.Equal(t, "token", ui[1].Conditions[0].Value)
 }

@@ -39,6 +39,12 @@ import { If } from '../If';
 
 const { Col, Row } = Grid;
 
+// Scope is an enclosing form, which a condition reaches with `../`.
+type Scope = {
+  getValues: () => any;
+  parent?: Scope;
+};
+
 type Props = {
   inline?: boolean;
   id?: string;
@@ -52,6 +58,7 @@ type Props = {
   mode: 'new' | 'edit';
   advanced?: boolean;
   definition?: Definition;
+  parentScope?: Scope;
 };
 
 function convertRule(validate?: UIParamValidate) {
@@ -176,6 +183,20 @@ class UISchema extends Component<Props, State> {
     });
   };
 
+  // conditionValue reads the field a condition names: in this form, in a
+  // child object (`storage.kind`), or in an enclosing form (`../mode`).
+  conditionValue = (jsonKey: string) => {
+    let key = jsonKey;
+    let scope: Scope | undefined = this.scope();
+    while (key.startsWith('../')) {
+      key = key.substring(3);
+      scope = scope?.parent;
+    }
+    return scope ? getValue(key, scope.getValues()) : undefined;
+  };
+
+  scope = (): Scope => ({ getValues: () => this.form.getValues(), parent: this.props.parentScope });
+
   conditionAllowRender = (conditions?: ParamCondition[]) => {
     if (!conditions || conditions.length == 0) {
       return true;
@@ -186,8 +207,7 @@ class UISchema extends Component<Props, State> {
     };
     let enableConditionCount = 0;
     conditions.map((condition) => {
-      const values = this.form.getValues();
-      const value = getValue(condition.jsonKey, values);
+      const value = this.conditionValue(condition.jsonKey);
       // the enable conditions count
       if (condition.action == 'enable' || !condition.action) {
         enableConditionCount += 1;
@@ -786,6 +806,7 @@ class UISchema extends Component<Props, State> {
                       this.onRegisterForm(param.jsonKey, form);
                     }}
                     uiSchema={param.subParameters}
+                    parentScope={this.scope()}
                     mode={this.props.mode}
                   />
                 </Group>
@@ -828,6 +849,7 @@ class UISchema extends Component<Props, State> {
                   }}
                   inline={inline}
                   maxColSpan={24 / itemCount}
+                  parentScope={this.scope()}
                   {...init(param.jsonKey, {
                     initValue: initValue,
                     rules: [
