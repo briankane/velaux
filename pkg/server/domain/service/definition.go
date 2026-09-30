@@ -280,13 +280,30 @@ func (d *definitionServiceImpl) DetailDefinition(ctx context.Context, name, defT
 			return nil, err
 		}
 		definition.APISchema = schema
-		// render default ui schema
-		defaultUISchema := renderDefaultUISchema(schema)
+		defaultUISchema := generatedUISchema(cm)
+		if defaultUISchema == nil {
+			defaultUISchema = renderDefaultUISchema(schema)
+		}
 		// patch from custom ui schema
 		definition.UISchema = renderCustomUISchema(ctx, d.KubeClient, name, defType, defaultUISchema)
 	}
 
 	return definition, nil
+}
+
+// generatedUISchema is the form the controller generated from the
+// definition's parameter, or nil where the controller predates it.
+func generatedUISchema(cm v1.ConfigMap) []*schema.UIParameter {
+	data, ok := cm.Data[types.DefaultUISchema]
+	if !ok {
+		return nil
+	}
+	var ui []*schema.UIParameter
+	if err := json.Unmarshal([]byte(data), &ui); err != nil {
+		klog.Warningf("ignoring the generated ui schema in %s/%s: %s", cm.Namespace, cm.Name, err.Error())
+		return nil
+	}
+	return ui
 }
 
 func renderCustomUISchema(ctx context.Context, cli client.Client, name, defType string, defaultSchema []*schema.UIParameter) []*schema.UIParameter {
