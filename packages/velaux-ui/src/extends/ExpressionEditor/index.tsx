@@ -1,10 +1,12 @@
+import { Balloon } from '@alifd/next';
 import * as monaco from 'monaco-editor';
 import React from 'react';
+import { AiFillCheckCircle, AiFillCloseCircle, AiFillWarning } from 'react-icons/ai';
 import { v4 as uuid } from 'uuid';
 
 import { checkExpression } from '../../api/application';
 import type { ExpressionEnv } from './completion';
-import { suggest } from './completion';
+import { expressionSpans, suggest } from './completion';
 import './index.less';
 
 export type { ExpressionEnv, ExpressionVariable } from './completion';
@@ -85,8 +87,11 @@ type Props = {
 };
 
 type State = {
-  status?: { text: string; error: boolean };
+  status?: { text: string; kind: 'ok' | 'error' | 'warning' };
 };
+
+// markWidth is the room at the right of the input kept for the status mark.
+const markWidth = 30;
 
 // ExpressionEditor edits a property value that may hold $( ) CEL expressions,
 // suggesting what an expression can read and checking it as it is written.
@@ -96,6 +101,7 @@ class ExpressionEditor extends React.Component<Props, State> {
   model?: monaco.editor.ITextModel;
   timer?: ReturnType<typeof setTimeout>;
   resize?: ResizeObserver;
+  frames: string[] = [];
   checked = '';
 
   constructor(props: Props) {
@@ -142,13 +148,15 @@ class ExpressionEditor extends React.Component<Props, State> {
     // One line, laid out by hand: Monaco's automatic layout keeps its 400px
     // default when it measures the container before the form has laid out.
     const container = this.container.current;
-    const layout = () => this.editor?.layout({ width: container.clientWidth, height: 20 });
+    const layout = () => this.editor?.layout({ width: container.clientWidth - markWidth, height: 20 });
     layout();
     this.resize = new ResizeObserver(layout);
     this.resize.observe(container);
     // Enter accepts a suggestion and otherwise does nothing.
     this.editor.addCommand(monaco.KeyCode.Enter, () => undefined, '!suggestWidgetVisible');
+    this.frame();
     this.model.onDidChangeContent(() => {
+      this.frame();
       const text = (this.model?.getValue() || '').replace(/\n/g, ' ');
       if (this.props.onChange) {
         this.props.onChange(text);
@@ -178,6 +186,22 @@ class ExpressionEditor extends React.Component<Props, State> {
     this.editor?.dispose();
     this.model?.dispose();
   }
+
+  // frame shades each $( ) expression, so it stands apart from the literal
+  // text around it.
+  frame = () => {
+    if (!this.editor || !this.model) {
+      return;
+    }
+    const spans = expressionSpans(this.model.getValue());
+    this.frames = this.editor.deltaDecorations(
+      this.frames,
+      spans.map(([start, end]) => ({
+        range: new monaco.Range(1, start + 1, 1, end + 1),
+        options: { className: 'vela-cel-frame' },
+      })),
+    );
+  };
 
   text = (value: any) => (value === undefined || value === null ? '' : String(value));
 
@@ -219,9 +243,9 @@ class ExpressionEditor extends React.Component<Props, State> {
     );
     const first = issues.find((i) => !i.warning) || issues[0];
     if (first) {
-      this.setState({ status: { text: first.message, error: !first.warning } });
+      this.setState({ status: { text: first.message, kind: first.warning ? 'warning' : 'error' } });
     } else if (res?.type) {
-      this.setState({ status: { text: `Evaluates to ${res.type}`, error: false } });
+      this.setState({ status: { text: `Evaluates to ${res.type}`, kind: 'ok' } });
     } else {
       this.setState({ status: undefined });
     }
@@ -229,10 +253,18 @@ class ExpressionEditor extends React.Component<Props, State> {
 
   render() {
     const { status } = this.state;
+    const icons = { ok: <AiFillCheckCircle />, error: <AiFillCloseCircle />, warning: <AiFillWarning /> };
     return (
       <div className="expression-editor" id={this.props.id}>
         <div className={`expression-editor-input${this.props.disabled ? ' disabled' : ''}`} ref={this.container} />
-        {status && <div className={`expression-editor-status${status.error ? ' error' : ''}`}>{status.text}</div>}
+        {status && (
+          <Balloon.Tooltip
+            trigger={<span className={`expression-editor-mark ${status.kind}`}>{icons[status.kind]}</span>}
+            align="t"
+          >
+            {status.text}
+          </Balloon.Tooltip>
+        )}
       </div>
     );
   }

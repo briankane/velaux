@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 
 import type { ExpressionEnv } from '../../extends/ExpressionEditor/completion';
-import { openExpression, suggest } from '../../extends/ExpressionEditor/completion';
+import { expressionSpans, openExpression, suggest } from '../../extends/ExpressionEditor/completion';
 
 const env: ExpressionEnv = {
   enabled: true,
@@ -45,5 +45,20 @@ describe('expression suggestions', () => {
   it('knows when a quoted paren does not close the expression', () => {
     expect(openExpression('$(context.appName == ")"')).to.equal(2);
     expect(openExpression('$(a) and $$(b')).to.equal(undefined);
+  });
+});
+
+describe('expression spans', () => {
+  it('frames each expression, parens and all', () => {
+    expect(expressionSpans('img/$(context.appName):$(string(context.appRevisionNum))')).to.deep.equal([
+      [4, 22],
+      [23, 56],
+    ]);
+  });
+  it('ignores a paren inside quotes and an escaped $$(', () => {
+    expect(expressionSpans('$(a == ")") $$(b)')).to.deep.equal([[0, 11]]);
+  });
+  it('runs an unclosed expression to the end', () => {
+    expect(expressionSpans('x $(context.')).to.deep.equal([[2, 12]]);
   });
 });

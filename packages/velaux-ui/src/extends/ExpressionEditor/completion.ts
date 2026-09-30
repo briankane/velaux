@@ -161,3 +161,47 @@ export function suggest(before: string, env?: ExpressionEnv): { items: Suggestio
   const kind = parent.type.startsWith('list') ? 'list' : parent.type;
   return { items: [...fields, ...(methods[kind] || [])], replace: partial.length };
 }
+
+// expressionSpans finds each $( ) expression in a value, as [start, end)
+// offsets covering the $( and the closing ). An unclosed expression runs to
+// the end; $$( is an escaped literal and not one.
+export function expressionSpans(text: string): Array<[number, number]> {
+  const spans: Array<[number, number]> = [];
+  let start = -1;
+  let depth = 0;
+  let quote = '';
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (start < 0) {
+      if (c === '$' && text[i + 1] === '$' && text[i + 2] === '(') {
+        i += 2;
+      } else if (c === '$' && text[i + 1] === '(') {
+        start = i;
+        depth = 1;
+        i++;
+      }
+      continue;
+    }
+    if (quote) {
+      if (c === quote && text[i - 1] !== '\\') {
+        quote = '';
+      }
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+    } else if (c === '(') {
+      depth++;
+    } else if (c === ')') {
+      depth--;
+      if (depth === 0) {
+        spans.push([start, i + 1]);
+        start = -1;
+      }
+    }
+  }
+  if (start >= 0) {
+    spans.push([start, text.length]);
+  }
+  return spans;
+}
