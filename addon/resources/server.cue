@@ -75,7 +75,7 @@ server: {
 			exposeType: parameter["serviceType"]
 		}
 
-		cmd: ["server", "--datastore-type=" + parameter["dbType"], "--feature-gates=EnableCacheJSFile=true"] + database + dbURL + enableImpersonation + enableCelExpressions
+		cmd: [for args in [["server", "--datastore-type=" + parameter["dbType"], "--feature-gates=EnableCacheJSFile=true"], database, dbURL, enableImpersonation, enableCelExpressions] for arg in args {arg}]
 		ports: [
 			{
 				port:     8000
@@ -88,11 +88,11 @@ server: {
 		]
 	}
 	dependsOn: ["velaux-additional-privileges"]
-	traits: [
+	traits: [for group in [[
 		{
 			type: "service-account"
 			properties: name: parameter["serviceAccountName"]
 		},
 		{type: "scaler", properties: replicas: parameter["replicas"]},
-	] + _nginxTrait + _traefikTrait + _httpsTrait
+	], _nginxTrait, _traefikTrait, _httpsTrait] for trait in group {trait}]
 }
