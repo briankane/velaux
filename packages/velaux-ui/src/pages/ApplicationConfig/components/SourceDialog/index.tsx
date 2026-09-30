@@ -1,0 +1,219 @@
+import { Card, Field, Form, Grid, Input, Loading, Message, Select, Button, Table } from '@alifd/next';
+import type { Rule } from '@alifd/next/lib/field';
+import React from 'react';
+import { connect } from 'dva';
+
+import { createSource, updateSource } from '../../../../api/application';
+import { detailSourceDefinition, getSourceDefinitions } from '../../../../api/definitions';
+import DrawerWithFooter from '../../../../components/Drawer';
+import { If } from '../../../../components/If';
+import Permission from '../../../../components/Permission';
+import { Translation } from '../../../../components/Translation';
+import UISchema from '../../../../components/UISchema';
+import i18n from '../../../../i18n';
+import type { ApplicationSource, DefinitionBase, DefinitionDetail } from '@velaux/data';
+import { checkName } from '../../../../utils/common';
+import { locale } from '../../../../utils/locale';
+import { sourceFields } from '../../../../utils/source';
+
+const { Row, Col } = Grid;
+
+type Props = {
+  appName: string;
+  project: string;
+  source?: ApplicationSource;
+  onClose: () => void;
+  onOK: () => void;
+  dispatch?: ({}) => {};
+};
+
+type State = {
+  definitions: DefinitionBase[];
+  definition?: DefinitionDetail;
+  loading: boolean;
+  saving: boolean;
+};
+
+@connect()
+class SourceDialog extends React.Component<Props, State> {
+  field: Field;
+  uiSchemaRef: React.RefObject<UISchema>;
+
+  constructor(props: Props) {
+    super(props);
+    this.state = { definitions: [], loading: false, saving: false };
+    this.field = new Field(this, {
+      onChange: (name: string, value: any) => {
+        if (name === 'type') {
+          this.field.remove('properties');
+          this.setState({ definition: undefined }, () => this.loadDefinition(value));
+        }
+      },
+    });
+    this.uiSchemaRef = React.createRef();
+  }
+
+  componentDidMount() {
+    const { dispatch, appName, project, source } = this.props;
+    if (dispatch) {
+      dispatch({ type: 'uischema/setAppName', payload: appName });
+      dispatch({ type: 'uischema/setProject', payload: project });
+    }
+    getSourceDefinitions().then((res) => {
+      if (res) {
+        this.setState({ definitions: res.definitions || [] });
+      }
+    });
+    if (source) {
+      this.field.setValues({ name: source.name, type: source.type, properties: source.properties });
+      this.loadDefinition(source.type);
+    }
+  }
+
+  loadDefinition = (type: string) => {
+    if (!type) {
+      return;
+    }
+    this.setState({ loading: true });
+    detailSourceDefinition({ name: type })
+      .then((res) => {
+        if (res) {
+          this.setState({ definition: res });
+        }
+      })
+      .finally(() => this.setState({ loading: false }));
+  };
+
+  onSubmit = () => {
+    this.field.validate((error: any, values: any) => {
+      if (error) {
+        return;
+      }
+      const { appName, source } = this.props;
+      const { name, type, properties } = values;
+      this.setState({ saving: true });
+      const request = source
+        ? updateSource(appName, source.name, { type, properties: JSON.stringify(properties || {}) })
+        : createSource(appName, { name, type, properties: JSON.stringify(properties || {}) });
+      request
+        .then((res) => {
+          if (res) {
+            Message.success(source ? i18n.t('Source updated successfully') : i18n.t('Source added successfully'));
+            this.props.onOK();
+          }
+        })
+        .finally(() => this.setState({ saving: false }));
+    });
+  };
+
+  render() {
+    const { onClose, source, appName, project } = this.props;
+    const { definitions, definition, loading, saving } = this.state;
+    const init = this.field.init;
+    const validator = (rule: Rule, value: any, callback: (error?: string) => void) => {
+      this.uiSchemaRef.current?.validate(callback);
+    };
+    const name = this.field.getValue<string>('name') || (source && source.name) || '<name>';
+    const fields = sourceFields(name, definition?.outputSchema);
+    return (
+      <DrawerWithFooter
+        title={source ? i18n.t('Update Source') : i18n.t('New Source')}
+        placement="right"
+        width={800}
+        onClose={onClose}
+        extButtons={
+          <Permission
+            request={{
+              resource: `project:${project}/application:${appName}/source:*`,
+              action: source ? 'update' : 'create',
+            }}
+            project={project}
+          >
+            <Button type="primary" onClick={this.onSubmit} loading={saving}>
+              {source ? i18n.t('Update').toString() : i18n.t('Create').toString()}
+            </Button>
+          </Permission>
+        }
+      >
+        <Form field={this.field}>
+          <Card contentHeight="auto" title={i18n.t('Source').toString()}>
+            <Row wrap={true}>
+              <Col span={12} style={{ padding: '0 8px' }}>
+                <Form.Item label={i18n.t('Source Type').toString()} required>
+                  <Select
+                    {...init('type', {
+                      rules: [{ required: true, message: i18n.t('Please select the source type.').toString() }],
+                    })}
+                    locale={locale().Select}
+                    dataSource={definitions.map((d) => ({ label: d.name, value: d.name }))}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12} style={{ padding: '0 8px' }}>
+                <Form.Item label={i18n.t('Name').toString()} required>
+                  <Input
+                    {...init('name', {
+                      rules: [{ required: true, pattern: checkName, message: 'Please input a valid source name' }],
+                    })}
+                    disabled={source != undefined}
+                    locale={locale().Input}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <If condition={definition?.description}>
+              <Message type="help">{definition?.description}</Message>
+            </If>
+          </Card>
+          <Loading visible={loading} style={{ width: '100%' }}>
+            <Card contentHeight="auto" style={{ marginTop: '8px' }} title={i18n.t('Source Properties').toString()}>
+              <If condition={definition}>
+                <Form.Item required={true}>
+                  <UISchema
+                    key={definition?.name}
+                    {...init('properties', {
+                      rules: [{ validator: validator, message: i18n.t('Please check the properties of this source') }],
+                    })}
+                    uiSchema={definition?.uiSchema}
+                    definition={{
+                      type: 'source',
+                      name: definition?.name || '',
+                      description: definition?.description || '',
+                    }}
+                    ref={this.uiSchemaRef}
+                    mode={source ? 'edit' : 'new'}
+                  />
+                </Form.Item>
+              </If>
+              <If condition={!definition}>
+                <Message type="notice">
+                  <Translation>Please select the source type first.</Translation>
+                </Message>
+              </If>
+            </Card>
+            <If condition={fields.length > 0}>
+              <Card
+                contentHeight="auto"
+                style={{ marginTop: '8px' }}
+                title={i18n.t('Readable Fields').toString()}
+                subTitle={i18n.t('Properties read these with $( ) expressions').toString()}
+              >
+                <Table dataSource={fields} size="small" hasBorder={false} locale={locale().Table}>
+                  <Table.Column
+                    title={i18n.t('Expression').toString()}
+                    dataIndex="path"
+                    cell={(v: string) => <code>{`$(${v})`}</code>}
+                  />
+                  <Table.Column title={i18n.t('Type').toString()} dataIndex="type" width={140} />
+                  <Table.Column title={i18n.t('Description').toString()} dataIndex="description" />
+                </Table>
+              </Card>
+            </If>
+          </Loading>
+        </Form>
+      </DrawerWithFooter>
+    );
+  }
+}
+
+export default SourceDialog;

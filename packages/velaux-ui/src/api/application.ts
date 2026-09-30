@@ -97,6 +97,22 @@ export function deletePolicy(params: { appName: string; policyName: string; forc
   return rdelete(gURL, {}, true).then((res) => res);
 }
 
+export function getSources(appName: string) {
+  return get(`${url}/${appName}/sources`, {}).then((res) => res);
+}
+
+export function createSource(appName: string, params: { name: string; type: string; properties: string }) {
+  return post(`${url}/${appName}/sources`, params).then((res) => res);
+}
+
+export function updateSource(appName: string, sourceName: string, params: { type: string; properties: string }) {
+  return put(`${url}/${appName}/sources/${sourceName}`, params).then((res) => res);
+}
+
+export function deleteSource(appName: string, sourceName: string) {
+  return rdelete(`${url}/${appName}/sources/${sourceName}`, {}, true).then((res) => res);
+}
+
 export function createApplicationTemplate(params: any) {
   return post(`${url}/${params.name}/template`, params).then((res) => res);
 }
