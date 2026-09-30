@@ -50,7 +50,7 @@ import (
 type ExpressionService interface {
 	Env(ctx context.Context, app *model.Application, surface string) (*apisv1.ExpressionEnvResponse, error)
 	Check(ctx context.Context, app *model.Application, req apisv1.ExpressionCheckRequest) (*apisv1.ExpressionCheckResponse, error)
-	Enable(ctx context.Context, app *model.Application) error
+	SetOptIn(ctx context.Context, app *model.Application, on bool) error
 }
 
 type expressionServiceImpl struct {
@@ -353,15 +353,19 @@ func targetIssue(got, want string, end int) *apisv1.ExpressionIssue {
 	return &apisv1.ExpressionIssue{Message: fmt.Sprintf("this value is %s, but the parameter expects %s", got, expected), Start: 0, End: end}
 }
 
-// Enable marks the application as reading expressions. It takes effect at the
-// next deploy, which carries the annotation to the Application.
-func (e *expressionServiceImpl) Enable(ctx context.Context, app *model.Application) error {
+// SetOptIn marks the application as reading expressions, or not. It takes
+// effect at the next deploy, which carries the annotation to the Application.
+func (e *expressionServiceImpl) SetOptIn(ctx context.Context, app *model.Application, on bool) error {
 	if !e.enabled {
 		return bcode.ErrExpressionsDisabled
 	}
-	if app.Annotations == nil {
-		app.Annotations = map[string]string{}
+	if on {
+		if app.Annotations == nil {
+			app.Annotations = map[string]string{}
+		}
+		app.Annotations[oam.AnnotationCelExpressions] = "true"
+	} else {
+		delete(app.Annotations, oam.AnnotationCelExpressions)
 	}
-	app.Annotations[oam.AnnotationCelExpressions] = "true"
 	return e.Store.Put(ctx, app)
 }

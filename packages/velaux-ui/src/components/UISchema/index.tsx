@@ -32,6 +32,8 @@ import Strings from '../../extends/Strings';
 import Numbers from '../../extends/Numbers';
 import Structs from '../../extends/Structs';
 import StructMap from '../../extends/StructMap';
+import ExpressionEditor from '../../extends/ExpressionEditor';
+import type { ExpressionEnv } from '../../extends/ExpressionEditor';
 import OptionsFromSelect, { isOptionsSource } from '../../extends/OptionsFromSelect';
 import { checkImageName, replaceUrl } from '../../utils/common';
 import { locale } from '../../utils/locale';
@@ -40,6 +42,21 @@ import DefinitionCode from '../DefinitionCode';
 import { If } from '../If';
 
 const { Col, Row } = Grid;
+
+// ExpressionContext says where a form's values are written, so its fields can
+// take $( ) expressions: the application, and the surface (component, trait or
+// workflowstep) that decides what an expression can read.
+export type ExpressionContext = {
+  appName: string;
+  surface: string;
+  env?: ExpressionEnv;
+  // onOptIn turns the application's reading of expressions on or off,
+  // resolving true once it has.
+  onOptIn: (on: boolean) => Promise<boolean>;
+};
+
+// expressibleTypes are the widgets whose value an expression may replace.
+const expressibleTypes = ['Input', 'Number', 'Switch', 'Select', 'Suggest'];
 
 // Scope is an enclosing form, which a condition reaches with `../`.
 export type Scope = {
@@ -61,6 +78,7 @@ type Props = {
   advanced?: boolean;
   definition?: Definition;
   parentScope?: Scope;
+  expressions?: ExpressionContext;
 };
 
 // toJSRegExp compiles a CUE (RE2) pattern for the browser. A leading inline
@@ -86,6 +104,20 @@ export function toJSRegExp(pattern: string): RegExp | undefined {
   } catch (e) {
     return undefined;
   }
+}
+
+// expressionKind is the type a param's value must have, for checking an
+// expression written in its place.
+function expressionKind(param: UIParam): string {
+  switch (param.uiType) {
+    case 'Number':
+      return 'number';
+    case 'Switch':
+      return 'boolean';
+    case 'Select':
+      return typeof param.validate?.options?.[0]?.value === 'number' ? 'number' : 'string';
+  }
+  return 'string';
 }
 
 function convertRule(validate?: UIParamValidate) {
@@ -137,6 +169,9 @@ type State = {
   secretKeys?: string[];
   advanced: boolean;
   codeError?: string;
+  // expressionKeys records the params switched to or from an expression;
+  // others start in expression mode when their value holds one.
+  expressionKeys: Record<string, boolean>;
 };
 
 class UISchema extends Component<Props, State> {
@@ -172,6 +207,7 @@ class UISchema extends Component<Props, State> {
     this.state = {
       secretKeys: [],
       advanced: props.advanced || false,
+      expressionKeys: {},
     };
   }
 
@@ -209,6 +245,77 @@ class UISchema extends Component<Props, State> {
       }
       callback();
     });
+  };
+
+  // expressible reports whether a param offers the ƒx toggle: a scalar widget,
+  // in an application reading expressions, that the definition does not keep
+  // literal.
+  expressible = (param: UIParam) =>
+    !!this.props.expressions?.env?.enabled &&
+    !!this.props.expressions?.env?.optedIn &&
+    param.style?.expression !== 'never' &&
+    expressibleTypes.includes(param.uiType);
+
+  // openedAsExpression records the params that opened holding an expression.
+  // They stay in expression mode while it is edited, since the value passes
+  // through text with no $( in it, until the toggle switches them back.
+  openedAsExpression: Record<string, boolean> = {};
+
+  inExpressionMode = (param: UIParam, initValue: any): boolean => {
+    const chosen = this.state.expressionKeys[param.jsonKey];
+    if (chosen !== undefined) {
+      return chosen;
+    }
+    if (this.openedAsExpression[param.jsonKey]) {
+      return true;
+    }
+    const current = this.form.getValue(param.jsonKey);
+    const v = current === undefined ? initValue : current;
+    const held = typeof v === 'string' && v.indexOf('$(') > -1 && param.style?.expression !== 'never';
+    if (held) {
+      this.openedAsExpression[param.jsonKey] = true;
+    }
+    return held;
+  };
+
+  setExpressionMode = (param: UIParam, on: boolean) => {
+    const v = this.form.getValue(param.jsonKey);
+    if (on && v !== undefined && v !== null && v !== '' && typeof v !== 'string') {
+      // A number or bool keeps its type as a whole expression.
+      this.form.setValue(param.jsonKey, `$(${JSON.stringify(v)})`);
+    }
+    if (!on && typeof v === 'string' && v.indexOf('$(') > -1) {
+      this.form.setValue(param.jsonKey, undefined);
+    }
+    this.setState({ expressionKeys: { ...this.state.expressionKeys, [param.jsonKey]: on } }, () => {
+      if (this.props.onChange) {
+        this.props.onChange(this.form.getValues());
+      }
+    });
+  };
+
+  toggleExpression = (param: UIParam, active: boolean) => {
+    this.setExpressionMode(param, !active);
+  };
+
+  // expressionsToggle is the switch that lets the application read $( )
+  // expressions, shown once, at the top of the outermost form.
+  expressionsToggle = () => {
+    const { expressions, parentScope } = this.props;
+    if (!expressions?.env?.enabled || parentScope) {
+      return null;
+    }
+    const on = !!expressions.env.optedIn;
+    const held = !on && JSON.stringify(this.form.getValues() || {}).indexOf('$(') > -1;
+    return (
+      <div className="ui-schema-expressions-toggle">
+        <span title="Let this application read $( ) CEL expressions in its properties, from its next deploy">
+          Expressions
+        </span>
+        <Switch size="small" checked={on} onChange={(checked: boolean) => expressions.onOptIn(checked)} />
+        {held && <div className="ui-schema-expressions-note">Expressions here will be read as plain text.</div>}
+      </div>
+    );
   };
 
   // conditionValue reads the field a condition names: in this form, in a
@@ -921,6 +1028,7 @@ class UISchema extends Component<Props, State> {
                     }}
                     uiSchema={param.subParameters}
                     parentScope={this.scope()}
+                    expressions={this.props.expressions}
                     mode={this.props.mode}
                   />
                 </Group>
@@ -936,6 +1044,7 @@ class UISchema extends Component<Props, State> {
                   param={param.subParameters}
                   parameterGroupOption={param.subParameterGroupOption}
                   parentScope={this.scope()}
+                  expressions={this.props.expressions}
                   format={param.style?.format}
                   rowKey={param.style?.rowKey}
                   itemLabel={param.style?.itemLabel}
@@ -964,6 +1073,7 @@ class UISchema extends Component<Props, State> {
                   label={label}
                   param={param.subParameters}
                   parentScope={this.scope()}
+                  expressions={this.props.expressions}
                   format={param.style?.format}
                   registerForm={(form: Field) => {
                     this.onRegisterForm(param.jsonKey, form);
@@ -994,6 +1104,7 @@ class UISchema extends Component<Props, State> {
                   inline={inline}
                   maxColSpan={24 / itemCount}
                   parentScope={this.scope()}
+                  expressions={this.props.expressions}
                   {...init(param.jsonKey, {
                     initValue: initValue,
                     rules: [
@@ -1123,9 +1234,46 @@ class UISchema extends Component<Props, State> {
       if (param.style?.colSpan) {
         colSpan = param.style?.colSpan;
       }
+      const expressible = this.expressible(param);
+      const inExpression = this.inExpressionMode(param, initValue);
+      const expressionItem = () => (
+        <Form.Item
+          required={required}
+          labelAlign={inline ? 'inset' : 'left'}
+          label={label}
+          key={param.jsonKey}
+          extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+        >
+          <ExpressionEditor
+            appName={this.props.expressions?.appName || ''}
+            surface={this.props.expressions?.surface || ''}
+            env={this.props.expressions?.env}
+            kind={expressionKind(param)}
+            disabled={disableEdit}
+            {...init(param.jsonKey, {
+              initValue: initValue,
+              rules: required ? [{ required: true, message: 'This field is required.' }] : [],
+            })}
+          />
+        </Form.Item>
+      );
       return (
-        <Col key={param.jsonKey} span={colSpan} style={{ padding: '0 4px' }}>
-          {item()}
+        <Col
+          key={param.jsonKey}
+          span={colSpan}
+          style={{ padding: '0 4px' }}
+          className={expressible ? 'ui-schema-expressible' : undefined}
+        >
+          {expressible && (
+            <span
+              className={`ui-schema-fx${inExpression ? ' active' : ''}`}
+              title={inExpression ? 'Write a value instead' : 'Write a $( ) expression'}
+              onClick={() => this.toggleExpression(param, inExpression)}
+            >
+              ƒx
+            </span>
+          )}
+          {inExpression ? expressionItem() : item()}
         </Col>
       );
     });
@@ -1144,6 +1292,7 @@ class UISchema extends Component<Props, State> {
       <Form field={this.form} className="ui-schema-container">
         <If condition={disableRenderRow}>{items}</If>
         <If condition={!disableRenderRow}>
+          {this.expressionsToggle()}
           <Row wrap={true}>{this.inSections(uiSchema, items)}</Row>
           <If condition={onlyShowRequired || explicitAdvanced}>
             <Divider />

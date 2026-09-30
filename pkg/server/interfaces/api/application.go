@@ -698,8 +698,9 @@ func (c *application) GetWebServiceRoute() *restful.WebService {
 		Returns(400, "Bad Request", bcode.Bcode{}).
 		Writes(apis.ExpressionCheckResponse{}))
 
-	ws.Route(ws.PUT("/{appName}/expressions").To(c.enableExpressions).
-		Doc("mark the application as reading $( ) expressions, from its next deploy").
+	ws.Route(ws.PUT("/{appName}/expressions").To(c.setExpressionOptIn).
+		Doc("turn the application's reading of $( ) expressions on or off, from its next deploy").
+		Reads(apis.ExpressionOptInRequest{}).
 		Filter(c.RbacService.CheckPerm("application", "update")).
 		Filter(c.appCheckFilter).
 		Param(ws.PathParameter("appName", "identifier of the application").DataType("string")).
@@ -970,9 +971,14 @@ func (c *application) checkExpression(req *restful.Request, res *restful.Respons
 	}
 }
 
-func (c *application) enableExpressions(req *restful.Request, res *restful.Response) {
+func (c *application) setExpressionOptIn(req *restful.Request, res *restful.Response) {
 	app := req.Request.Context().Value(&apis.CtxKeyApplication).(*model.Application)
-	if err := c.ExpressionService.Enable(req.Request.Context(), app); err != nil {
+	var body apis.ExpressionOptInRequest
+	if err := req.ReadEntity(&body); err != nil {
+		bcode.ReturnError(req, res, err)
+		return
+	}
+	if err := c.ExpressionService.SetOptIn(req.Request.Context(), app, body.Enabled); err != nil {
 		bcode.ReturnError(req, res, err)
 		return
 	}

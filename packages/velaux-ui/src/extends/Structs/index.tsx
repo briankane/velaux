@@ -3,7 +3,7 @@ import { Form, Field, Button } from '@alifd/next';
 import React from 'react';
 
 import UISchema from '../../components/UISchema';
-import type { Scope } from '../../components/UISchema';
+import type { Scope, ExpressionContext } from '../../components/UISchema';
 import type { UIParam, GroupOption } from '@velaux/data';
 import ArrayItemGroup from '../ArrayItemGroup';
 
@@ -24,6 +24,7 @@ type Props = {
   // parentScope is the form holding the list, which an item's condition
   // reaches with `../`.
   parentScope?: Scope;
+  expressions?: ExpressionContext;
   // format `table` lays each item out as one row.
   format?: string;
   // rowKey names the field that identifies an item: unique, and its title.
@@ -45,6 +46,7 @@ type StructItemProps = {
   delete: (id: string) => void;
   mode: 'new' | 'edit';
   parentScope?: Scope;
+  expressions?: ExpressionContext;
   table?: boolean;
   // duplicate reports the item's row key when another item has it too.
   duplicate?: () => string | undefined;
@@ -126,6 +128,7 @@ class StructItem extends React.Component<StructItemProps> {
                 inline
                 ref={this.uiRef}
                 parentScope={this.props.parentScope}
+                expressions={this.props.expressions}
                 mode={this.props.mode}
               />
             </ArrayItemGroup>
@@ -147,6 +150,7 @@ class StructItem extends React.Component<StructItemProps> {
               inline
               ref={this.uiRef}
               parentScope={this.props.parentScope}
+              expressions={this.props.expressions}
               mode={this.props.mode}
             />
           </div>
@@ -331,6 +335,7 @@ class Structs extends React.Component<Props, State> {
                   labelTitle={labelTitle}
                   mode={this.props.mode}
                   parentScope={this.props.parentScope}
+                  expressions={this.props.expressions}
                   table={this.props.format === 'table'}
                   duplicate={() => this.duplicateKey(struct.key)}
                 />

@@ -2,7 +2,7 @@ import type { Field } from '@alifd/next';
 import React from 'react';
 
 import type { UIParam } from '@velaux/data';
-import type { Scope } from '../../components/UISchema';
+import type { Scope, ExpressionContext } from '../../components/UISchema';
 import Structs from '../Structs';
 
 // keyField holds each row's map key while the map is edited as rows.
@@ -16,6 +16,7 @@ type Props = {
   onChange?: (value: Record<string, any>) => void;
   registerForm: (form: Field) => void;
   parentScope?: Scope;
+  expressions?: ExpressionContext;
   format?: string;
   mode: 'new' | 'edit';
 };
@@ -39,7 +40,7 @@ class StructMap extends React.Component<Props> {
   };
 
   render() {
-    const { id, label, param, value, onChange, registerForm, parentScope, format, mode } = this.props;
+    const { id, label, param, value, onChange, registerForm, parentScope, expressions, format, mode } = this.props;
     const keyParam: UIParam = {
       jsonKey: keyField,
       label: 'Name',
@@ -57,6 +58,7 @@ class StructMap extends React.Component<Props> {
         onChange={(rows: any[]) => onChange && onChange(this.toMap(rows))}
         registerForm={registerForm}
         parentScope={parentScope}
+        expressions={expressions}
         format={format}
         rowKey={keyField}
         mode={mode}

@@ -1962,6 +1962,12 @@ type ExpressionVariable struct {
 	Children    []*ExpressionVariable `json:"children,omitempty"`
 }
 
+// ExpressionOptInRequest turns an application's reading of $( ) expressions
+// on or off.
+type ExpressionOptInRequest struct {
+	Enabled bool `json:"enabled"`
+}
+
 // ExpressionCheckRequest asks whether a property value's expressions compile
 // and what its value's type is.
 type ExpressionCheckRequest struct {

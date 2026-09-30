@@ -62,6 +62,7 @@ export interface UIParam {
     advanced?: boolean;
     section?: string;
     optionsFrom?: string;
+    expression?: 'never';
   };
   disable?: boolean;
   conditions?: ParamCondition[];

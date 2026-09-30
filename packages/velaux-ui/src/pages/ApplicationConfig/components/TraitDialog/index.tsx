@@ -5,7 +5,15 @@ import { Link } from 'dva/router';
 import React from 'react';
 import { BiCodeBlock, BiLaptop } from 'react-icons/bi';
 
-import { updateTrait, createTrait, getApplicationComponent } from '../../../../api/application';
+import {
+  updateTrait,
+  createTrait,
+  getApplicationComponent,
+  getExpressionEnv,
+  setExpressionOptIn,
+} from '../../../../api/application';
+import type { ExpressionContext } from '../../../../components/UISchema';
+import type { ExpressionEnv } from '../../../../extends/ExpressionEditor';
 import { detailTraitDefinition, getTraitDefinitions } from '../../../../api/definitions';
 import DrawerWithFooter from '../../../../components/Drawer';
 import { If } from '../../../../components/If';
@@ -31,6 +39,7 @@ type Props = {
 };
 
 type State = {
+  expressionEnv?: ExpressionEnv;
   definitionDetail?: DefinitionDetail;
   definitionLoading: boolean;
   isLoading: boolean;
@@ -55,7 +64,49 @@ class TraitDialog extends React.Component<Props, State> {
     this.uiSchemaRef = React.createRef();
   }
 
+
+  loadExpressionEnv = async () => {
+    const { appName } = this.props;
+    if (!appName) {
+      return;
+    }
+    try {
+      const env: ExpressionEnv = await getExpressionEnv(appName, 'trait');
+      this.setState({ expressionEnv: env });
+    } catch (e) {
+      this.setState({ expressionEnv: undefined });
+    }
+  };
+
+  setExpressionOptIn = async (on: boolean): Promise<boolean> => {
+    const { appName } = this.props;
+    if (!appName) {
+      return false;
+    }
+    try {
+      await setExpressionOptIn(appName, on);
+    } catch (e) {
+      return false;
+    }
+    await this.loadExpressionEnv();
+    return true;
+  };
+
+  expressionContext = (): ExpressionContext | undefined => {
+    const { appName } = this.props;
+    if (!appName) {
+      return undefined;
+    }
+    return {
+      appName,
+      surface: 'trait',
+      env: this.state.expressionEnv,
+      onOptIn: this.setExpressionOptIn,
+    };
+  };
+
   componentDidMount() {
+    this.loadExpressionEnv();
     this.onGetComponentInfo(() => {
       this.onGetTraitDefinitions();
       const { isEditTrait, traitItem, appName, project, dispatch } = this.props;
@@ -430,6 +481,7 @@ class TraitDialog extends React.Component<Props, State> {
                         }}
                         ref={this.uiSchemaRef}
                         mode={this.props.isEditTrait ? 'edit' : 'new'}
+                        expressions={this.expressionContext()}
                       />
                     </FormItem>
                   </If>
