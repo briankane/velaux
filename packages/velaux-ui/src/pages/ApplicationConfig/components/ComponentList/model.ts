@@ -1,4 +1,4 @@
-import type { AppHealth } from '@velaux/data';
+import type { AppHealth, ComponentDependency } from '@velaux/data';
 
 import type { DependencyItem } from '../../../../utils/dependencies';
 
@@ -93,24 +93,49 @@ export interface DependsOnOption {
 }
 
 // dependsOnOptions are the components one may depend on: all others except
-// those that already depend on it, written or inferred, which would close a
-// cycle. One it already reads is marked, as writing it only makes the order
-// explicit.
+// those that depend on it already, directly or through others, by a written
+// dependsOn or a dependency the Application reports (edges), as each would
+// close a cycle. One it already reads is marked, as writing it only makes the
+// order explicit.
 export function dependsOnOptions(
   components: Array<{ name: string; alias?: string; dependsOn?: string[] }>,
   componentName: string | undefined,
-  items: DependencyItem[]
+  items: DependencyItem[],
+  edges: ComponentDependency[] = []
 ): DependsOnOption[] {
-  const inbound = new Set(items.filter((d) => d.direction === 'inbound').map((d) => d.name));
+  const dependents = componentName ? dependentsOf(componentName, components, edges, items) : new Set<string>();
   const reads = items.filter((d) => d.direction === 'outbound' && d.inferred && !d.where);
   return components
-    .filter(
-      (c) =>
-        !componentName || (c.name !== componentName && !c.dependsOn?.includes(componentName) && !inbound.has(c.name))
-    )
+    .filter((c) => c.name !== componentName && !dependents.has(c.name))
     .map((c) => {
       const option: DependsOnOption = { label: c.alias ? `${c.alias}(${c.name})` : c.name, value: c.name };
       const read = reads.find((d) => d.name === c.name);
       return read ? { ...option, inferred: read.inferred } : option;
     });
+}
+
+// dependentsOf is every component that depends on name, at any distance.
+function dependentsOf(
+  name: string,
+  components: Array<{ name: string; dependsOn?: string[] }>,
+  edges: ComponentDependency[],
+  items: DependencyItem[]
+): Set<string> {
+  const dependsOn = new Map<string, Set<string>>();
+  const add = (from: string, to: string) => dependsOn.set(from, (dependsOn.get(from) || new Set()).add(to));
+  components.forEach((c) => (c.dependsOn || []).forEach((d) => add(c.name, d)));
+  edges.forEach((e) => add(e.component, e.dependsOn));
+  items.filter((d) => d.direction === 'inbound').forEach((d) => add(d.name, name));
+  const found = new Set<string>();
+  let grew = true;
+  while (grew) {
+    grew = false;
+    dependsOn.forEach((targets, from) => {
+      if (!found.has(from) && Array.from(targets).some((t) => t === name || found.has(t))) {
+        found.add(from);
+        grew = true;
+      }
+    });
+  }
+  return found;
 }

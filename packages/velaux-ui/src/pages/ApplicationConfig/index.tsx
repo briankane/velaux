@@ -552,6 +552,7 @@ class ApplicationConfig extends Component<Props, State> {
       editSource,
     } = this.state;
     const projectName = (applicationDetail && applicationDetail.project?.name) || '';
+    const dependencyEdges = (this.props.applicationAllStatus || []).flatMap((s) => s.status?.dependencies || []);
     // section is the tab shown; without one the page is the overview.
     const section = this.props.match.params.section;
     if (!applicationDetail) {
@@ -865,10 +866,8 @@ class ApplicationConfig extends Component<Props, State> {
             appName={appName}
             componentName={componentName}
             components={components || []}
-            dependencies={dependencyItems(
-              componentName,
-              (this.props.applicationAllStatus || []).flatMap((s) => s.status?.dependencies || [])
-            )}
+            dependencies={dependencyItems(componentName, dependencyEdges)}
+            dependencyEdges={dependencyEdges}
             isEditComponent={isEditComponent}
             temporaryTraitList={temporaryTraitList}
             componentDefinitions={componentDefinitions}
