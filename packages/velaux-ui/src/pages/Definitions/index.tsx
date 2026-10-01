@@ -55,8 +55,8 @@ class Definitions extends Component<Props, State> {
   }
 
   componentWillReceiveProps(nextProps: Props) {
-    // The list waits on the user, to check the permission to list.
-    if (!this.props.userInfo && nextProps.userInfo) {
+    // The list waits on the user and their permissions, which load after the page.
+    if (nextProps.userInfo !== this.props.userInfo) {
       this.lisDefinitions(nextProps.userInfo);
     }
     const nextPropsParams = nextProps.match.params || {};
