@@ -102,6 +102,8 @@ type Props = {
   disabled?: boolean;
   appName: string;
   surface: string;
+  // source names the source being edited, on the source surface.
+  source?: string;
   // kind is the type the parameter expects: string, integer, number or boolean.
   kind?: string;
   env?: ExpressionEnv;
@@ -136,7 +138,11 @@ class ExpressionEditor extends React.Component<Props, State> {
     if (!this.container.current) {
       return;
     }
-    this.model = monaco.editor.createModel(this.text(this.props.value), language, monaco.Uri.parse(`inmemory://expression/${uuid()}`));
+    this.model = monaco.editor.createModel(
+      this.text(this.props.value),
+      language,
+      monaco.Uri.parse(`inmemory://expression/${uuid()}`)
+    );
     envs.set(this.model.uri.toString(), this.props.env);
     this.editor = monaco.editor.create(this.container.current, {
       model: this.model,
@@ -220,7 +226,7 @@ class ExpressionEditor extends React.Component<Props, State> {
       spans.map(([start, end]) => ({
         range: new monaco.Range(1, start + 1, 1, end + 1),
         options: { className: 'vela-cel-frame' },
-      })),
+      }))
     );
   };
 
@@ -239,10 +245,10 @@ class ExpressionEditor extends React.Component<Props, State> {
       return;
     }
     this.checked = value;
-    const { appName, surface, kind } = this.props;
+    const { appName, surface, source, kind } = this.props;
     let res: any;
     try {
-      res = await checkExpression(appName, { surface, value, kind });
+      res = await checkExpression(appName, { surface, value, kind, source });
     } catch (e) {
       return;
     }
@@ -260,7 +266,7 @@ class ExpressionEditor extends React.Component<Props, State> {
         endColumn: Math.max(i.end, i.start + 1) + 1,
         message: i.message,
         severity: i.warning ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Error,
-      })),
+      }))
     );
     const first = issues.find((i) => !i.warning) || issues[0];
     if (first) {

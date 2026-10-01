@@ -2015,6 +2015,9 @@ type ExpressionCheckRequest struct {
 	// Kind is the type the parameter expects: string, integer, number,
 	// boolean, or empty for any.
 	Kind string `json:"kind,omitempty"`
+	// Source names the source the value is written in, on the source surface:
+	// it reads only the sources declared before it.
+	Source string `json:"source,omitempty"`
 }
 
 // ExpressionCheckResponse reports on a property value's expressions.
