@@ -43,9 +43,12 @@ export interface PropertyRow {
   value: string;
 }
 
+const maxListedItems = 5;
+
 // flattenProperties lists a component's properties by dotted path, values
-// written as they would be read; a list of scalars stays one value and a list
-// of objects is summarised by its length.
+// written as they would be read. A list of scalars stays one value; a list of
+// objects is listed by index up to maxListedItems, and past that summarised by
+// its length.
 export function flattenProperties(properties: unknown, prefix = ''): PropertyRow[] {
   if (properties === null || properties === undefined) {
     return [];
@@ -57,7 +60,10 @@ export function flattenProperties(properties: unknown, prefix = ''): PropertyRow
     if (properties.every((v) => v === null || typeof v !== 'object')) {
       return [{ key: prefix, value: properties.join(', ') }];
     }
-    return [{ key: prefix, value: `${properties.length} item${properties.length === 1 ? '' : 's'}` }];
+    if (properties.length <= maxListedItems) {
+      return properties.flatMap((item, i) => flattenProperties(item, `${prefix}[${i}]`));
+    }
+    return [{ key: prefix, value: `${properties.length} items` }];
   }
   const rows: PropertyRow[] = [];
   Object.keys(properties as Record<string, unknown>).forEach((key) => {

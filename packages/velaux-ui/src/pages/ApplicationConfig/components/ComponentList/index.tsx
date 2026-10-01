@@ -106,9 +106,11 @@ const ComponentList = (props: Props) => {
         const expanded = !!detail;
         return (
           <div key={com.name} className={`component-row ${expanded ? 'expanded' : ''}`}>
-            <div className="component-row-main" onClick={() => toggle(com.name)}>
-              <span className="component-row-chevron">{expanded ? <AiOutlineDown /> : <AiOutlineRight />}</span>
-              <span className="component-row-name">
+            <div className="component-row-main">
+              <span className="component-row-chevron" onClick={() => toggle(com.name)}>
+                {expanded ? <AiOutlineDown /> : <AiOutlineRight />}
+              </span>
+              <span className="component-row-name" onClick={() => toggle(com.name)}>
                 <img src={typeIcon(com)} />
                 <span>
                   <span className="component-row-title">{com.alias || com.name}</span>
@@ -133,7 +135,7 @@ const ComponentList = (props: Props) => {
                   ))
                 )}
               </span>
-              <span className="component-row-traits" onClick={(e) => e.stopPropagation()}>
+              <span className="component-row-traits">
                 {(com.traits || []).map((trait) => (
                   <span
                     key={trait.type}
@@ -196,7 +198,7 @@ const ComponentList = (props: Props) => {
                   )
                 )}
               </span>
-              <span className="component-row-actions" onClick={(e) => e.stopPropagation()}>
+              <span className="component-row-actions">
                 <Button text type="primary" onClick={() => props.editComponent(com)}>
                   <Translation>Edit</Translation>
                 </Button>

@@ -43,18 +43,25 @@ describe('component list', () => {
     expect(
       flattenProperties({
         image: 'api:1.4',
-        ports: [{ port: 80 }],
+        ports: [{ port: 80, expose: true }, { port: 9090 }],
         env: { LOG: 'debug' },
         args: ['a', 'b'],
         replicas: 2,
       })
     ).to.deep.equal([
       { key: 'image', value: 'api:1.4' },
-      { key: 'ports', value: '1 item' },
+      { key: 'ports[0].port', value: '80' },
+      { key: 'ports[0].expose', value: 'true' },
+      { key: 'ports[1].port', value: '9090' },
       { key: 'env.LOG', value: 'debug' },
       { key: 'args', value: 'a, b' },
       { key: 'replicas', value: '2' },
     ]);
+  });
+
+  it('summarises a long list of objects by its length', () => {
+    const volumes = [1, 2, 3, 4, 5, 6].map((i) => ({ name: `v${i}` }));
+    expect(flattenProperties({ volumes })).to.deep.equal([{ key: 'volumes', value: '6 items' }]);
   });
 
   it('lists written dependencies, then inferred ones not already written', () => {
