@@ -13,6 +13,7 @@ import {
 } from 'react-icons/ai';
 
 import logo from '../../assets/kubevela-logo-white.png';
+import logoMark from '../../assets/KubeVela-01.svg';
 import { If } from '../../components/If';
 import Permission from '../../components/Permission';
 import SwitchLanguage from '../../components/SwitchButton/index';
@@ -23,7 +24,6 @@ import { getData, setData } from '../../utils/cache';
 import { locale } from '../../utils/locale';
 import { getBrowserNameAndVersion } from '../../utils/utils';
 import CloudShell from '../CloudShell';
-import { locationService } from '../../services/LocationService';
 
 import { LayoutMode, Workspace } from '@velaux/data';
 import { Dispatch } from 'redux';
@@ -38,6 +38,9 @@ type Props = {
   show?: boolean;
   enabledAddons?: AddonBaseStatus[];
   currentWorkspace?: Workspace;
+  // collapsed minimises the sidebar to its icons.
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
   children?: React.ReactNode;
 };
 
@@ -195,26 +198,24 @@ class Header extends Component<Props, State> {
     });
   };
 
-  toggleMode = () => {
-    locationService.partial({ 'layout-mode': this.props.mode === 'default' ? 'neat' : 'default' });
-  };
-
   render() {
-    const { show, userInfo, mode, currentWorkspace, children } = this.props;
+    const { show, userInfo, currentWorkspace, children, onToggleCollapsed } = this.props;
     // The admin dashboard is linked on its own; its pages join the sidebar
     // while it is open.
     const admin = this.state.workspaces.find((ws) => ws.name === 'admin');
-    const collapsed = mode !== 'default';
+    const collapsed = !!this.props.collapsed;
     const userName = userInfo?.alias ? userInfo.alias : userInfo?.name;
 
     return (
       <div className={classNames('layout-sidebar', { collapsed })}>
         <div className="sidebar-brand">
-          {!collapsed && <img src={logo} title={'Make shipping applications more enjoyable.'} />}
+          <Link to="/" className="sidebar-logo" title={'Make shipping applications more enjoyable.'}>
+            <img src={collapsed ? logoMark : logo} />
+          </Link>
           <div
             className="sidebar-collapse"
-            title={i18n.t(collapsed ? 'Expand' : 'Collapse').toString()}
-            onClick={this.toggleMode}
+            title={i18n.t(collapsed ? 'Expand' : 'Minimise').toString()}
+            onClick={onToggleCollapsed}
           >
             {collapsed ? <AiOutlineMenuUnfold size={18} /> : <AiOutlineMenuFold size={18} />}
           </div>

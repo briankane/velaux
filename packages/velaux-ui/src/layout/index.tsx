@@ -11,8 +11,29 @@ import { menuService } from '../services/MenuService';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ErrorShow } from '../components/ErrorShow';
 
+// sidebarCollapsedKey remembers the sidebar minimised to icons across pages
+// and visits, as a query parameter would not survive the next link.
+const sidebarCollapsedKey = 'sidebar-collapsed';
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(sidebarCollapsedKey) === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
 export default function MainLayout(props: any) {
   const [workspace, setWorkspace] = useState<Workspace>();
+  const [collapsed, setCollapsed] = useState<boolean>(readCollapsed());
+  const toggleCollapsed = () => {
+    setCollapsed(!collapsed);
+    try {
+      localStorage.setItem(sidebarCollapsedKey, String(!collapsed));
+    } catch (e) {
+      // A browser that refuses storage still toggles, for this page.
+    }
+  };
   const [mode, setMode] = useState<LayoutMode>(LayoutModes.Default);
   const query = locationService.getSearchObject();
   const path = locationService.getPathName();
@@ -35,7 +56,13 @@ export default function MainLayout(props: any) {
           return (
             <div className="layout">
               {mode !== LayoutModes.NeatPro && (
-                <Header currentWorkspace={workspace} mode={mode} {...props}>
+                <Header
+                  currentWorkspace={workspace}
+                  mode={mode}
+                  collapsed={collapsed || mode === LayoutModes.Neat}
+                  onToggleCollapsed={toggleCollapsed}
+                  {...props}
+                >
                   <LeftMenu {...props} />
                 </Header>
               )}
