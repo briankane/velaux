@@ -75,20 +75,22 @@ const SourceList = ({ sources, applicationDetail, onDeleteSource, onShowSource }
               </span>
               <span className="row-list-actions">
                 <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => onShowSource(item)} />
-                <Permission
-                  request={{
-                    resource: `project:${projectName}/application:${applicationDetail?.name}/source:${item.name}`,
-                    action: 'delete',
-                  }}
-                  project={projectName}
-                >
-                  <RowAction
-                    icon={<AiOutlineDelete />}
-                    label="Delete"
-                    danger
-                    onClick={() => confirmDelete(item.name)}
-                  />
-                </Permission>
+                {!applicationDetail?.readOnly && (
+                  <Permission
+                    request={{
+                      resource: `project:${projectName}/application:${applicationDetail?.name}/source:${item.name}`,
+                      action: 'delete',
+                    }}
+                    project={projectName}
+                  >
+                    <RowAction
+                      icon={<AiOutlineDelete />}
+                      label="Delete"
+                      danger
+                      onClick={() => confirmDelete(item.name)}
+                    />
+                  </Permission>
+                )}
               </span>
             </div>
             {expanded && (

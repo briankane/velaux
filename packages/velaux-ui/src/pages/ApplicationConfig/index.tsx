@@ -576,14 +576,16 @@ class ApplicationConfig extends Component<Props, State> {
                       <Translation>Edit</Translation>
                     </Button>
                   </Permission>
-                  <Permission
-                    request={{ resource: `project:${projectName}/application/:${appName}`, action: 'delete' }}
-                    project={projectName}
-                  >
-                    <Button className="danger-btn" onClick={this.onDeleteApplication}>
-                      <Translation>Remove</Translation>
-                    </Button>
-                  </Permission>
+                  {!applicationDetail?.readOnly && (
+                    <Permission
+                      request={{ resource: `project:${projectName}/application/:${appName}`, action: 'delete' }}
+                      project={projectName}
+                    >
+                      <Button className="danger-btn" onClick={this.onDeleteApplication}>
+                        <Translation>Remove</Translation>
+                      </Button>
+                    </Permission>
+                  )}
                 </div>
               </div>
               <p className={`app-overview-description ${applicationDetail?.description ? '' : 'empty'}`}>
@@ -661,23 +663,27 @@ class ApplicationConfig extends Component<Props, State> {
                         <Translation>What the application reads when it deploys, as $(source.name).</Translation>
                       </span>
                     }
-                    actions={[
-                      <Permission
-                        request={{
-                          resource: `project:${projectName}/application:${applicationDetail?.name}/source:*`,
-                          action: 'create',
-                        }}
-                        project={projectName}
-                      >
-                        <Button
-                          key={'add'}
-                          type="primary"
-                          onClick={() => this.setState({ visibleSource: true, editSource: undefined })}
-                        >
-                          <Translation>New Source</Translation>
-                        </Button>
-                      </Permission>,
-                    ]}
+                    actions={
+                      applicationDetail?.readOnly
+                        ? []
+                        : [
+                            <Permission
+                              request={{
+                                resource: `project:${projectName}/application:${applicationDetail?.name}/source:*`,
+                                action: 'create',
+                              }}
+                              project={projectName}
+                            >
+                              <Button
+                                key={'add'}
+                                type="primary"
+                                onClick={() => this.setState({ visibleSource: true, editSource: undefined })}
+                              >
+                                <Translation>New Source</Translation>
+                              </Button>
+                            </Permission>,
+                          ]
+                    }
                   />
                 </Col>
               </Row>
@@ -742,19 +748,23 @@ class ApplicationConfig extends Component<Props, State> {
                         <Translation>Where the application deploys, and what it overrides there.</Translation>
                       </span>
                     }
-                    actions={[
-                      <Permission
-                        request={{
-                          resource: `project:${projectName}/application:${applicationDetail?.name}/policy:*`,
-                          action: 'create',
-                        }}
-                        project={projectName}
-                      >
-                        <Button key={'add'} type="primary" onClick={this.onAddPolicy}>
-                          <Translation>New Policy</Translation>
-                        </Button>
-                      </Permission>,
-                    ]}
+                    actions={
+                      applicationDetail?.readOnly
+                        ? []
+                        : [
+                            <Permission
+                              request={{
+                                resource: `project:${projectName}/application:${applicationDetail?.name}/policy:*`,
+                                action: 'create',
+                              }}
+                              project={projectName}
+                            >
+                              <Button key={'add'} type="primary" onClick={this.onAddPolicy}>
+                                <Translation>New Policy</Translation>
+                              </Button>
+                            </Permission>,
+                          ]
+                    }
                   />
                 </Col>
               </Row>
@@ -778,19 +788,23 @@ class ApplicationConfig extends Component<Props, State> {
               <Row>
                 <Col span={24} className="padding16">
                   <Title
-                    actions={[
-                      <Permission
-                        request={{
-                          resource: `project:${projectName}/application:${applicationDetail?.name}/trigger:*`,
-                          action: 'create',
-                        }}
-                        project={projectName}
-                      >
-                        <Button key={'add'} type="primary" onClick={this.onAddTrigger}>
-                          <Translation>New Trigger</Translation>
-                        </Button>
-                      </Permission>,
-                    ]}
+                    actions={
+                      applicationDetail?.readOnly
+                        ? []
+                        : [
+                            <Permission
+                              request={{
+                                resource: `project:${projectName}/application:${applicationDetail?.name}/trigger:*`,
+                                action: 'create',
+                              }}
+                              project={projectName}
+                            >
+                              <Button key={'add'} type="primary" onClick={this.onAddTrigger}>
+                                <Translation>New Trigger</Translation>
+                              </Button>
+                            </Permission>,
+                          ]
+                    }
                     title={
                       <span className="app-section-hint">
                         <Translation>Webhooks that start a workflow from outside.</Translation>

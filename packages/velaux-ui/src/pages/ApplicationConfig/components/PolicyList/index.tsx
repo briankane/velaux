@@ -125,20 +125,22 @@ const PolicyList = (props: Props) => {
                 {row.policy && (
                   <React.Fragment>
                     <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => props.onShowPolicy(row.name)} />
-                    <Permission
-                      request={{
-                        resource: `project:${projectName}/application:${applicationDetail?.name}/policy:${row.name}`,
-                        action: 'delete',
-                      }}
-                      project={projectName}
-                    >
-                      <RowAction
-                        icon={<AiOutlineDelete />}
-                        label="Delete"
-                        danger
-                        onClick={() => confirmDelete(row.name)}
-                      />
-                    </Permission>
+                    {!applicationDetail?.readOnly && (
+                      <Permission
+                        request={{
+                          resource: `project:${projectName}/application:${applicationDetail?.name}/policy:${row.name}`,
+                          action: 'delete',
+                        }}
+                        project={projectName}
+                      >
+                        <RowAction
+                          icon={<AiOutlineDelete />}
+                          label="Delete"
+                          danger
+                          onClick={() => confirmDelete(row.name)}
+                        />
+                      </Permission>
+                    )}
                   </React.Fragment>
                 )}
               </span>

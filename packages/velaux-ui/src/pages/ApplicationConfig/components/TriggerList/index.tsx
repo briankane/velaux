@@ -215,26 +215,30 @@ class TriggerList extends Component<Props, State> {
                       )}
                     </span>
                     <span className="row-list-actions">
-                      <RowAction
-                        icon={<AiOutlinePlayCircle />}
-                        label="Trigger"
-                        onClick={() => this.showWebhook(item)}
-                      />
-                      <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => this.props.onEditTrigger(item)} />
-                      <Permission
-                        request={{
-                          resource: `project:${projectName}/application:${applicationDetail?.name}/trigger:${item.name}`,
-                          action: 'delete',
-                        }}
-                        project={projectName}
-                      >
+                      {!applicationDetail?.readOnly && (
                         <RowAction
-                          icon={<AiOutlineDelete />}
-                          label="Delete"
-                          danger
-                          onClick={() => this.handleTriggerDelete(item.token || '')}
+                          icon={<AiOutlinePlayCircle />}
+                          label="Trigger"
+                          onClick={() => this.showWebhook(item)}
                         />
-                      </Permission>
+                      )}
+                      <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => this.props.onEditTrigger(item)} />
+                      {!applicationDetail?.readOnly && (
+                        <Permission
+                          request={{
+                            resource: `project:${projectName}/application:${applicationDetail?.name}/trigger:${item.name}`,
+                            action: 'delete',
+                          }}
+                          project={projectName}
+                        >
+                          <RowAction
+                            icon={<AiOutlineDelete />}
+                            label="Delete"
+                            danger
+                            onClick={() => this.handleTriggerDelete(item.token || '')}
+                          />
+                        </Permission>
+                      )}
                     </span>
                   </div>
                   {expanded && (
