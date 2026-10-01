@@ -779,5 +779,9 @@
   "Read-only": "只读",
   "Synced from cluster": "从集群同步",
   "Managed by its addon: change it from the Addons page.": "由其插件管理：请在插件页面中修改。",
-  "Managed as an Application in the cluster: VelaUX picks up its changes. Deploying from here makes VelaUX its source of truth.": "作为集群中的 Application 管理：VelaUX 会同步其变更。在此处部署后，VelaUX 将成为其唯一可信来源。"
+  "Managed as an Application in the cluster: VelaUX picks up its changes. Deploying from here makes VelaUX its source of truth.": "作为集群中的 Application 管理：VelaUX 会同步其变更。在此处部署后，VelaUX 将成为其唯一可信来源。",
+  "Search by name or description": "按名称或描述搜索",
+  "Labels": "标签",
+  "Card": "卡片",
+  "Table": "表格"
 }

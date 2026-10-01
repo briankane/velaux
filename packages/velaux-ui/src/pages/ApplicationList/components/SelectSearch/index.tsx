@@ -1,14 +1,15 @@
-import { Grid, Icon, Select, Input, Button } from '@alifd/next';
+import { Select, Input } from '@alifd/next';
 import React from 'react';
 
 import './index.less';
 import type { ShowMode } from '../..';
-import type { Env , UserProject } from '@velaux/data';
+import type { Env, UserProject } from '@velaux/data';
 import { locale } from '../../../../utils/locale';
 import i18n from '../../../../i18n';
-import { AiOutlineSearch } from 'react-icons/ai';
+import { AiOutlineReload, AiOutlineSearch } from 'react-icons/ai';
 
-const { Row, Col } = Grid;
+import { RowAction } from '../../../../components/RowAction';
+import { Translation } from '../../../../components/Translation';
 
 type Props = {
   dispatch: ({}) => {};
@@ -119,10 +120,7 @@ class SelectSearch extends React.Component<Props, State> {
     const { projects, appLabels, envs, showMode, labelValue } = this.props;
     const { projectValue, inputValue, envValue } = this.state;
 
-    const projectPlaceholder = i18n.t('Search by Project').toString();
-    const appPlaceholder = i18n.t('Search by Name and Description etc').toString();
-    const envPlaceholder = i18n.t('Search by Environment').toString();
-    const labelPlaceholder = i18n.t('Search by Label Selector').toString();
+    const appPlaceholder = i18n.t('Search by name or description').toString();
     const projectSource = projects?.map((item) => {
       return {
         label: item.alias || item.name,
@@ -143,76 +141,71 @@ class SelectSearch extends React.Component<Props, State> {
       };
     });
     return (
-      <Row className="app-select-wrapper border-radius-8" wrap={true}>
-        <Col xl={4} m={4} s={6} xxs={12} style={{ padding: '0 8px' }}>
-          <Select
-            locale={locale().Select}
-            mode="single"
-            size="large"
-            onChange={this.onChangeProject}
-            dataSource={projectSource}
-            placeholder={projectPlaceholder}
-            className="item"
-            hasClear
-            value={projectValue}
-          />
-        </Col>
-        <Col xl={4} m={4} s={6} xxs={12} style={{ padding: '0 8px' }}>
-          <Select
-            locale={locale().Select}
-            mode="single"
-            size="large"
-            onChange={this.onChangeEnv}
-            dataSource={envSource}
-            placeholder={envPlaceholder}
-            className="item"
-            hasClear
-            value={envValue}
-          />
-        </Col>
-        <Col xl={4} m={8} s={12} xxs={24} style={{ padding: '0 8px' }}>
-          <Input
-            innerAfter={<AiOutlineSearch onClick={this.handleClickSearch} style={{ margin: 4 }} />}
-            hasClear
-            size="large"
-            placeholder={appPlaceholder}
-            onChange={this.handleChangName}
-            onPressEnter={this.handleClickSearch}
-            value={inputValue}
-            className="item"
-          />
-        </Col>
-        <Col xl={8} m={8} s={12} xxs={24} style={{ padding: '0 8px' }}>
-          <Select
-            hasClear
-            size="large"
-            placeholder={labelPlaceholder}
-            onChange={this.handleChangeLabel}
-            showSearch
-            mode="multiple"
-            value={labelValue}
-            className="item"
-            dataSource={labelSource}
-          />
-        </Col>
-        <Col xl={4} className="flexboth">
-          <div className="padding16 show-mode">
-            <Button type={'secondary'} onClick={() => this.getApplications()}>
-              <Icon type="refresh" />
-            </Button>
+      <div className="app-filter-bar">
+        <Input
+          innerBefore={<AiOutlineSearch onClick={this.handleClickSearch} className="app-filter-bar-search-icon" />}
+          hasClear
+          placeholder={appPlaceholder}
+          onChange={this.handleChangName}
+          onPressEnter={this.handleClickSearch}
+          value={inputValue}
+          className="app-filter-bar-search"
+        />
+        <Select
+          locale={locale().Select}
+          mode="single"
+          label={i18n.t('Project').toString()}
+          placeholder={i18n.t('All').toString()}
+          onChange={this.onChangeProject}
+          dataSource={projectSource}
+          className="app-filter-bar-select"
+          hasClear
+          value={projectValue}
+        />
+        <Select
+          locale={locale().Select}
+          mode="single"
+          label={i18n.t('Environment').toString()}
+          placeholder={i18n.t('All').toString()}
+          onChange={this.onChangeEnv}
+          dataSource={envSource}
+          className="app-filter-bar-select"
+          hasClear
+          value={envValue}
+        />
+        <Select
+          hasClear
+          label={i18n.t('Labels').toString()}
+          placeholder={i18n.t('All').toString()}
+          onChange={this.handleChangeLabel}
+          showSearch
+          mode="multiple"
+          value={labelValue}
+          className="app-filter-bar-select labels"
+          dataSource={labelSource}
+        />
+        <div className="app-filter-bar-actions">
+          <RowAction icon={<AiOutlineReload />} label="Refresh" onClick={() => this.getApplications()} />
+          <div className="app-filter-bar-mode" role="group" aria-label="View">
+            <button
+              type="button"
+              className={showMode == 'card' ? 'active' : ''}
+              aria-pressed={showMode == 'card'}
+              onClick={() => this.props.setMode('card')}
+            >
+              <Translation>Card</Translation>
+            </button>
+            <button
+              type="button"
+              className={showMode == 'table' ? 'active' : ''}
+              aria-pressed={showMode == 'table'}
+              onClick={() => this.props.setMode('table')}
+            >
+              <Translation>Table</Translation>
+            </button>
           </div>
-          <div className="show-mode padding16">
-            <Button.Group>
-              <Button type={showMode == 'card' ? 'primary' : 'secondary'} onClick={() => this.props.setMode('card')}>
-                Card
-              </Button>
-              <Button type={showMode == 'table' ? 'primary' : 'secondary'} onClick={() => this.props.setMode('table')}>
-                Table
-              </Button>
-            </Button.Group>
-          </div>
-        </Col>
-      </Row>
+        </div>
+      </div>
     );
   }
 }
