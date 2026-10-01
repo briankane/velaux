@@ -691,5 +691,7 @@
   "Consumed by KubeVela directly": "由 KubeVela 直接处理",
   "Rendered with the Application's components": "随应用的组件一起渲染",
   "Applied to the Application as a whole, before it renders": "在渲染前作用于整个应用",
-  "Applied to every Application in its namespace": "作用于其命名空间内的所有应用"
+  "Applied to every Application in its namespace": "作用于其命名空间内的所有应用",
+  "Managed by application": "由应用管理",
+  "This addon was installed by the application's addon component. Enable, upgrade and disable it there.": "此插件由该应用的 addon 组件安装，请在该应用中启用、升级或禁用。"
 }
