@@ -40,6 +40,7 @@ const CustomisationConfigMapName = "velaux-configuration"
 const (
 	customisationLogoKey        = "logoURL"
 	customisationIconKey        = "iconURL"
+	customisationTitleKey       = "pageTitle"
 	customisationSidebarKey     = "sidebarColor"
 	customisationAccentKey      = "accentColor"
 	customisationTerminologyKey = "terminology"
@@ -48,6 +49,9 @@ const (
 // termName is a word the UI may rename: one capitalised word, as it is written
 // in the UI's own text.
 var termName = regexp.MustCompile(`^[A-Z][a-zA-Z]*$`)
+
+// maxPageTitle bounds the browser tab's title.
+const maxPageTitle = 100
 
 // hexColor is a colour as the sidebar takes it: #rgb or #rrggbb.
 var hexColor = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
@@ -77,6 +81,7 @@ func (s *customisationServiceImpl) Get(ctx context.Context) (*apisv1.Customisati
 		return nil, err
 	}
 	c := &apisv1.Customisation{
+		PageTitle:    cm.Data[customisationTitleKey],
 		LogoURL:      cm.Data[customisationLogoKey],
 		IconURL:      cm.Data[customisationIconKey],
 		SidebarColor: cm.Data[customisationSidebarKey],
@@ -97,6 +102,7 @@ func (s *customisationServiceImpl) Update(ctx context.Context, c apisv1.Customis
 	}
 	data := map[string]string{}
 	for key, value := range map[string]string{
+		customisationTitleKey:   c.PageTitle,
 		customisationLogoKey:    c.LogoURL,
 		customisationIconKey:    c.IconURL,
 		customisationSidebarKey: c.SidebarColor,
@@ -138,6 +144,9 @@ func validateCustomisation(c apisv1.Customisation) error {
 			!strings.HasPrefix(url, "data:image/") && !strings.HasPrefix(url, "/") {
 			return bcode.ErrInvalidCustomisation
 		}
+	}
+	if len(c.PageTitle) > maxPageTitle || strings.ContainsAny(c.PageTitle, "\r\n\t") {
+		return bcode.ErrInvalidCustomisation
 	}
 	for _, color := range []string{c.SidebarColor, c.AccentColor} {
 		if color != "" && !hexColor.MatchString(color) {
