@@ -80,12 +80,27 @@ func (e *expressionServiceImpl) componentRoot(ctx context.Context, app *model.Ap
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			outputs.Children = append(outputs.Children, liveVariable(k, out.outputs[k], 0))
+			outputs.Children = append(outputs.Children, withStatus(liveVariable(k, out.outputs[k], 0)))
 		}
-		comp.Children = []*apisv1.ExpressionVariable{output, outputs}
+		comp.Children = []*apisv1.ExpressionVariable{withStatus(output), outputs}
 		root.Children = append(root.Children, comp)
 	}
 	return root
+}
+
+// withStatus gives an object a status of any type in place of whatever it
+// reported: its controller writes the status, so a reader casts what it takes,
+// and an object that has not reported one yet still offers it.
+func withStatus(obj *apisv1.ExpressionVariable) *apisv1.ExpressionVariable {
+	children := obj.Children[:0]
+	for _, c := range obj.Children {
+		if c.Name != "status" {
+			children = append(children, c)
+		}
+	}
+	obj.Children = append(children, &apisv1.ExpressionVariable{Name: "status", Type: "dyn",
+		Description: "Written by the object's controller, so any type: cast what you read, such as int(...) or string(...)"})
+	return obj
 }
 
 // componentNames is the components the application declares, from the
