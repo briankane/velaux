@@ -69,6 +69,9 @@ export type ExpressionContext = {
 // expressibleTypes are the widgets whose value an expression may replace.
 const expressibleTypes = ['Input', 'Number', 'Switch', 'Select', 'Suggest'];
 
+// fxWidth is the room the ƒx toggle takes at the right of an expression field.
+const fxWidth = 30;
+
 // Scope is an enclosing form, which a condition reaches with `../`.
 export type Scope = {
   getValues: () => any;
@@ -1389,6 +1392,7 @@ class UISchema extends Component<Props, State> {
             source={this.props.expressions?.source}
             component={this.props.expressions?.component}
             draft={this.props.expressions?.draft}
+            reserve={fxWidth}
             env={this.props.expressions?.env}
             kind={expressionKind(param)}
             disabled={disableEdit}

@@ -141,6 +141,9 @@ type Props = {
   // kind is the type the parameter expects: string, integer, number or boolean.
   kind?: string;
   env?: ExpressionEnv;
+  // reserve is room at the right of the input kept for the parent's own
+  // control, such as the form's ƒx toggle; the status mark sits left of it.
+  reserve?: number;
 };
 
 type State = {
@@ -209,7 +212,8 @@ class ExpressionEditor extends React.Component<Props, State> {
     // One line, laid out by hand: Monaco's automatic layout keeps its 400px
     // default when it measures the container before the form has laid out.
     const container = this.container.current;
-    const layout = () => this.editor?.layout({ width: container.clientWidth - markWidth, height: 20 });
+    const layout = () =>
+      this.editor?.layout({ width: container.clientWidth - markWidth - (this.props.reserve || 0), height: 20 });
     layout();
     this.resize = new ResizeObserver(layout);
     this.resize.observe(container);
@@ -335,7 +339,11 @@ class ExpressionEditor extends React.Component<Props, State> {
         <div className={`expression-editor-input${this.props.disabled ? ' disabled' : ''}`} ref={this.container} />
         {status && (
           <Balloon
-            trigger={<span className={`expression-editor-mark ${status.kind}`}>{icons[status.kind]}</span>}
+            trigger={
+              <span className={`expression-editor-mark ${status.kind}`} style={{ right: this.props.reserve || 0 }}>
+                {icons[status.kind]}
+              </span>
+            }
             align="t"
             closable={false}
             triggerType="hover"
