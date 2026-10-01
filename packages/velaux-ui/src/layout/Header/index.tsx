@@ -23,7 +23,6 @@ import { getData, setData } from '../../utils/cache';
 import { locale } from '../../utils/locale';
 import { getBrowserNameAndVersion } from '../../utils/utils';
 import CloudShell from '../CloudShell';
-import QuickSearch from '../../components/QuickSearch';
 import { locationService } from '../../services/LocationService';
 
 import { LayoutMode, Workspace } from '@velaux/data';
@@ -202,7 +201,9 @@ class Header extends Component<Props, State> {
 
   render() {
     const { show, userInfo, mode, currentWorkspace, children } = this.props;
-    const { workspaces } = this.state;
+    // The admin dashboard is linked on its own; its pages join the sidebar
+    // while it is open.
+    const admin = this.state.workspaces.find((ws) => ws.name === 'admin');
     const collapsed = mode !== 'default';
     const userName = userInfo?.alias ? userInfo.alias : userInfo?.name;
 
@@ -219,28 +220,6 @@ class Header extends Component<Props, State> {
           </div>
         </div>
 
-        <QuickSearch userInfo={userInfo} compact={collapsed} />
-
-        {workspaces.length > 1 && (
-          <div className="sidebar-workspaces">
-            {workspaces.map((ws) => (
-              <Link
-                className={classNames('sidebar-workspace', { active: currentWorkspace?.name === ws.name })}
-                to={ws.rootRoute}
-                key={'workspace' + ws.name}
-                title={i18n.t(ws.label || ws.name).toString()}
-              >
-                {ws.icon}
-                {!collapsed && (
-                  <span>
-                    <Translation>{ws.label || ws.name}</Translation>
-                  </span>
-                )}
-              </Link>
-            ))}
-          </div>
-        )}
-
         <div className="sidebar-menu">{children}</div>
 
         <div className="sidebar-footer">
@@ -254,6 +233,20 @@ class Header extends Component<Props, State> {
               )}
             </div>
           </Permission>
+          {admin && (
+            <Link
+              to={admin.rootRoute}
+              className={classNames('sidebar-footer-item', { active: currentWorkspace?.name === admin.name })}
+              title={i18n.t(admin.label || admin.name).toString()}
+            >
+              {admin.icon}
+              {!collapsed && (
+                <span>
+                  <Translation>{admin.label || admin.name}</Translation>
+                </span>
+              )}
+            </Link>
+          )}
           <Permission request={{ resource: 'systemSetting', action: 'update' }}>
             <Link to="/settings" className="sidebar-footer-item" title={i18n.t('Platform Settings').toString()}>
               <AiOutlineSetting size={18} />

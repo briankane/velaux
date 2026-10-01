@@ -1,4 +1,4 @@
-import { Project , ApplicationBase, EnvBinding , Menu, MenuTypes, Workspace , LoginUserInfo } from '@velaux/data';
+import { Project, ApplicationBase, EnvBinding, Menu, MenuTypes, Workspace, LoginUserInfo } from '@velaux/data';
 import * as React from 'react';
 import _ from 'lodash';
 import { FaLayerGroup } from 'react-icons/fa';
@@ -40,6 +40,7 @@ const defaultWorkspaces: Workspace[] = [
 
 const defaultWorkspaceMenus: Menu[] = [
   {
+    catalog: 'Delivery',
     workspace: 'continuous-delivery',
     type: MenuTypes.Workspace,
     icon: <FaLayerGroup />,
@@ -50,16 +51,7 @@ const defaultWorkspaceMenus: Menu[] = [
     relatedRoute: ['/applications'],
   },
   {
-    workspace: 'continuous-delivery',
-    type: MenuTypes.Workspace,
-    name: 'pipeline-list',
-    to: '/pipelines',
-    relatedRoute: [/projects\/.*\/pipelines\/.*/, '/pipelines'],
-    icon: <BsHddNetworkFill></BsHddNetworkFill>,
-    label: 'Pipelines',
-    permission: { resource: 'project:?/pipeline:*', action: 'list' },
-  },
-  {
+    catalog: 'Delivery',
     workspace: 'continuous-delivery',
     to: '/envs',
     type: MenuTypes.Workspace,
@@ -70,6 +62,7 @@ const defaultWorkspaceMenus: Menu[] = [
     relatedRoute: ['/envs'],
   },
   {
+    catalog: 'Delivery',
     workspace: 'continuous-delivery',
     type: MenuTypes.Workspace,
     to: '/targets',
@@ -80,6 +73,7 @@ const defaultWorkspaceMenus: Menu[] = [
     relatedRoute: ['/targets'],
   },
   {
+    catalog: 'Delivery',
     workspace: 'continuous-delivery',
     type: MenuTypes.Workspace,
     icon: <AiFillProject></AiFillProject>,
@@ -89,6 +83,18 @@ const defaultWorkspaceMenus: Menu[] = [
     relatedRoute: ['/projects'],
   },
   {
+    catalog: 'Operations',
+    workspace: 'continuous-delivery',
+    type: MenuTypes.Workspace,
+    name: 'pipeline-list',
+    to: '/pipelines',
+    relatedRoute: [/projects\/.*\/pipelines\/.*/, '/pipelines'],
+    icon: <BsHddNetworkFill></BsHddNetworkFill>,
+    label: 'Pipelines',
+    permission: { resource: 'project:?/pipeline:*', action: 'list' },
+  },
+  {
+    catalog: 'Extension',
     workspace: 'extension',
     type: MenuTypes.Workspace,
     to: '/addons',
@@ -99,6 +105,7 @@ const defaultWorkspaceMenus: Menu[] = [
     relatedRoute: ['/addons', /\/manage\/plugins.*/],
   },
   {
+    catalog: 'Extension',
     workspace: 'extension',
     type: MenuTypes.Workspace,
     to: '/definitions',
@@ -109,6 +116,7 @@ const defaultWorkspaceMenus: Menu[] = [
     relatedRoute: ['/definitions'],
   },
   {
+    catalog: 'Admin',
     type: MenuTypes.Workspace,
     workspace: 'admin',
     to: '/clusters',
@@ -119,6 +127,7 @@ const defaultWorkspaceMenus: Menu[] = [
     relatedRoute: ['/clusters'],
   },
   {
+    catalog: 'Admin',
     workspace: 'admin',
     type: MenuTypes.Workspace,
     to: '/configs',
@@ -129,6 +138,7 @@ const defaultWorkspaceMenus: Menu[] = [
     relatedRoute: ['/configs'],
   },
   {
+    catalog: 'Admin',
     workspace: 'admin',
     type: MenuTypes.Workspace,
     to: '/platform/projects',
@@ -139,6 +149,7 @@ const defaultWorkspaceMenus: Menu[] = [
     relatedRoute: ['/platform/projects$'],
   },
   {
+    catalog: 'Admin',
     workspace: 'admin',
     type: MenuTypes.Workspace,
     to: '/users',
@@ -149,6 +160,7 @@ const defaultWorkspaceMenus: Menu[] = [
     relatedRoute: ['/users'],
   },
   {
+    catalog: 'Admin',
     workspace: 'admin',
     type: MenuTypes.Workspace,
     to: '/roles',
@@ -159,6 +171,7 @@ const defaultWorkspaceMenus: Menu[] = [
     relatedRoute: ['^/roles$'],
   },
   {
+    catalog: 'Admin',
     workspace: 'admin',
     type: MenuTypes.Workspace,
     to: '/settings',
@@ -185,6 +198,8 @@ export interface MenuService {
   loadCurrentWorkspace(): Workspace | undefined;
 
   loadMenus(workspace: Workspace, user: LoginUserInfo): LeftMenu[];
+
+  loadSidebarMenus(user: LoginUserInfo): LeftMenu[];
 
   loadProjectMenus(p: Project): Menu[];
 
@@ -244,7 +259,7 @@ export class MenuWrapper implements MenuService {
     this.pluginLoaded = false;
     this.menus = _.cloneDeep(defaultWorkspaceMenus);
     this.workspaces = _.cloneDeep(defaultWorkspaces);
-  }
+  };
   getWorkspace(name: string): Workspace | undefined {
     return this.workspaces.find((w) => w.name == name);
   }
@@ -283,6 +298,28 @@ export class MenuWrapper implements MenuService {
         }
       });
     return menus;
+  }
+
+  // loadSidebarMenus is every workspace's menus as one list of sections, so the
+  // sidebar needs no workspace switch. The admin workspace is linked on its own
+  // and listed only while it is the one open.
+  loadSidebarMenus(user: LoginUserInfo): LeftMenu[] {
+    const current = this.loadCurrentWorkspace();
+    const sections: LeftMenu[] = [];
+    this.loadWorkspaces(user)
+      .filter((ws) => ws.name !== 'admin' || current?.name === 'admin')
+      .forEach((ws) => {
+        this.loadMenus(ws, user).forEach((section) => {
+          const catalog = section.catalog || ws.label || ws.name;
+          const existing = sections.find((s) => s.catalog === catalog);
+          if (existing) {
+            existing.menus.push(...section.menus);
+          } else {
+            sections.push({ catalog, menus: [...section.menus] });
+          }
+        });
+      });
+    return sections;
   }
 
   matchMenu(menu: Menu): boolean {
