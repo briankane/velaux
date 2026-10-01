@@ -43,6 +43,7 @@ func TestCustomisationRoundTrip(t *testing.T) {
 	assert.Equal(t, &apisv1.Customisation{}, empty, "no ConfigMap means the defaults")
 
 	want := apisv1.Customisation{
+		PageTitle:    "Guidewire Platform",
 		LogoURL:      "https://example.com/logo.svg",
 		SidebarColor: "#e6f1f6",
 		AccentColor:  "#00739d",
@@ -61,6 +62,7 @@ func TestCustomisationRoundTrip(t *testing.T) {
 	require.NoError(t, cli.Get(ctx, client.ObjectKey{Namespace: types.DefaultKubeVelaNS, Name: CustomisationConfigMapName}, cm))
 	assert.Equal(t, "https://example.com/logo.svg", cm.Data["logoURL"])
 	assert.Equal(t, "#e6f1f6", cm.Data["sidebarColor"])
+	assert.Equal(t, "Guidewire Platform", cm.Data["pageTitle"])
 	assert.JSONEq(t, `{"Environment":{"singular":"Orbit","plural":"Orbits"},"Cluster":{"singular":"Asteroid","plural":"Asteroids"}}`, cm.Data["terminology"])
 
 	// A second update replaces the first, including dropping a term.
@@ -77,6 +79,7 @@ func TestCustomisationRefusesWhatItCannotUse(t *testing.T) {
 	for name, c := range map[string]apisv1.Customisation{
 		"a logo that is no URL":   {LogoURL: "javascript:alert(1)"},
 		"a colour that is no hex": {SidebarColor: "red; background: url(x)"},
+		"a title over two lines":  {PageTitle: "one\ntwo"},
 		"a term that is no word":  {Terminology: map[string]apisv1.Term{"cluster stuff": {Singular: "A", Plural: "B"}}},
 		"a term with no singular": {Terminology: map[string]apisv1.Term{"Cluster": {Plural: "Asteroids"}}},
 	} {
