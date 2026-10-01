@@ -222,6 +222,11 @@ function chainTokens(chain: string): { names: string[]; calls: string[]; endsWit
 export function suggest(before: string, env?: ExpressionEnv): { items: Suggestion[]; replace: number } {
   const start = openExpression(before);
   if (start === undefined) {
+    // Outside an expression, a typed $ is the only cue to start one, and the
+    // snippet takes its place; $$ is an escaped literal and starts nothing.
+    if (!before.endsWith('$') || before.endsWith('$$')) {
+      return { items: [], replace: 0 };
+    }
     return {
       items: [
         {
@@ -233,7 +238,7 @@ export function suggest(before: string, env?: ExpressionEnv): { items: Suggestio
           snippet: true,
         },
       ],
-      replace: 0,
+      replace: 1,
     };
   }
   const expr = before.substring(start);
@@ -390,4 +395,22 @@ export function hoverAt(text: string, offset: number, env?: ExpressionEnv): Hove
   }
   const variable = find(env?.variables, path);
   return variable ? { path, variable, start, end } : undefined;
+}
+
+// ExpressionFix is a replacement the check offers for an issue: the text from
+// start to end becomes text.
+export type ExpressionFix = {
+  start: number;
+  end: number;
+  text: string;
+  message: string;
+};
+
+// fixesFor finds the fixes for the markers Monaco asks about, by where each
+// starts (Monaco's columns count from 1) and what it says.
+export function fixesFor(
+  markers: Array<{ startColumn: number; message: string }>,
+  fixes: ExpressionFix[]
+): ExpressionFix[] {
+  return markers.flatMap((m) => fixes.filter((f) => f.start + 1 === m.startColumn && f.message === m.message));
 }

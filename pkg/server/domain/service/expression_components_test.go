@@ -170,6 +170,14 @@ func TestExpressionCheckComponentReads(t *testing.T) {
 		check("workflowstep", "", "$(component.db.output.data.host)"))
 	assert.Equal(t, []string{`write component["my-db"]: a component whose name has a hyphen is read by index`},
 		check("component", "api", "$(component.my-db.output.data.host)"))
+
+	value := "x-$(component.my-db.output.data.host)"
+	got, err := svc.Check(context.Background(), app, apisv1.ExpressionCheckRequest{Surface: "component", Component: "api", Value: value})
+	require.NoError(t, err)
+	require.Len(t, got.Issues, 1)
+	issue := got.Issues[0]
+	assert.Equal(t, "component.my-db", value[issue.Start:issue.End], "the issue covers the read to replace")
+	assert.Equal(t, `component["my-db"]`, issue.Fix, "and carries its replacement")
 	assert.Equal(t, []string{"no component named my-db"}, check("component", "api", `$(component["my-db"].output)`),
 		"the index form reads the name it gives")
 }

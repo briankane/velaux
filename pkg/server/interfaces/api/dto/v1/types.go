@@ -2199,6 +2199,8 @@ type ExpressionIssue struct {
 	End   int `json:"end"`
 	// Warning is set for an issue that does not stop the value being used.
 	Warning bool `json:"warning,omitempty"`
+	// Fix, where there is one, replaces the text from Start to End.
+	Fix string `json:"fix,omitempty"`
 }
 
 // Customisation is how this VelaUX is branded, kept in the
