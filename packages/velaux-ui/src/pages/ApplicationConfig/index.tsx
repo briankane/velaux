@@ -64,6 +64,7 @@ type Props = {
   match: {
     params: {
       appName: string;
+      section?: string;
     };
   };
   history: {
@@ -550,293 +551,304 @@ class ApplicationConfig extends Component<Props, State> {
       editSource,
     } = this.state;
     const projectName = (applicationDetail && applicationDetail.project?.name) || '';
+    // section is the tab shown; without one the page is the overview.
+    const section = this.props.match.params.section;
     if (!applicationDetail) {
       return <Loading visible />;
     }
     return (
       <div>
-        <Row className="flex-row" wrap={true}>
-          <Col xl={16} l={24} s={24} style={{ padding: '0 8px' }}>
-            <Card locale={locale().Card} contentHeight="auto" subTitle={applicationDetail?.description}>
-              <Row wrap={true}>
-                <Col xxs={12}>
-                  <div className="app-name">{showAlias(applicationDetail?.name, applicationDetail?.alias)}</div>
-                </Col>
-                <Col xxs={12} className="flexright" style={{ marginBottom: '16px' }}>
-                  <div>
-                    <Permission
-                      request={{
-                        resource: `project:${projectName}/application/:${appName}`,
-                        action: 'delete',
-                      }}
-                      project={projectName}
-                    >
-                      <Button
-                        className="danger-btn"
-                        style={{ marginRight: '16px' }}
-                        onClick={this.onDeleteApplication}
-                        type="secondary"
+        {!section && (
+          <Row className="flex-row" wrap={true}>
+            <Col xl={16} l={24} s={24} style={{ padding: '0 8px' }}>
+              <Card locale={locale().Card} contentHeight="auto" subTitle={applicationDetail?.description}>
+                <Row wrap={true}>
+                  <Col xxs={12}>
+                    <div className="app-name">{showAlias(applicationDetail?.name, applicationDetail?.alias)}</div>
+                  </Col>
+                  <Col xxs={12} className="flexright" style={{ marginBottom: '16px' }}>
+                    <div>
+                      <Permission
+                        request={{
+                          resource: `project:${projectName}/application/:${appName}`,
+                          action: 'delete',
+                        }}
+                        project={projectName}
                       >
-                        <Translation>Remove</Translation>
-                      </Button>
-                    </Permission>
-                    <Permission
-                      request={{
-                        resource: `project:${projectName}/application/:${appName}`,
-                        action: 'update',
-                      }}
-                      project={projectName}
-                    >
-                      <Button onClick={this.editAppPlan} type="secondary">
-                        <Translation>Edit</Translation>
-                      </Button>
-                    </Permission>
-                  </div>
-                </Col>
+                        <Button
+                          className="danger-btn"
+                          style={{ marginRight: '16px' }}
+                          onClick={this.onDeleteApplication}
+                          type="secondary"
+                        >
+                          <Translation>Remove</Translation>
+                        </Button>
+                      </Permission>
+                      <Permission
+                        request={{
+                          resource: `project:${projectName}/application/:${appName}`,
+                          action: 'update',
+                        }}
+                        project={projectName}
+                      >
+                        <Button onClick={this.editAppPlan} type="secondary">
+                          <Translation>Edit</Translation>
+                        </Button>
+                      </Permission>
+                    </div>
+                  </Col>
 
-                <Col l={8} xs={24}>
-                  <Item
-                    label={<Translation>Project</Translation>}
-                    value={
-                      <Link to={`/projects/${applicationDetail?.project?.name}`}>
-                        {applicationDetail?.project?.alias
-                          ? applicationDetail?.project?.alias
-                          : applicationDetail?.project?.name}
-                      </Link>
-                    }
-                  />
-                </Col>
-
-                <Col l={8} xs={24}>
-                  <Item
-                    label={<Translation>Create Time</Translation>}
-                    value={
-                      <Balloon trigger={<span>{beautifyTime(applicationDetail.createTime)}</span>}>
-                        {momentDate(applicationDetail.createTime) || '-'}
-                      </Balloon>
-                    }
-                  />
-                </Col>
-
-                <Col l={8} xs={24}>
-                  <Item
-                    label={<Translation>Update Time</Translation>}
-                    value={
-                      <Balloon trigger={<span>{beautifyTime(applicationDetail.updateTime)}</span>}>
-                        {momentDate(applicationDetail.updateTime) || '-'}
-                      </Balloon>
-                    }
-                  />
-                </Col>
-
-                <Col xxs={24}>
-                  {applicationDetail?.labels &&
-                    Object.keys(applicationDetail?.labels).map((key) => {
-                      if (applicationDetail?.labels) {
-                        return (
-                          <Tag
-                            key={key}
-                            style={{ margin: '4px' }}
-                            color="blue"
-                          >{`${key}=${applicationDetail?.labels[key]}`}</Tag>
-                        );
+                  <Col l={8} xs={24}>
+                    <Item
+                      label={<Translation>Project</Translation>}
+                      value={
+                        <Link to={`/projects/${applicationDetail?.project?.name}`}>
+                          {applicationDetail?.project?.alias
+                            ? applicationDetail?.project?.alias
+                            : applicationDetail?.project?.name}
+                        </Link>
                       }
-                      return;
-                    })}
-                </Col>
-              </Row>
-            </Card>
-          </Col>
-          <Col xl={8} l={24} s={24} style={{ padding: '0 8px' }}>
-            <Card locale={locale().Card} contentHeight="auto" style={{ height: '100%' }}>
-              <Row>
-                <Col span={6} style={{ padding: '22px 0' }}>
-                  <NumItem number={statistics?.envCount} title={i18n.t('Environment Count').toString()} />
-                </Col>
-                <Col span={6} style={{ padding: '22px 0' }}>
-                  <NumItem number={statistics?.targetCount} title={i18n.t('Target Count').toString()} />
-                </Col>
-                <Col span={6} style={{ padding: '22px 0' }}>
-                  <NumItem
-                    number={statistics?.revisionCount}
-                    to={`/applications/${applicationDetail.name}/revisions`}
-                    title={i18n.t('Revision Count').toString()}
-                  />
-                </Col>
-                <Col span={6} style={{ padding: '22px 0' }}>
-                  <NumItem
-                    number={statistics?.workflowCount}
-                    to={`/applications/${applicationDetail.name}/workflows`}
-                    title={i18n.t('Workflow Count').toString()}
-                  />
-                </Col>
-              </Row>
-            </Card>
-          </Col>
-        </Row>
+                    />
+                  </Col>
 
+                  <Col l={8} xs={24}>
+                    <Item
+                      label={<Translation>Create Time</Translation>}
+                      value={
+                        <Balloon trigger={<span>{beautifyTime(applicationDetail.createTime)}</span>}>
+                          {momentDate(applicationDetail.createTime) || '-'}
+                        </Balloon>
+                      }
+                    />
+                  </Col>
+
+                  <Col l={8} xs={24}>
+                    <Item
+                      label={<Translation>Update Time</Translation>}
+                      value={
+                        <Balloon trigger={<span>{beautifyTime(applicationDetail.updateTime)}</span>}>
+                          {momentDate(applicationDetail.updateTime) || '-'}
+                        </Balloon>
+                      }
+                    />
+                  </Col>
+
+                  <Col xxs={24}>
+                    {applicationDetail?.labels &&
+                      Object.keys(applicationDetail?.labels).map((key) => {
+                        if (applicationDetail?.labels) {
+                          return (
+                            <Tag
+                              key={key}
+                              style={{ margin: '4px' }}
+                              color="blue"
+                            >{`${key}=${applicationDetail?.labels[key]}`}</Tag>
+                          );
+                        }
+                        return;
+                      })}
+                  </Col>
+                </Row>
+              </Card>
+            </Col>
+            <Col xl={8} l={24} s={24} style={{ padding: '0 8px' }}>
+              <Card locale={locale().Card} contentHeight="auto" style={{ height: '100%' }}>
+                <Row>
+                  <Col span={6} style={{ padding: '22px 0' }}>
+                    <NumItem number={statistics?.envCount} title={i18n.t('Environment Count').toString()} />
+                  </Col>
+                  <Col span={6} style={{ padding: '22px 0' }}>
+                    <NumItem number={statistics?.targetCount} title={i18n.t('Target Count').toString()} />
+                  </Col>
+                  <Col span={6} style={{ padding: '22px 0' }}>
+                    <NumItem
+                      number={statistics?.revisionCount}
+                      to={`/applications/${applicationDetail.name}/revisions`}
+                      title={i18n.t('Revision Count').toString()}
+                    />
+                  </Col>
+                  <Col span={6} style={{ padding: '22px 0' }}>
+                    <NumItem
+                      number={statistics?.workflowCount}
+                      to={`/applications/${applicationDetail.name}/workflows`}
+                      title={i18n.t('Workflow Count').toString()}
+                    />
+                  </Col>
+                </Row>
+              </Card>
+            </Col>
+          </Row>
+        )}
         <Row wrap={true} className="app-spec">
-          <Col xl={8} xxs={24} className="app-spec-item">
-            <Row>
-              <Col span={24} className="padding16">
-                <Title
-                  title={
-                    <span className="font-size-16 font-weight-bold">
-                      <Translation>Components</Translation>
-                    </span>
-                  }
-                  actions={
-                    !applicationDetail?.readOnly
-                      ? [
-                          <Permission
-                            request={{
-                              resource: `project:${projectName}/application:${applicationDetail?.name}/component:*`,
-                              action: 'create',
-                            }}
-                            project={projectName}
-                          >
-                            <a key={'add'} onClick={this.onAddComponent} className="font-size-14 font-weight-400">
-                              <Translation>New Component</Translation>
-                            </a>
-                          </Permission>,
-                        ]
-                      : []
-                  }
-                />
-              </Col>
-            </Row>
-
-            <Components
-              application={applicationDetail}
-              components={components || []}
-              editComponent={(component: ApplicationComponentBase) => {
-                this.editComponent(component);
-              }}
-              onDeleteComponent={(component: string) => {
-                this.onDeleteComponent(component);
-              }}
-              onDeleteTrait={this.onDeleteTrait}
-              onAddTrait={(name: string) => {
-                this.onAddTrait(name, true);
-              }}
-              onAddComponent={this.onAddComponent}
-              changeTraitStats={this.changeTraitStats}
-            />
-          </Col>
-          <Col xl={8} xxs={24} className="app-spec-item">
-            <Row>
-              <Col span={24} className="padding16">
-                <Title
-                  title={
-                    <span className="font-size-16 font-weight-bold">
-                      <Translation>Policies</Translation>
-                    </span>
-                  }
-                  actions={[
-                    <Permission
-                      request={{
-                        resource: `project:${projectName}/application:${applicationDetail?.name}/policy:*`,
-                        action: 'create',
-                      }}
-                      project={projectName}
-                    >
-                      <a key={'add'} className="font-size-14 font-weight-400" onClick={this.onAddPolicy}>
-                        <Translation>New Policy</Translation>
-                      </a>
-                    </Permission>,
-                  ]}
-                />
-              </Col>
-            </Row>
-            <PolicyList
-              policies={policies}
-              statuses={this.props.applicationAllStatus}
-              policyScopes={this.state.policyScopes}
-              envbinding={envbinding}
-              applicationDetail={applicationDetail}
-              onDeletePolicy={(name: string) => {
-                this.onDeletePolicy(name);
-              }}
-              onShowPolicy={(name: string) => {
-                this.onEditPolicy(name);
-              }}
-            />
-          </Col>
-          <Col xl={8} xxs={24} className="app-spec-item">
-            <Row>
-              <Col span={24} className="padding16">
-                <Title
-                  title={
-                    <span className="font-size-16 font-weight-bold">
-                      <Translation>Sources</Translation>
-                    </span>
-                  }
-                  actions={[
-                    <Permission
-                      request={{
-                        resource: `project:${projectName}/application:${applicationDetail?.name}/source:*`,
-                        action: 'create',
-                      }}
-                      project={projectName}
-                    >
-                      <a
-                        key={'add'}
-                        className="font-size-14 font-weight-400"
-                        onClick={() => this.setState({ visibleSource: true, editSource: undefined })}
+          {section === 'sources' && (
+            <Col span={24} className="app-spec-item">
+              <Row>
+                <Col span={24} className="padding16">
+                  <Title
+                    title={
+                      <span className="font-size-16 font-weight-bold">
+                        <Translation>Sources</Translation>
+                      </span>
+                    }
+                    actions={[
+                      <Permission
+                        request={{
+                          resource: `project:${projectName}/application:${applicationDetail?.name}/source:*`,
+                          action: 'create',
+                        }}
+                        project={projectName}
                       >
-                        <Translation>New Source</Translation>
-                      </a>
-                    </Permission>,
-                  ]}
-                />
-              </Col>
-            </Row>
-            <SourceList
-              sources={sources}
-              applicationDetail={applicationDetail}
-              onDeleteSource={this.onDeleteSource}
-              onShowSource={(source: ApplicationSource) => this.setState({ visibleSource: true, editSource: source })}
-            />
-          </Col>
-          <Col xl={8} xxs={24} className="app-spec-item">
-            <Row>
-              <Col span={24} className="padding16">
-                <Title
-                  actions={[
-                    <Permission
-                      request={{
-                        resource: `project:${projectName}/application:${applicationDetail?.name}/trigger:*`,
-                        action: 'create',
-                      }}
-                      project={projectName}
-                    >
-                      <a key={'add'} className="font-size-14 font-weight-400" onClick={this.onAddTrigger}>
-                        <Translation>New Trigger</Translation>
-                      </a>
-                    </Permission>,
-                  ]}
-                  title={
-                    <span className="font-size-16 font-weight-bold">
-                      <Translation>Triggers</Translation>
-                    </span>
-                  }
-                />
-              </Col>
-            </Row>
-            <TriggerList
-              appName={appName}
-              triggers={triggers}
-              components={components || []}
-              onDeleteTrigger={(token: string) => {
-                this.onDeleteTrigger(token);
-              }}
-              createTriggerInfo={createTriggerInfo}
-              applicationDetail={applicationDetail}
-              onEditTrigger={(t: Trigger) => {
-                this.setState({ visibleTrigger: true, trigger: t });
-              }}
-            />
-          </Col>
+                        <a
+                          key={'add'}
+                          className="font-size-14 font-weight-400"
+                          onClick={() => this.setState({ visibleSource: true, editSource: undefined })}
+                        >
+                          <Translation>New Source</Translation>
+                        </a>
+                      </Permission>,
+                    ]}
+                  />
+                </Col>
+              </Row>
+              <SourceList
+                sources={sources}
+                applicationDetail={applicationDetail}
+                onDeleteSource={this.onDeleteSource}
+                onShowSource={(source: ApplicationSource) => this.setState({ visibleSource: true, editSource: source })}
+              />
+            </Col>
+          )}
+          {section === 'components' && (
+            <Col span={24} className="app-spec-item">
+              <Row>
+                <Col span={24} className="padding16">
+                  <Title
+                    title={
+                      <span className="font-size-16 font-weight-bold">
+                        <Translation>Components</Translation>
+                      </span>
+                    }
+                    actions={
+                      !applicationDetail?.readOnly
+                        ? [
+                            <Permission
+                              request={{
+                                resource: `project:${projectName}/application:${applicationDetail?.name}/component:*`,
+                                action: 'create',
+                              }}
+                              project={projectName}
+                            >
+                              <a key={'add'} onClick={this.onAddComponent} className="font-size-14 font-weight-400">
+                                <Translation>New Component</Translation>
+                              </a>
+                            </Permission>,
+                          ]
+                        : []
+                    }
+                  />
+                </Col>
+              </Row>
+
+              <Components
+                application={applicationDetail}
+                components={components || []}
+                editComponent={(component: ApplicationComponentBase) => {
+                  this.editComponent(component);
+                }}
+                onDeleteComponent={(component: string) => {
+                  this.onDeleteComponent(component);
+                }}
+                onDeleteTrait={this.onDeleteTrait}
+                onAddTrait={(name: string) => {
+                  this.onAddTrait(name, true);
+                }}
+                onAddComponent={this.onAddComponent}
+                changeTraitStats={this.changeTraitStats}
+              />
+            </Col>
+          )}
+          {section === 'policies' && (
+            <Col span={24} className="app-spec-item">
+              <Row>
+                <Col span={24} className="padding16">
+                  <Title
+                    title={
+                      <span className="font-size-16 font-weight-bold">
+                        <Translation>Policies</Translation>
+                      </span>
+                    }
+                    actions={[
+                      <Permission
+                        request={{
+                          resource: `project:${projectName}/application:${applicationDetail?.name}/policy:*`,
+                          action: 'create',
+                        }}
+                        project={projectName}
+                      >
+                        <a key={'add'} className="font-size-14 font-weight-400" onClick={this.onAddPolicy}>
+                          <Translation>New Policy</Translation>
+                        </a>
+                      </Permission>,
+                    ]}
+                  />
+                </Col>
+              </Row>
+              <PolicyList
+                policies={policies}
+                statuses={this.props.applicationAllStatus}
+                policyScopes={this.state.policyScopes}
+                envbinding={envbinding}
+                applicationDetail={applicationDetail}
+                onDeletePolicy={(name: string) => {
+                  this.onDeletePolicy(name);
+                }}
+                onShowPolicy={(name: string) => {
+                  this.onEditPolicy(name);
+                }}
+              />
+            </Col>
+          )}
+          {section === 'triggers' && (
+            <Col span={24} className="app-spec-item">
+              <Row>
+                <Col span={24} className="padding16">
+                  <Title
+                    actions={[
+                      <Permission
+                        request={{
+                          resource: `project:${projectName}/application:${applicationDetail?.name}/trigger:*`,
+                          action: 'create',
+                        }}
+                        project={projectName}
+                      >
+                        <a key={'add'} className="font-size-14 font-weight-400" onClick={this.onAddTrigger}>
+                          <Translation>New Trigger</Translation>
+                        </a>
+                      </Permission>,
+                    ]}
+                    title={
+                      <span className="font-size-16 font-weight-bold">
+                        <Translation>Triggers</Translation>
+                      </span>
+                    }
+                  />
+                </Col>
+              </Row>
+              <TriggerList
+                appName={appName}
+                triggers={triggers}
+                components={components || []}
+                onDeleteTrigger={(token: string) => {
+                  this.onDeleteTrigger(token);
+                }}
+                createTriggerInfo={createTriggerInfo}
+                applicationDetail={applicationDetail}
+                onEditTrigger={(t: Trigger) => {
+                  this.setState({ visibleTrigger: true, trigger: t });
+                }}
+              />
+            </Col>
+          )}
         </Row>
 
         <If condition={visibleTrait}>

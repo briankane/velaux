@@ -7,6 +7,7 @@ import ApplicationEnvRoute from '../../pages/ApplicationEnvRoute';
 import ApplicationInstanceList from '../../pages/ApplicationInstanceList';
 import Application from '../../pages/ApplicationList';
 import ApplicationLog from '../../pages/ApplicationLog';
+import ApplicationOrbits from '../../pages/ApplicationOrbits';
 import ApplicationRevisionList from '../../pages/ApplicationRevisionList';
 import ApplicationStatus from '../../pages/ApplicationStatus';
 import ApplicationWorkflowList from '../../pages/ApplicationWorkflowList';
@@ -77,6 +78,28 @@ export default function Router() {
           return (
             <ApplicationLayout {...props}>
               <ApplicationConfig {...props} />
+            </ApplicationLayout>
+          );
+        }}
+      />
+      <Route
+        exact
+        path="/applications/:appName/config/:section"
+        render={(props: any) => {
+          return (
+            <ApplicationLayout {...props}>
+              <ApplicationConfig {...props} />
+            </ApplicationLayout>
+          );
+        }}
+      />
+      <Route
+        exact
+        path="/applications/:appName/orbits"
+        render={(props: any) => {
+          return (
+            <ApplicationLayout {...props}>
+              <ApplicationOrbits {...props} />
             </ApplicationLayout>
           );
         }}
