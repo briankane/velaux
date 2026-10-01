@@ -764,5 +764,14 @@
   "After every completion": "每次完成后",
   "Workflow restart cancelled": "已取消工作流重启",
   "Resync interval saved": "已保存重新同步间隔",
-  "Workflow restart requested": "已请求重启工作流"
+  "Workflow restart requested": "已请求重启工作流",
+  "Health": "健康状态",
+  "Open": "打开",
+  "No targets": "无交付目标",
+  "Deployment": "部署",
+  "Bound": "绑定于",
+  "Progressing": "进行中",
+  "API Version": "API 版本",
+  "Ready": "就绪",
+  "Age": "运行时长"
 }

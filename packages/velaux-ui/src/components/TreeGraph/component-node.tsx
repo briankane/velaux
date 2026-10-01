@@ -11,7 +11,8 @@ import { componentSections, componentSummary, getGraphSize, ResourceIcon } from 
 import './component-node.less';
 import type { TraitStatus } from '@velaux/data';
 import { If } from '../If';
-import { detailEntries, traitState, traitStateCircle } from '../../utils/status';
+import { traitState, traitStateCircle } from '../../utils/status';
+import { traitTooltip } from './tooltip';
 import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 
 export interface ComponentNodeProps {
@@ -110,20 +111,11 @@ function renderTraitTree(traits: TraitStatus[]) {
           </div>
         );
 
-        if (trait.message || detailEntries(trait.details).length > 0) {
-          return (
-            <Balloon trigger={traitNode} closable={false} popupClassName={statusTooltipPopupClass}>
-              <StatusTooltip
-                title={trait.type}
-                healthy={trait.healthy}
-                pending={trait.pending}
-                message={trait.message}
-                details={trait.details}
-              />
-            </Balloon>
-          );
-        }
-        return traitNode;
+        return (
+          <Balloon key={trait.type} trigger={traitNode} closable={false} popupClassName={statusTooltipPopupClass}>
+            <StatusTooltip {...traitTooltip(trait)} />
+          </Balloon>
+        );
       })}
       {edges.map((edge) => (
         <div key={`${edge.from}-${edge.to}`} className="graph-edge">
@@ -206,11 +198,19 @@ export const ComponentNode = (props: ComponentNodeProps) => {
 
       <If condition={traits.length > 0}>
         <div className={classNames('label-traits')}>
-          {traits && traits.length > 0 && traits[0] && (                                                                                                                                                                                                                                                                                                                                                                                        
-            <Tag animation={true}>
-              <span className={classNames('circle', traitStateCircle[traitState(traits[0])])} />
-              {traits[0].type}
-            </Tag>
+          {traits && traits.length > 0 && traits[0] && (
+            <Balloon
+              trigger={
+                <Tag animation={true}>
+                  <span className={classNames('circle', traitStateCircle[traitState(traits[0])])} />
+                  {traits[0].type}
+                </Tag>
+              }
+              closable={false}
+              popupClassName={statusTooltipPopupClass}
+            >
+              <StatusTooltip {...traitTooltip(traits[0])} />
+            </Balloon>
           )}
           <If condition={traits?.length > 1}>
             <div
