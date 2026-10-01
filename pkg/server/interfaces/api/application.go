@@ -501,6 +501,30 @@ func (c *application) GetWebServiceRoute() *restful.WebService {
 		Returns(400, "Bad Request", bcode.Bcode{}).
 		Writes(apis.EmptyResponse{}))
 
+	ws.Route(ws.POST("/{appName}/envs/{envName}/pause").To(c.pauseApplicationEnv).
+		Doc("pause the controller's reconciliation of the application in an env").
+		Metadata(restfulspec.KeyOpenAPITags, tags).
+		Filter(c.RbacService.CheckPerm("envBinding", "pause")).
+		Filter(c.appCheckFilter).
+		Filter(c.envCheckFilter).
+		Param(ws.PathParameter("appName", "identifier of the application ").DataType("string").Required(true)).
+		Param(ws.PathParameter("envName", "identifier of the application envbinding").DataType("string").Required(true)).
+		Returns(200, "OK", apis.EmptyResponse{}).
+		Returns(400, "Bad Request", bcode.Bcode{}).
+		Writes(apis.EmptyResponse{}))
+
+	ws.Route(ws.POST("/{appName}/envs/{envName}/resume").To(c.resumeApplicationEnv).
+		Doc("resume the controller's reconciliation of the application in an env").
+		Metadata(restfulspec.KeyOpenAPITags, tags).
+		Filter(c.RbacService.CheckPerm("envBinding", "resume")).
+		Filter(c.appCheckFilter).
+		Filter(c.envCheckFilter).
+		Param(ws.PathParameter("appName", "identifier of the application ").DataType("string").Required(true)).
+		Param(ws.PathParameter("envName", "identifier of the application envbinding").DataType("string").Required(true)).
+		Returns(200, "OK", apis.EmptyResponse{}).
+		Returns(400, "Bad Request", bcode.Bcode{}).
+		Writes(apis.EmptyResponse{}))
+
 	ws.Route(ws.GET("/{appName}/envs/{envName}/records").To(c.WorkflowAPI.listWorkflowRecordsFromEnv).
 		Doc("query application workflow execution record of one environment").
 		Param(ws.PathParameter("appName", "identifier of the application.").DataType("string").Required(true)).
@@ -1502,6 +1526,27 @@ func (c *application) recycleApplicationEnv(req *restful.Request, res *restful.R
 	env := req.Request.Context().Value(&apis.CtxKeyApplicationEnvBinding).(*model.EnvBinding)
 	err := c.EnvBindingService.ApplicationEnvRecycle(req.Request.Context(), app, env)
 	if err != nil {
+		bcode.ReturnError(req, res, err)
+		return
+	}
+	if err := res.WriteEntity(apis.EmptyResponse{}); err != nil {
+		bcode.ReturnError(req, res, err)
+		return
+	}
+}
+
+func (c *application) pauseApplicationEnv(req *restful.Request, res *restful.Response) {
+	c.setApplicationEnvPaused(req, res, true)
+}
+
+func (c *application) resumeApplicationEnv(req *restful.Request, res *restful.Response) {
+	c.setApplicationEnvPaused(req, res, false)
+}
+
+func (c *application) setApplicationEnvPaused(req *restful.Request, res *restful.Response, paused bool) {
+	app := req.Request.Context().Value(&apis.CtxKeyApplication).(*model.Application)
+	env := req.Request.Context().Value(&apis.CtxKeyApplicationEnvBinding).(*model.EnvBinding)
+	if err := c.ApplicationService.SetApplicationPaused(req.Request.Context(), app, env.Name, paused); err != nil {
 		bcode.ReturnError(req, res, err)
 		return
 	}

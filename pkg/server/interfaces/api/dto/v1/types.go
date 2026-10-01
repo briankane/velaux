@@ -547,6 +547,9 @@ type ApplicationStatus struct {
 	// its dependsOn, those whose outputs its inputs read, and those its property
 	// expressions read.
 	Dependencies []ComponentDependency `json:"dependencies,omitempty"`
+	// Paused is whether the controller skips the Application: it carries the
+	// controller.core.oam.dev/pause label.
+	Paused bool `json:"paused,omitempty"`
 }
 
 // ComponentDependency is one component another depends on, as the

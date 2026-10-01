@@ -108,3 +108,6 @@ var ErrApplicationSourceExist = NewBcode(400, 10029, "application source is exis
 
 // ErrApplicationSourceNotExist means the application has no source of that name
 var ErrApplicationSourceNotExist = NewBcode(404, 10030, "application source is not exist")
+
+// ErrApplicationNotDeployed the application has not been deployed to the environment
+var ErrApplicationNotDeployed = NewBcode(404, 10031, "the application is not deployed to this environment")
