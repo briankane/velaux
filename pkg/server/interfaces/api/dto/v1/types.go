@@ -421,6 +421,8 @@ type ListApplicationOptions struct {
 	TargetName string            `json:"targetName"`
 	Query      string            `json:"query"`
 	Labels     map[string]string `json:"labels"`
+	// WithStatus fills each application's status summary from its envs.
+	WithStatus bool `json:"withStatus"`
 }
 
 // ListApplicationResponse list applications by query params
@@ -443,6 +445,40 @@ type ApplicationBase struct {
 	Labels      map[string]string `json:"labels,omitempty"`
 	Annotations map[string]string `json:"annotations,omitempty"`
 	ReadOnly    bool              `json:"readOnly,omitempty"`
+	// Status summarises the application across its envs, when listed with status.
+	Status *ApplicationStatusSummary `json:"status,omitempty"`
+}
+
+// The health of an application, worst first.
+const (
+	AppHealthFailed      = "failed"
+	AppHealthUnhealthy   = "unhealthy"
+	AppHealthSuspended   = "suspended"
+	AppHealthProgressing = "progressing"
+	AppHealthHealthy     = "healthy"
+	AppHealthUndeployed  = "undeployed"
+)
+
+// ApplicationStatusSummary is an application's health at a glance: the worst
+// of its envs, and its components counted across them.
+type ApplicationStatusSummary struct {
+	Health string `json:"health"`
+	// Workflow is the workflow phase of the env setting the health.
+	Workflow string `json:"workflow,omitempty"`
+	// Components counts each component once per place it runs.
+	Components        int                 `json:"components"`
+	HealthyComponents int                 `json:"healthyComponents"`
+	Envs              []*EnvStatusSummary `json:"envs,omitempty"`
+}
+
+// EnvStatusSummary is an application's health in one env.
+type EnvStatusSummary struct {
+	Env               string `json:"env"`
+	Health            string `json:"health"`
+	Phase             string `json:"phase"`
+	Workflow          string `json:"workflow,omitempty"`
+	Components        int    `json:"components"`
+	HealthyComponents int    `json:"healthyComponents"`
 }
 
 // AppCompareResponse application compare result
