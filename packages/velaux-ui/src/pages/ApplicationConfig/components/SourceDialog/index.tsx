@@ -174,7 +174,13 @@ class SourceDialog extends React.Component<Props, State> {
     const { definitions, definition, loading, saving } = this.state;
     const init = this.field.init;
     const validator = (rule: Rule, value: any, callback: (error?: string) => void) => {
-      this.uiSchemaRef.current?.validate(callback);
+      // A source with no parameters renders no form, so there is nothing to
+      // check; the callback must still run or the submit never completes.
+      if (!this.uiSchemaRef.current) {
+        callback();
+        return;
+      }
+      this.uiSchemaRef.current.validate(callback);
     };
     const name = this.field.getValue<string>('name') || (source && source.name) || '<name>';
     const fields = sourceFields(name, definition?.outputSchema);
