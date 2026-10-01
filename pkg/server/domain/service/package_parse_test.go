@@ -61,8 +61,15 @@ func TestParsePackage(t *testing.T) {
 		{Name: "conn", Type: "string", Description: "The connection string"},
 		{Name: "db", Type: `*"default" | string`},
 	}, fn.Params)
-	assert.Empty(t, fn.Returns, "a list is a type, not fields")
-	assert.Equal(t, "[...#Table]", fn.ReturnsType)
+	assert.Equal(t, "[...#Table]", fn.ReturnsType, "the type stays as written")
+	assert.Equal(t, []*apisv1.PackageField{{
+		Name: "[*]",
+		Type: "#Table",
+		Fields: []*apisv1.PackageField{
+			{Name: "name", Type: "string"},
+			{Name: "rows", Type: "int", Optional: true, Description: "rows is an estimate."},
+		},
+	}}, fn.Returns, "a list of a type in the package lists that type's fields for each item")
 	assert.Equal(t, "mysql.#ListTables & {\n\t$params: {\n\t\tconn: \"\"\n\t}\n}", fn.Usage,
 		"the usage fills the required parameters only")
 
@@ -77,6 +84,50 @@ func TestParsePackage(t *testing.T) {
 
 // A package's files are one package: their declarations are listed in file
 // order, and a file that does not parse is reported, not fatal.
+// A field typed by a definition in the package carries that definition's
+// fields; one referring to itself stops expanding.
+func TestParsePackageExpandsTypes(t *testing.T) {
+	got, err := parsePackage(map[string]string{"x.cue": `package x
+#Owner: {email: string}
+#Node: {
+	name: string
+	children?: [...#Node]
+}
+#Get: {
+	#do: "get"
+	#provider: "x"
+	$params: {}
+	$returns: {
+		owner: #Owner
+		tree: #Node
+		other: kube.#Resource
+	}
+}
+`})
+	require.NoError(t, err)
+	ret := got.functions[0].Returns
+	require.Len(t, ret, 3)
+	assert.Equal(t, "#Owner", ret[0].Type)
+	assert.Equal(t, []*apisv1.PackageField{{Name: "email", Type: "string"}}, ret[0].Fields)
+	assert.Equal(t, "kube.#Resource", ret[2].Type)
+	assert.Empty(t, ret[2].Fields, "a definition from another package is left as written")
+
+	depth := 0
+	for f := ret[1]; f != nil && len(f.Fields) > 0; depth++ {
+		var next *apisv1.PackageField
+		for _, c := range f.Fields {
+			if c.Name == "children" {
+				next = c
+			}
+		}
+		if next != nil && len(next.Fields) == 1 {
+			next = next.Fields[0]
+		}
+		f = next
+	}
+	assert.Less(t, depth, 10, "a definition that contains itself stops expanding")
+}
+
 func TestParsePackageFiles(t *testing.T) {
 	got, err := parsePackage(map[string]string{
 		"b.cue": "package ext\n#Second: {#do: \"two\", #provider: \"ext\", $params: {}, $returns: {}}\n",

@@ -80,7 +80,76 @@ func parsePackage(files map[string]string) (*parsedPackage, error) {
 			out.types = append(out.types, t)
 		}
 	}
+	out.expand()
 	return out, nil
+}
+
+// maxExpandDepth bounds how far one type is expanded into another, so a
+// definition that contains itself stops.
+const maxExpandDepth = 4
+
+// expand gives each field typed by a definition in the package that
+// definition's fields, as a reader would follow them: #Table becomes its fields,
+// and [...#Table] an item holding them. A function's parameters or results
+// written as such a type are expanded the same way.
+func (p *parsedPackage) expand() {
+	defs := map[string]*apisv1.PackageType{}
+	for _, t := range p.types {
+		defs[t.Name] = t
+	}
+	for _, fn := range p.functions {
+		fn.Params = expandFields(fn.Params, defs, 0)
+		fn.Returns = expandFields(fn.Returns, defs, 0)
+		if len(fn.Params) == 0 && fn.ParamsType != "" {
+			fn.Params = typeFields(fn.ParamsType, defs, 0)
+		}
+		if len(fn.Returns) == 0 && fn.ReturnsType != "" {
+			fn.Returns = typeFields(fn.ReturnsType, defs, 0)
+		}
+	}
+	for _, t := range p.types {
+		t.Fields = expandFields(t.Fields, defs, 1)
+	}
+}
+
+// expandFields copies fields, giving each one typed by a definition in the
+// package that definition's fields.
+func expandFields(fields []*apisv1.PackageField, defs map[string]*apisv1.PackageType, depth int) []*apisv1.PackageField {
+	if len(fields) == 0 {
+		return fields
+	}
+	out := make([]*apisv1.PackageField, 0, len(fields))
+	for _, f := range fields {
+		c := *f
+		if len(f.Fields) > 0 {
+			c.Fields = expandFields(f.Fields, defs, depth)
+		} else if f.Type != "" {
+			c.Fields = typeFields(f.Type, defs, depth+1)
+		}
+		out = append(out, &c)
+	}
+	return out
+}
+
+// typeFields are the fields a type written as #Name or [...#Name] stands for,
+// where #Name is a struct defined in the package.
+func typeFields(typ string, defs map[string]*apisv1.PackageType, depth int) []*apisv1.PackageField {
+	if depth > maxExpandDepth {
+		return nil
+	}
+	if strings.HasPrefix(typ, "[...") && strings.HasSuffix(typ, "]") {
+		item := strings.TrimSpace(typ[len("[...") : len(typ)-1])
+		fields := typeFields(item, defs, depth)
+		if len(fields) == 0 {
+			return nil
+		}
+		return []*apisv1.PackageField{{Name: "[*]", Type: item, Fields: fields}}
+	}
+	def, ok := defs[typ]
+	if !ok || len(def.Fields) == 0 {
+		return nil
+	}
+	return expandFields(def.Fields, defs, depth)
 }
 
 func packageFunction(p *parsedPackage, name, description string, body *ast.StructLit) *apisv1.PackageFunction {
