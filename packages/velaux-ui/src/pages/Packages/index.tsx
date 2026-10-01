@@ -15,6 +15,32 @@ import type { PackageSource } from './packages';
 import { filterPackages, packageLink } from './packages';
 import './index.less';
 
+// ProviderPill says what runs a package's functions: an external provider by
+// its protocol (its endpoint on hover), CueX for a package of CUE alone, or
+// KubeVela for one built in.
+const ProviderPill = (props: { pkg: PackageBase }) => {
+  const { pkg } = props;
+  if (pkg.provider) {
+    return (
+      <span className="provider-pill external" title={pkg.provider.endpoint}>
+        {pkg.provider.protocol.toUpperCase()}
+      </span>
+    );
+  }
+  if (pkg.builtin) {
+    return (
+      <span className="provider-pill builtin" title={i18n.t('Runs in KubeVela').toString()}>
+        KubeVela
+      </span>
+    );
+  }
+  return (
+    <span className="provider-pill cuex" title={i18n.t('CUE only, no provider').toString()}>
+      CueX
+    </span>
+  );
+};
+
 // Packages lists the CUE packages a definition can import: the Package resources
 // in the cluster, then those built into KubeVela.
 const Packages = () => {
@@ -99,16 +125,8 @@ const Packages = () => {
                 <span>
                   <code className="row-list-code">{p.path}</code>
                 </span>
-                <span className="package-provider">
-                  {p.provider ? (
-                    <span title={p.provider.endpoint}>
-                      <span className="package-protocol">{p.provider.protocol}</span> {p.provider.endpoint}
-                    </span>
-                  ) : (
-                    <span className="row-list-muted">
-                      <Translation>{p.builtin ? 'KubeVela' : 'CUE only'}</Translation>
-                    </span>
-                  )}
+                <span>
+                  <ProviderPill pkg={p} />
                 </span>
                 <span>{p.functions}</span>
               </div>

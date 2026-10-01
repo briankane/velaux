@@ -43,7 +43,7 @@
 }
 
 .package-list {
-  --row-columns: minmax(220px, 1.3fr) minmax(160px, 1fr) minmax(220px, 1.6fr) 90px;
+  --row-columns: minmax(220px, 1.4fr) minmax(160px, 1.2fr) 120px 90px;
   .row-list-name {
     color: inherit;
   }
@@ -52,10 +52,27 @@
   }
 }
 
-.package-provider {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+// What runs a package's functions, as a pill: an external provider, CueX or KubeVela.
+.provider-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  font-weight: 500;
+  font-size: 12px;
+  border-radius: 11px;
+  &.external {
+    color: #1d4ed8;
+    background: #dbeafe;
+  }
+  &.cuex {
+    color: #6d28d9;
+    background: #ede9fe;
+  }
+  &.builtin {
+    color: #0f766e;
+    background: #ccfbf1;
+  }
 }
 
 .package-protocol {
