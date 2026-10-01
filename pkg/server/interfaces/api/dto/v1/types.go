@@ -499,12 +499,15 @@ type ApplicationStatisticsResponse struct {
 
 // CreateApplicationRequest create application request body
 type CreateApplicationRequest struct {
-	Name        string                  `json:"name" validate:"checkname"`
-	Alias       string                  `json:"alias" validate:"checkalias" optional:"true"`
-	Project     string                  `json:"project" validate:"checkname"`
-	Description string                  `json:"description" optional:"true"`
-	Icon        string                  `json:"icon"`
-	Labels      map[string]string       `json:"labels,omitempty"`
+	Name        string            `json:"name" validate:"checkname"`
+	Alias       string            `json:"alias" validate:"checkalias" optional:"true"`
+	Project     string            `json:"project" validate:"checkname"`
+	Description string            `json:"description" optional:"true"`
+	Icon        string            `json:"icon"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	// Annotations are set on the application as created, such as
+	// app.oam.dev/cel-expressions to have it read $( ) expressions.
+	Annotations map[string]string       `json:"annotations,omitempty"`
 	EnvBinding  []*EnvBinding           `json:"envBinding,omitempty"`
 	Component   *CreateComponentRequest `json:"component"`
 }
