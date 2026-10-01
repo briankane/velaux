@@ -67,6 +67,7 @@ export const ComponentNode = (props: ComponentNodeProps) => {
     <div
       className={classNames('graph-node', 'graph-node-resource', 'graph-node-component', {
         'warning-status': !node.resource.service?.healthy,
+        'traits-open': hidden.length > 0 && showTrait,
       })}
       style={{
         // 50 = (nodeWidth - 220)/2

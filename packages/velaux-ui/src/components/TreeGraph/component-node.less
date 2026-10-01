@@ -1,6 +1,11 @@
 // A component node: its name and health, then its traits as chips below.
 .graph-node-component {
   align-items: flex-start;
+  // Each node's transform gives it a stacking context of its own, so the node
+  // rises above its siblings while its trait list hangs over them.
+  &.traits-open {
+    z-index: 10;
+  }
   .component-node-body {
     display: flex;
     flex-direction: column;
