@@ -48,7 +48,7 @@ import (
 // ExpressionService helps forms edit the $( ) CEL expressions an application's
 // properties may hold.
 type ExpressionService interface {
-	Env(ctx context.Context, app *model.Application, surface, source string) (*apisv1.ExpressionEnvResponse, error)
+	Env(ctx context.Context, app *model.Application, surface, source, component string) (*apisv1.ExpressionEnvResponse, error)
 	Check(ctx context.Context, app *model.Application, req apisv1.ExpressionCheckRequest) (*apisv1.ExpressionCheckResponse, error)
 	SetOptIn(ctx context.Context, app *model.Application, on bool) error
 }
@@ -85,9 +85,11 @@ func optedIn(app *model.Application) bool {
 }
 
 // Env lists what an expression on the surface can read: the surface's context
-// fields and the application's source bindings. On the source surface, source
-// names the one being edited, which reads only those declared before it.
-func (e *expressionServiceImpl) Env(ctx context.Context, app *model.Application, surface, source string) (*apisv1.ExpressionEnvResponse, error) {
+// fields, the application's source bindings and, on a component or trait, its
+// other components. On the source surface, source names the one being edited,
+// which reads only those declared before it; component names the component being
+// edited, or the one a trait is on, which reads every component but itself.
+func (e *expressionServiceImpl) Env(ctx context.Context, app *model.Application, surface, source, component string) (*apisv1.ExpressionEnvResponse, error) {
 	contextSchema, ok := contextFor(surface)
 	if !ok {
 		return nil, bcode.ErrExpressionSurface
@@ -120,6 +122,9 @@ func (e *expressionServiceImpl) Env(ctx context.Context, app *model.Application,
 		sourceRoot.Children = append(sourceRoot.Children, binding)
 	}
 	resp.Variables = append(resp.Variables, sourceRoot)
+	if components := e.componentRoot(ctx, app, surface, component); components != nil {
+		resp.Variables = append(resp.Variables, components)
+	}
 	return resp, nil
 }
 
@@ -328,6 +333,10 @@ func (e *expressionServiceImpl) Check(ctx context.Context, app *model.Applicatio
 		}
 		exprStart := start + len("$(")
 		pos = exprStart + len(frag.Expr)
+		if issues := e.componentIssues(ctx, app, req, frag.Expr, exprStart); len(issues) > 0 {
+			resp.Issues = append(resp.Issues, issues...)
+			continue
+		}
 		out, err := celexpr.OutputType(env, frag.Expr)
 		if err != nil {
 			resp.Issues = append(resp.Issues, issuesAt(err.Error(), exprStart, frag.Expr)...)

@@ -790,6 +790,7 @@ func (c *application) GetWebServiceRoute() *restful.WebService {
 		Param(ws.PathParameter("appName", "identifier of the application").DataType("string")).
 		Param(ws.QueryParameter("surface", "component, trait, workflowstep or source").DataType("string").Required(true)).
 		Param(ws.QueryParameter("source", "on the source surface, the source being edited; it reads only those declared before it").DataType("string")).
+		Param(ws.QueryParameter("component", "on a component or trait, the component being edited or the one the trait is on; it reads every component but itself").DataType("string")).
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Returns(200, "OK", apis.ExpressionEnvResponse{}).
 		Returns(400, "Bad Request", bcode.Bcode{}).
@@ -1047,7 +1048,7 @@ func (c *application) createComponent(req *restful.Request, res *restful.Respons
 
 func (c *application) expressionEnv(req *restful.Request, res *restful.Response) {
 	app := req.Request.Context().Value(&apis.CtxKeyApplication).(*model.Application)
-	env, err := c.ExpressionService.Env(req.Request.Context(), app, req.QueryParameter("surface"), req.QueryParameter("source"))
+	env, err := c.ExpressionService.Env(req.Request.Context(), app, req.QueryParameter("surface"), req.QueryParameter("source"), req.QueryParameter("component"))
 	if err != nil {
 		bcode.ReturnError(req, res, err)
 		return
