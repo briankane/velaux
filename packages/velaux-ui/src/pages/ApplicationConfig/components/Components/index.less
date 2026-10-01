@@ -7,10 +7,16 @@
   padding: 4px 0;
   .components-list-title {
     display: flex;
+    gap: 8px;
+    align-items: center;
     height: 24px;
-    color: var(--primary-color);
-    font-size: 16px;
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 15px;
     cursor: pointer;
+    &:hover {
+      color: var(--primary-color);
+    }
   }
 }
 .components-list-operation {
@@ -21,9 +27,9 @@
 }
 .components-list-content {
   display: flex;
-  min-height: 48px;
-  padding: 16px 0;
-  color: #a6a6a6;
+  padding: 6px 0 12px;
+  color: #475569;
+  font-size: 13px;
 }
 .components-list-date {
   display: flex;
@@ -36,21 +42,27 @@
   display: flex;
   align-items: center;
   justify-content: start;
-  margin: 4px 4px 0 0;
-  padding: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  margin: 4px 6px 0 0;
+  padding: 3px 12px;
+  overflow: hidden;
+  color: #334155;
+  font-size: 12px;
+  line-height: 20px;
+  background: #f1f5f9;
+  border: 1px solid transparent;
+  border-radius: 999px;
   cursor: pointer;
   .trait-actions {
     position: absolute;
     right: 0;
     display: none;
-    width: 40px;
-    padding: 9.5px;
-    color: #1b58f4;
-    text-align: center;
-    background: rgba(166, 166, 166, 0.9);
-    border-radius: 0 4px 4px 0;
+    top: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    color: #dc2626;
+    background: #fee2e2;
   }
 }
 .trait-icon.disable {

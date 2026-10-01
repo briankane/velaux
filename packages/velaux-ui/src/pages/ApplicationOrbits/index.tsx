@@ -29,7 +29,6 @@ const ApplicationOrbits = (props: Props) => {
   const [adding, setAdding] = useState(false);
   const appName = applicationDetail?.name || '';
   const projectName = applicationDetail?.project?.name || '';
-  const summary = summariseStatuses(applicationAllStatus);
   const reload = () => {
     dispatch({ type: 'application/getApplicationEnvbinding', payload: { appName } });
     dispatch({ type: 'application/getApplicationWorkflows', payload: { appName } });
@@ -53,45 +52,12 @@ const ApplicationOrbits = (props: Props) => {
       <If condition={envbinding.length === 0}>
         <Empty message={<Translation>This application is not bound to an environment yet</Translation>} />
       </If>
-      <ResourceGrid>
-        {envbinding.map((binding) => {
-          const env = summary.envs?.find((e) => e.env === binding.name);
-          const health = env?.health || 'undeployed';
-          const open = () => dispatch(routerRedux.push(`/applications/${appName}/envbinding/${binding.name}/status`));
-          return (
-            <ResourceCard
-              key={binding.name}
-              tone={health}
-              badge={healthLabels[health]}
-              icon={<AiOutlineEnvironment />}
-              title={binding.alias || binding.name}
-              subtitle={binding.alias && binding.alias !== binding.name ? binding.name : undefined}
-              onOpen={open}
-              description={
-                env
-                  ? `${env.healthyComponents}/${env.components} components healthy` +
-                    (env.workflow ? `, workflow ${workflowLabel(env.workflow).toLowerCase()}` : '')
-                  : binding.description || 'Not deployed yet'
-              }
-              chips={
-                binding.targetNames?.length ? (
-                  <React.Fragment>
-                    {binding.targetNames.map((t) => (
-                      <Chip key={t}>{t}</Chip>
-                    ))}
-                  </React.Fragment>
-                ) : undefined
-              }
-              footLeft={binding.createTime && `Bound ${beautifyTime(binding.createTime)}`}
-              footRight={
-                <a onClick={open}>
-                  <Translation>Open</Translation>
-                </a>
-              }
-            />
-          );
-        })}
-      </ResourceGrid>
+      <OrbitCards
+        appName={appName}
+        envbinding={envbinding}
+        applicationAllStatus={applicationAllStatus}
+        dispatch={dispatch}
+      />
       <If condition={adding}>
         <AddAndEditEnvBind
           envbinding={envbinding}
@@ -107,3 +73,56 @@ const ApplicationOrbits = (props: Props) => {
 };
 
 export default connect((store: any) => ({ ...store.application }))(ApplicationOrbits);
+
+// OrbitCards shows each env an application is bound to as a card of its
+// health, opening the env's live view.
+export const OrbitCards = (props: {
+  appName: string;
+  envbinding: EnvBinding[];
+  applicationAllStatus: OrbitStatus[];
+  dispatch: (action: any) => void;
+}) => {
+  const { appName, envbinding, applicationAllStatus, dispatch } = props;
+  const summary = summariseStatuses(applicationAllStatus);
+  return (
+    <ResourceGrid>
+      {envbinding.map((binding) => {
+        const env = summary.envs?.find((e) => e.env === binding.name);
+        const health = env?.health || 'undeployed';
+        const open = () => dispatch(routerRedux.push(`/applications/${appName}/envbinding/${binding.name}/status`));
+        return (
+          <ResourceCard
+            key={binding.name}
+            tone={health}
+            badge={healthLabels[health]}
+            icon={<AiOutlineEnvironment />}
+            title={binding.alias || binding.name}
+            subtitle={binding.alias && binding.alias !== binding.name ? binding.name : undefined}
+            onOpen={open}
+            description={
+              env
+                ? `${env.healthyComponents}/${env.components} components healthy` +
+                  (env.workflow ? `, workflow ${workflowLabel(env.workflow).toLowerCase()}` : '')
+                : binding.description || 'Not deployed yet'
+            }
+            chips={
+              binding.targetNames?.length ? (
+                <React.Fragment>
+                  {binding.targetNames.map((t) => (
+                    <Chip key={t}>{t}</Chip>
+                  ))}
+                </React.Fragment>
+              ) : undefined
+            }
+            footLeft={binding.createTime && `Bound ${beautifyTime(binding.createTime)}`}
+            footRight={
+              <a onClick={open}>
+                <Translation>Open</Translation>
+              </a>
+            }
+          />
+        );
+      })}
+    </ResourceGrid>
+  );
+};

@@ -1,4 +1,4 @@
-import { Grid, Button, Card, Message, Dialog, Balloon, Tag, Loading } from '@alifd/next';
+import { Grid, Button, Message, Dialog, Loading } from '@alifd/next';
 import React, { Component } from 'react';
 import './index.less';
 import { connect } from 'dva';
@@ -18,10 +18,10 @@ import {
 import { getComponentDefinitions, getPolicyDefinitions } from '../../api/definitions';
 import { deployNamespaces } from '../../utils/restrictions';
 import { If } from '../../components/If';
-import Item from '../../components/Item';
-import NumItem from '../../components/NumItem';
 import Permission from '../../components/Permission';
 import { Title } from '../../components/Title';
+import type { OrbitStatus } from '../ApplicationList/components/AppStatus/health';
+import { OrbitCards } from '../ApplicationOrbits';
 import { Translation } from '../../components/Translation';
 import { routerRedux, Link } from 'dva/router';
 import i18n from '../../i18n';
@@ -41,7 +41,7 @@ import type {
   DefinitionBase,
   ApplicationSource,
 } from '@velaux/data';
-import { beautifyTime, momentDate, showAlias } from '../../utils/common';
+import { beautifyTime, momentDate } from '../../utils/common';
 import type { APIError } from '../../utils/errors';
 import { handleError } from '../../utils/errors';
 import { locale } from '../../utils/locale';
@@ -559,125 +559,94 @@ class ApplicationConfig extends Component<Props, State> {
     return (
       <div>
         {!section && (
-          <Row className="flex-row" wrap={true}>
-            <Col xl={16} l={24} s={24} style={{ padding: '0 8px' }}>
-              <Card locale={locale().Card} contentHeight="auto" subTitle={applicationDetail?.description}>
-                <Row wrap={true}>
-                  <Col xxs={12}>
-                    <div className="app-name">{showAlias(applicationDetail?.name, applicationDetail?.alias)}</div>
-                  </Col>
-                  <Col xxs={12} className="flexright" style={{ marginBottom: '16px' }}>
-                    <div>
-                      <Permission
-                        request={{
-                          resource: `project:${projectName}/application/:${appName}`,
-                          action: 'delete',
-                        }}
-                        project={projectName}
-                      >
-                        <Button
-                          className="danger-btn"
-                          style={{ marginRight: '16px' }}
-                          onClick={this.onDeleteApplication}
-                          type="secondary"
-                        >
-                          <Translation>Remove</Translation>
-                        </Button>
-                      </Permission>
-                      <Permission
-                        request={{
-                          resource: `project:${projectName}/application/:${appName}`,
-                          action: 'update',
-                        }}
-                        project={projectName}
-                      >
-                        <Button onClick={this.editAppPlan} type="secondary">
-                          <Translation>Edit</Translation>
-                        </Button>
-                      </Permission>
-                    </div>
-                  </Col>
+          <div className="app-overview">
+            <div className="app-overview-about">
+              <div className="app-overview-head">
+                <span className="app-overview-title">
+                  <Translation>About</Translation>
+                </span>
+                <div className="app-overview-actions">
+                  <Permission
+                    request={{ resource: `project:${projectName}/application/:${appName}`, action: 'update' }}
+                    project={projectName}
+                  >
+                    <Button onClick={this.editAppPlan}>
+                      <Translation>Edit</Translation>
+                    </Button>
+                  </Permission>
+                  <Permission
+                    request={{ resource: `project:${projectName}/application/:${appName}`, action: 'delete' }}
+                    project={projectName}
+                  >
+                    <Button className="danger-btn" onClick={this.onDeleteApplication}>
+                      <Translation>Remove</Translation>
+                    </Button>
+                  </Permission>
+                </div>
+              </div>
+              <p className={`app-overview-description ${applicationDetail?.description ? '' : 'empty'}`}>
+                {applicationDetail?.description || <Translation>No description</Translation>}
+              </p>
+              <div className="app-overview-facts">
+                <div>
+                  <span>
+                    <Translation>Project</Translation>
+                  </span>
+                  <Link to={`/projects/${applicationDetail?.project?.name}`}>
+                    {applicationDetail?.project?.alias || applicationDetail?.project?.name}
+                  </Link>
+                </div>
+                <div>
+                  <span>
+                    <Translation>Created</Translation>
+                  </span>
+                  <span title={momentDate(applicationDetail.createTime)}>
+                    {beautifyTime(applicationDetail.createTime)}
+                  </span>
+                </div>
+                <div>
+                  <span>
+                    <Translation>Updated</Translation>
+                  </span>
+                  <span title={momentDate(applicationDetail.updateTime)}>
+                    {beautifyTime(applicationDetail.updateTime)}
+                  </span>
+                </div>
+              </div>
+              {applicationDetail?.labels && Object.keys(applicationDetail.labels).length > 0 && (
+                <div className="app-overview-labels">
+                  {Object.keys(applicationDetail.labels).map((key) => (
+                    <span key={key} className="resource-chip">{`${key}=${applicationDetail.labels?.[key]}`}</span>
+                  ))}
+                </div>
+              )}
+            </div>
 
-                  <Col l={8} xs={24}>
-                    <Item
-                      label={<Translation>Project</Translation>}
-                      value={
-                        <Link to={`/projects/${applicationDetail?.project?.name}`}>
-                          {applicationDetail?.project?.alias
-                            ? applicationDetail?.project?.alias
-                            : applicationDetail?.project?.name}
-                        </Link>
-                      }
-                    />
-                  </Col>
+            <div className="app-overview-stats">
+              {[
+                { n: statistics?.envCount, label: 'Environments', to: 'orbits' },
+                { n: statistics?.targetCount, label: 'Targets', to: 'orbits' },
+                { n: components?.length, label: 'Components', to: 'config/components' },
+                { n: statistics?.workflowCount, label: 'Workflows', to: 'workflows' },
+                { n: statistics?.revisionCount, label: 'Revisions', to: 'revisions' },
+              ].map((stat) => (
+                <Link key={stat.label} className="app-overview-stat" to={`/applications/${appName}/${stat.to}`}>
+                  <span className="app-overview-stat-n">{stat.n ?? '-'}</span>
+                  <Translation>{stat.label}</Translation>
+                </Link>
+              ))}
+            </div>
 
-                  <Col l={8} xs={24}>
-                    <Item
-                      label={<Translation>Create Time</Translation>}
-                      value={
-                        <Balloon trigger={<span>{beautifyTime(applicationDetail.createTime)}</span>}>
-                          {momentDate(applicationDetail.createTime) || '-'}
-                        </Balloon>
-                      }
-                    />
-                  </Col>
-
-                  <Col l={8} xs={24}>
-                    <Item
-                      label={<Translation>Update Time</Translation>}
-                      value={
-                        <Balloon trigger={<span>{beautifyTime(applicationDetail.updateTime)}</span>}>
-                          {momentDate(applicationDetail.updateTime) || '-'}
-                        </Balloon>
-                      }
-                    />
-                  </Col>
-
-                  <Col xxs={24}>
-                    {applicationDetail?.labels &&
-                      Object.keys(applicationDetail?.labels).map((key) => {
-                        if (applicationDetail?.labels) {
-                          return (
-                            <Tag
-                              key={key}
-                              style={{ margin: '4px' }}
-                              color="blue"
-                            >{`${key}=${applicationDetail?.labels[key]}`}</Tag>
-                          );
-                        }
-                        return;
-                      })}
-                  </Col>
-                </Row>
-              </Card>
-            </Col>
-            <Col xl={8} l={24} s={24} style={{ padding: '0 8px' }}>
-              <Card locale={locale().Card} contentHeight="auto" style={{ height: '100%' }}>
-                <Row>
-                  <Col span={6} style={{ padding: '22px 0' }}>
-                    <NumItem number={statistics?.envCount} title={i18n.t('Environment Count').toString()} />
-                  </Col>
-                  <Col span={6} style={{ padding: '22px 0' }}>
-                    <NumItem number={statistics?.targetCount} title={i18n.t('Target Count').toString()} />
-                  </Col>
-                  <Col span={6} style={{ padding: '22px 0' }}>
-                    <NumItem
-                      number={statistics?.revisionCount}
-                      to={`/applications/${applicationDetail.name}/revisions`}
-                      title={i18n.t('Revision Count').toString()}
-                    />
-                  </Col>
-                  <Col span={6} style={{ padding: '22px 0' }}>
-                    <NumItem
-                      number={statistics?.workflowCount}
-                      to={`/applications/${applicationDetail.name}/workflows`}
-                      title={i18n.t('Workflow Count').toString()}
-                    />
-                  </Col>
-                </Row>
-              </Card>
-            </Col>
-          </Row>
+            <div className="app-overview-section">
+              <Translation>Environments</Translation>
+            </div>
+            <OrbitCards
+              appName={appName}
+              envbinding={envbinding || []}
+              applicationAllStatus={(this.props.applicationAllStatus || []) as OrbitStatus[]}
+              dispatch={this.props.dispatch}
+            />
+          </div>
         )}
         <Row wrap={true} className="app-spec">
           {section === 'sources' && (
@@ -686,8 +655,8 @@ class ApplicationConfig extends Component<Props, State> {
                 <Col span={24} className="padding16">
                   <Title
                     title={
-                      <span className="font-size-16 font-weight-bold">
-                        <Translation>Sources</Translation>
+                      <span className="app-section-hint">
+                        <Translation>What the application reads when it deploys, as $(source.name).</Translation>
                       </span>
                     }
                     actions={[
@@ -698,13 +667,13 @@ class ApplicationConfig extends Component<Props, State> {
                         }}
                         project={projectName}
                       >
-                        <a
+                        <Button
                           key={'add'}
-                          className="font-size-14 font-weight-400"
+                          type="primary"
                           onClick={() => this.setState({ visibleSource: true, editSource: undefined })}
                         >
                           <Translation>New Source</Translation>
-                        </a>
+                        </Button>
                       </Permission>,
                     ]}
                   />
@@ -724,8 +693,8 @@ class ApplicationConfig extends Component<Props, State> {
                 <Col span={24} className="padding16">
                   <Title
                     title={
-                      <span className="font-size-16 font-weight-bold">
-                        <Translation>Components</Translation>
+                      <span className="app-section-hint">
+                        <Translation>What the application runs, and the traits that shape each one.</Translation>
                       </span>
                     }
                     actions={
@@ -738,9 +707,9 @@ class ApplicationConfig extends Component<Props, State> {
                               }}
                               project={projectName}
                             >
-                              <a key={'add'} onClick={this.onAddComponent} className="font-size-14 font-weight-400">
+                              <Button key={'add'} type="primary" onClick={this.onAddComponent}>
                                 <Translation>New Component</Translation>
-                              </a>
+                              </Button>
                             </Permission>,
                           ]
                         : []
@@ -773,8 +742,10 @@ class ApplicationConfig extends Component<Props, State> {
                 <Col span={24} className="padding16">
                   <Title
                     title={
-                      <span className="font-size-16 font-weight-bold">
-                        <Translation>Policies</Translation>
+                      <span className="app-section-hint">
+                        <Translation>
+                          Rules across the application: where it deploys and what it overrides there.
+                        </Translation>
                       </span>
                     }
                     actions={[
@@ -785,9 +756,9 @@ class ApplicationConfig extends Component<Props, State> {
                         }}
                         project={projectName}
                       >
-                        <a key={'add'} className="font-size-14 font-weight-400" onClick={this.onAddPolicy}>
+                        <Button key={'add'} type="primary" onClick={this.onAddPolicy}>
                           <Translation>New Policy</Translation>
-                        </a>
+                        </Button>
                       </Permission>,
                     ]}
                   />
@@ -821,14 +792,14 @@ class ApplicationConfig extends Component<Props, State> {
                         }}
                         project={projectName}
                       >
-                        <a key={'add'} className="font-size-14 font-weight-400" onClick={this.onAddTrigger}>
+                        <Button key={'add'} type="primary" onClick={this.onAddTrigger}>
                           <Translation>New Trigger</Translation>
-                        </a>
+                        </Button>
                       </Permission>,
                     ]}
                     title={
-                      <span className="font-size-16 font-weight-bold">
-                        <Translation>Triggers</Translation>
+                      <span className="app-section-hint">
+                        <Translation>Webhooks that start a workflow from outside.</Translation>
                       </span>
                     }
                   />
