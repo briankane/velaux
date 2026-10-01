@@ -204,7 +204,7 @@ func packageDetail(base *apisv1.PackageBase, files map[string]string) *apisv1.Pa
 		return detail
 	}
 	detail.PackageName = parsed.name
-	detail.Functions = parsed.functions
-	detail.Types = parsed.types
+	detail.Functions = append(detail.Functions, parsed.functions...)
+	detail.Types = append(detail.Types, parsed.types...)
 	return detail
 }

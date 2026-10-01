@@ -119,8 +119,8 @@ const PackageDetail = (props: Props) => {
   }
   const importLine = `import "${detail.path}"`;
   const tabs: Array<{ key: Tab; label: string; count: number }> = [
-    { key: 'functions', label: 'Functions', count: detail.functionList.length },
-    { key: 'types', label: 'Types', count: detail.types.length },
+    { key: 'functions', label: 'Functions', count: (detail.functionList || []).length },
+    { key: 'types', label: 'Types', count: (detail.types || []).length },
     { key: 'files', label: 'Files', count: (detail.fileList || []).length },
   ];
   return (
@@ -202,7 +202,7 @@ const PackageDetail = (props: Props) => {
         ))}
       </div>
       {tab === 'functions' &&
-        (detail.functionList.length === 0 ? (
+        ((detail.functionList || []).length === 0 ? (
           <Empty message={<Translation>No functions</Translation>} />
         ) : (
           <div className="row-list package-function-list">
@@ -218,17 +218,17 @@ const PackageDetail = (props: Props) => {
                 <Translation>Provider</Translation>
               </span>
             </div>
-            {detail.functionList.map((fn) => (
+            {(detail.functionList || []).map((fn) => (
               <FunctionRow key={fn.name} fn={fn} />
             ))}
           </div>
         ))}
       {tab === 'types' &&
-        (detail.types.length === 0 ? (
+        ((detail.types || []).length === 0 ? (
           <Empty message={<Translation>No types</Translation>} />
         ) : (
           <div className="row-list package-type-list">
-            {detail.types.map((t) => (
+            {(detail.types || []).map((t) => (
               <TypeRow key={t.name} type={t} />
             ))}
           </div>

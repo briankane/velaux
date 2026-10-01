@@ -101,6 +101,7 @@ func TestDetailPackage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"workflow steps"}, builtin.UsedBy)
 	assert.True(t, builtin.Builtin)
+	assert.NotNil(t, builtin.Types, "a package without types still lists them, empty")
 	assert.NotEmpty(t, builtin.Functions)
 	assert.Empty(t, builtin.Issue)
 
