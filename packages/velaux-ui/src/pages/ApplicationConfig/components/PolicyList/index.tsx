@@ -1,11 +1,11 @@
-import { Button, Dialog } from '@alifd/next';
+import { Dialog } from '@alifd/next';
 import React, { useState } from 'react';
-import { AiOutlineControl, AiOutlineDelete, AiOutlineDown, AiOutlineRight } from 'react-icons/ai';
+import { AiOutlineControl, AiOutlineDelete, AiOutlineDown, AiOutlineEdit, AiOutlineRight } from 'react-icons/ai';
 
 import Empty from '../../../../components/Empty';
 import Permission from '../../../../components/Permission';
 import { PolicyScopeTag } from '../../../../components/PolicyScopeTag';
-import { flattenProperties, PropertyList } from '../../../../components/RowList';
+import { flattenProperties, PropertyList, RowAction } from '../../../../components/RowList';
 import type { Tone } from '../../../../components/StatusBadge';
 import { StatusBadge } from '../../../../components/StatusBadge';
 import { Translation } from '../../../../components/Translation';
@@ -123,9 +123,7 @@ const PolicyList = (props: Props) => {
               <span className="row-list-actions">
                 {row.policy && (
                   <React.Fragment>
-                    <Button text type="primary" onClick={() => props.onShowPolicy(row.name)}>
-                      <Translation>Edit</Translation>
-                    </Button>
+                    <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => props.onShowPolicy(row.name)} />
                     <Permission
                       request={{
                         resource: `project:${projectName}/application:${applicationDetail?.name}/policy:${row.name}`,
@@ -133,7 +131,12 @@ const PolicyList = (props: Props) => {
                       }}
                       project={projectName}
                     >
-                      <AiOutlineDelete className="row-list-delete" onClick={() => confirmDelete(row.name)} />
+                      <RowAction
+                        icon={<AiOutlineDelete />}
+                        label="Delete"
+                        danger
+                        onClick={() => confirmDelete(row.name)}
+                      />
                     </Permission>
                   </React.Fragment>
                 )}

@@ -1,5 +1,6 @@
 import React from 'react';
 
+import i18n from '../../i18n';
 import { flattenProperties } from './properties';
 import './index.less';
 
@@ -16,3 +17,19 @@ export const PropertyList = (props: { properties: unknown }) => (
     ))}
   </dl>
 );
+
+// RowAction is one of a row's actions, as an icon button named by its tooltip.
+export const RowAction = (props: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) => {
+  const label = i18n.t(props.label).toString();
+  return (
+    <button
+      type="button"
+      className={`row-list-action ${props.danger ? 'danger' : ''}`}
+      title={label}
+      aria-label={label}
+      onClick={props.onClick}
+    >
+      {props.icon}
+    </button>
+  );
+};

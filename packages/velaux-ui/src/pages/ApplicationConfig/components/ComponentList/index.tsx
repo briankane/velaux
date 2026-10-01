@@ -1,6 +1,6 @@
-import { Button, Dialog } from '@alifd/next';
+import { Dialog } from '@alifd/next';
 import React, { useState } from 'react';
-import { AiOutlineDelete, AiOutlineDown, AiOutlineLink, AiOutlineRight } from 'react-icons/ai';
+import { AiOutlineDelete, AiOutlineDown, AiOutlineEdit, AiOutlineLink, AiOutlineRight } from 'react-icons/ai';
 import { IoMdAdd } from 'react-icons/io';
 
 import type {
@@ -16,7 +16,7 @@ import kubernetes from '../../../../assets/kubernetes.svg';
 import terraform from '../../../../assets/terraform.svg';
 import Empty from '../../../../components/Empty';
 import Permission from '../../../../components/Permission';
-import { PropertyList } from '../../../../components/RowList';
+import { PropertyList, RowAction } from '../../../../components/RowList';
 import { StatusBadge } from '../../../../components/StatusBadge';
 import { Translation } from '../../../../components/Translation';
 import i18n from '../../../../i18n';
@@ -200,9 +200,7 @@ const ComponentList = (props: Props) => {
                 )}
               </span>
               <span className="row-list-actions">
-                <Button text type="primary" onClick={() => props.editComponent(com)}>
-                  <Translation>Edit</Translation>
-                </Button>
+                <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => props.editComponent(com)} />
                 {!com.main && !application?.readOnly && (
                   <Permission
                     request={{
@@ -211,7 +209,7 @@ const ComponentList = (props: Props) => {
                     }}
                     project={projectName}
                   >
-                    <AiOutlineDelete className="row-list-delete" onClick={() => remove(com.name)} />
+                    <RowAction icon={<AiOutlineDelete />} label="Delete" danger onClick={() => remove(com.name)} />
                   </Permission>
                 )}
               </span>

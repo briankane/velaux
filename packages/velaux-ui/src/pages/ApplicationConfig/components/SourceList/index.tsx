@@ -1,10 +1,10 @@
-import { Button, Dialog } from '@alifd/next';
+import { Dialog } from '@alifd/next';
 import React, { useState } from 'react';
-import { AiOutlineDelete, AiOutlineDown, AiOutlineImport, AiOutlineRight } from 'react-icons/ai';
+import { AiOutlineDelete, AiOutlineDown, AiOutlineEdit, AiOutlineImport, AiOutlineRight } from 'react-icons/ai';
 
 import Empty from '../../../../components/Empty';
 import Permission from '../../../../components/Permission';
-import { flattenProperties, PropertyList } from '../../../../components/RowList';
+import { flattenProperties, PropertyList, RowAction } from '../../../../components/RowList';
 import { Translation } from '../../../../components/Translation';
 import type { ApplicationDetail, ApplicationSource } from '@velaux/data';
 import { locale } from '../../../../utils/locale';
@@ -73,9 +73,7 @@ const SourceList = ({ sources, applicationDetail, onDeleteSource, onShowSource }
                 <code className="row-list-code">{`$(source.${item.name})`}</code>
               </span>
               <span className="row-list-actions">
-                <Button text type="primary" onClick={() => onShowSource(item)}>
-                  <Translation>Edit</Translation>
-                </Button>
+                <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => onShowSource(item)} />
                 <Permission
                   request={{
                     resource: `project:${projectName}/application:${applicationDetail?.name}/source:${item.name}`,
@@ -83,7 +81,12 @@ const SourceList = ({ sources, applicationDetail, onDeleteSource, onShowSource }
                   }}
                   project={projectName}
                 >
-                  <AiOutlineDelete className="row-list-delete" onClick={() => confirmDelete(item.name)} />
+                  <RowAction
+                    icon={<AiOutlineDelete />}
+                    label="Delete"
+                    danger
+                    onClick={() => confirmDelete(item.name)}
+                  />
                 </Permission>
               </span>
             </div>

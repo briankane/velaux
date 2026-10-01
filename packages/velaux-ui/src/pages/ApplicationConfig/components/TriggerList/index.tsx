@@ -1,4 +1,4 @@
-import { Button, Dialog, Grid, Message, Tab } from '@alifd/next';
+import { Dialog, Grid, Message, Tab } from '@alifd/next';
 import React, { Component } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 
@@ -7,13 +7,20 @@ import Empty from '../../../../components/Empty';
 import { If } from '../../../../components/If';
 import Item from '../../../../components/Item';
 import Permission from '../../../../components/Permission';
-import '../../../../components/RowList';
+import { RowAction } from '../../../../components/RowList';
 import { Translation } from '../../../../components/Translation';
 import type { ApplicationComponentBase, ApplicationComponent, Trigger, ApplicationDetail } from '@velaux/data';
 import { beautifyTime, momentDate, showAlias } from '../../../../utils/common';
 import './index.less';
 import { locale } from '../../../../utils/locale';
-import { AiOutlineApi, AiOutlineDelete, AiOutlineDown, AiOutlineRight } from 'react-icons/ai';
+import {
+  AiOutlineApi,
+  AiOutlineDelete,
+  AiOutlineDown,
+  AiOutlineEdit,
+  AiOutlinePlayCircle,
+  AiOutlineRight,
+} from 'react-icons/ai';
 
 type Props = {
   appName: string;
@@ -207,12 +214,12 @@ class TriggerList extends Component<Props, State> {
                       )}
                     </span>
                     <span className="row-list-actions">
-                      <Button text type="primary" onClick={() => this.showWebhook(item)}>
-                        <Translation>Trigger</Translation>
-                      </Button>
-                      <Button text type="primary" onClick={() => this.props.onEditTrigger(item)}>
-                        <Translation>Edit</Translation>
-                      </Button>
+                      <RowAction
+                        icon={<AiOutlinePlayCircle />}
+                        label="Trigger"
+                        onClick={() => this.showWebhook(item)}
+                      />
+                      <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => this.props.onEditTrigger(item)} />
                       <Permission
                         request={{
                           resource: `project:${projectName}/application:${applicationDetail?.name}/trigger:${item.name}`,
@@ -220,8 +227,10 @@ class TriggerList extends Component<Props, State> {
                         }}
                         project={projectName}
                       >
-                        <AiOutlineDelete
-                          className="row-list-delete"
+                        <RowAction
+                          icon={<AiOutlineDelete />}
+                          label="Delete"
+                          danger
                           onClick={() => this.handleTriggerDelete(item.token || '')}
                         />
                       </Permission>
