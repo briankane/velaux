@@ -67,3 +67,20 @@
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
+
+// The name, with its health at the right.
+.component-node-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.component-node-name {
+  overflow: hidden;
+  color: #0f172a;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
