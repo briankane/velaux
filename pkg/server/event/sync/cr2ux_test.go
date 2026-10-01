@@ -32,6 +32,7 @@ import (
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/common"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	"github.com/oam-dev/kubevela/apis/types"
+	"github.com/oam-dev/kubevela/pkg/oam"
 	"github.com/oam-dev/kubevela/pkg/oam/util"
 	common2 "github.com/oam-dev/kubevela/pkg/utils/common"
 
@@ -130,10 +131,12 @@ var _ = Describe("Test CR convert to ux", func() {
 		app1.Namespace = appNS1
 		envName := model.AutoGenEnvNamePrefix + app1.Namespace
 		app1.Spec.Sources = []v1beta1.ApplicationSource{{Name: "db", Type: "db-lookup", Properties: &runtime.RawExtension{Raw: []byte(`{"secret":"db-creds"}`)}}}
+		app1.Annotations = map[string]string{oam.AnnotationCelExpressions: "true", "kubectl.kubernetes.io/last-applied-configuration": "{}"}
 
 		Expect(cr2ux.AddOrUpdate(context.Background(), app1)).Should(BeNil())
 		synced := model.Application{Name: apName1}
 		Expect(ds.Get(ctx, &synced)).Should(BeNil())
+		Expect(synced.Annotations).Should(Equal(map[string]string{oam.AnnotationCelExpressions: "true"}), "the expressions opt-in is synced, other annotations are not")
 		Expect(synced.Sources).Should(HaveLen(1))
 		Expect(string(synced.Sources[0].Properties.Raw)).Should(MatchJSON(`{"secret":"db-creds"}`))
 		comp1 := model.ApplicationComponent{AppPrimaryKey: apName1, Name: "nginx"}
@@ -158,6 +161,7 @@ var _ = Describe("Test CR convert to ux", func() {
 		app1.Namespace = appNS1
 		app1.Status.LatestRevision = &common.Revision{Name: "v2"}
 		app1.Spec = app2.Spec
+		app1.Annotations = nil
 		Expect(cr2ux.AddOrUpdate(context.Background(), app1)).Should(BeNil())
 		comp3 := model.ApplicationComponent{AppPrimaryKey: apName1, Name: "blog"}
 		Expect(ds.Get(context.Background(), &comp3)).Should(BeNil())
@@ -170,6 +174,7 @@ var _ = Describe("Test CR convert to ux", func() {
 		resynced := model.Application{Name: apName1}
 		Expect(ds.Get(ctx, &resynced)).Should(BeNil())
 		Expect(resynced.Sources).Should(BeEmpty(), "a source removed from the CR is removed from VelaUX")
+		Expect(resynced.Annotations).ShouldNot(HaveKey(oam.AnnotationCelExpressions), "an opt-in removed from the CR is removed from VelaUX")
 		appwf2 := &model.Workflow{AppPrimaryKey: apName1, Name: appwf1.Name}
 		Expect(ds.Get(ctx, appwf2)).Should(BeNil())
 		Expect(len(appwf2.Steps)).Should(BeEquivalentTo(0))
