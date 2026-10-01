@@ -48,7 +48,7 @@ import { locale } from '../../utils/locale';
 import EditAppDialog from '../ApplicationList/components/EditAppDialog';
 
 import ComponentDialog from './components/ComponentDialog';
-import Components from './components/Components';
+import ComponentList from './components/ComponentList';
 import PolicyDialog from './components/PolicyDialog';
 import PolicyList from './components/PolicyList';
 import SourceDialog from './components/SourceDialog';
@@ -718,20 +718,14 @@ class ApplicationConfig extends Component<Props, State> {
                 </Col>
               </Row>
 
-              <Components
+              <ComponentList
                 application={applicationDetail}
                 components={components || []}
-                editComponent={(component: ApplicationComponentBase) => {
-                  this.editComponent(component);
-                }}
-                onDeleteComponent={(component: string) => {
-                  this.onDeleteComponent(component);
-                }}
+                statuses={(this.props.applicationAllStatus || []) as any}
+                editComponent={(component: ApplicationComponentBase) => this.editComponent(component)}
+                onDeleteComponent={(component: string) => this.onDeleteComponent(component)}
                 onDeleteTrait={this.onDeleteTrait}
-                onAddTrait={(name: string) => {
-                  this.onAddTrait(name, true);
-                }}
-                onAddComponent={this.onAddComponent}
+                onAddTrait={(name: string) => this.onAddTrait(name, true)}
                 changeTraitStats={this.changeTraitStats}
               />
             </Col>
