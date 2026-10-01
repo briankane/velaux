@@ -23,7 +23,7 @@
   display: inline-flex;
   gap: 6px;
   align-items: center;
-  padding: 2px 10px 2px 8px;
+  padding: 3px 12px 3px 10px;
   color: var(--health);
   font-weight: 600;
   font-size: 12px;
@@ -53,16 +53,16 @@
 
 .app-workflow {
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
   white-space: nowrap;
 }
 
 .app-components {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: 140px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .app-components-text {
@@ -77,7 +77,7 @@
 }
 
 .app-components-bar {
-  height: 4px;
+  height: 6px;
   overflow: hidden;
   background: #e2e8f0;
   border-radius: 2px;
@@ -113,4 +113,12 @@
   font-size: 12px;
   background: #f1f5f9;
   border-radius: 4px;
+}
+
+.app-components.compact {
+  gap: 4px;
+  font-size: 12px;
+  .app-components-bar {
+    height: 4px;
+  }
 }

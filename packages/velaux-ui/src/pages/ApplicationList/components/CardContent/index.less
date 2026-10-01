@@ -55,18 +55,18 @@
 
 .app-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-  padding: 16px 0;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 20px;
+  padding: 20px 0;
 }
 
 // An application card, its left edge in the colour of its health.
 .app-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   min-width: 0;
-  padding: 16px 16px 12px;
+  padding: 20px 22px 16px;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-left: 3px solid var(--health);
@@ -79,8 +79,8 @@
 
 .app-card-head {
   display: flex;
-  gap: 10px;
-  align-items: flex-start;
+  gap: 12px;
+  align-items: center;
 }
 
 .app-card-icon {
@@ -88,15 +88,15 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   color: #475569;
-  font-size: 18px;
+  font-size: 20px;
   background: #f1f5f9;
   border-radius: 6px;
   img {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     object-fit: contain;
   }
 }
@@ -110,8 +110,8 @@
     overflow: hidden;
     color: #0f172a;
     font-weight: 600;
-    font-size: 15px;
-    line-height: 20px;
+    font-size: 16px;
+    line-height: 22px;
     white-space: nowrap;
     text-overflow: ellipsis;
     &:hover {
@@ -151,11 +151,11 @@
 
 .app-card-description {
   display: -webkit-box;
-  min-height: 18px;
+  min-height: 40px;
   overflow: hidden;
   color: #475569;
   font-size: 13px;
-  line-height: 18px;
+  line-height: 20px;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -180,7 +180,7 @@
   display: flex;
   justify-content: space-between;
   margin-top: auto;
-  padding-top: 8px;
+  padding-top: 12px;
   color: #94a3b8;
   font-size: 12px;
   border-top: 1px solid #f1f5f9;
@@ -188,4 +188,42 @@
 
 .app-card-readonly {
   color: #b45309;
+}
+
+// The table view, as a card like the rest of the page.
+.app-table {
+  margin-top: 20px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  .next-table,
+  .next-table table {
+    border: none;
+  }
+  .next-table th {
+    padding-top: 6px;
+    color: #64748b;
+    font-weight: 600;
+    background: #f8fafc;
+  }
+}
+
+.app-table-name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  a {
+    font-weight: 600;
+  }
+}
+
+.app-table-alias {
+  padding: 1px 8px;
+  color: #475569;
+  font-size: 12px;
+  white-space: nowrap;
+  background: #f1f5f9;
+  border-radius: 999px;
 }
