@@ -73,16 +73,6 @@ const defaultWorkspaceMenus: Menu[] = [
     relatedRoute: ['/targets'],
   },
   {
-    catalog: 'Delivery',
-    workspace: 'continuous-delivery',
-    type: MenuTypes.Workspace,
-    icon: <AiFillProject></AiFillProject>,
-    name: 'projects',
-    label: 'Projects',
-    to: '/projects',
-    relatedRoute: ['/projects'],
-  },
-  {
     catalog: 'Operations',
     workspace: 'continuous-delivery',
     type: MenuTypes.Workspace,
