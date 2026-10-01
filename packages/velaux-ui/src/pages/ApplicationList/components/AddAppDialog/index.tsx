@@ -112,6 +112,8 @@ class AppDialog extends React.Component<Props, State> {
     const type = defaultComponentType(this.props.componentDefinitions || []);
     if (type) {
       this.onDetailComponentDefinition(type);
+    } else {
+      this.setState({ definitionLoading: false });
     }
   }
 

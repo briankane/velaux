@@ -168,6 +168,8 @@ class ComponentDialog extends React.Component<Props, State> {
       const getInitComponentType: string = this.field.getValue('componentType') || '';
       if (getInitComponentType) {
         this.onDetailsComponentDefinition(getInitComponentType);
+      } else {
+        this.setState({ loading: false });
       }
     }
     dispatch({
