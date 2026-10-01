@@ -1,11 +1,5 @@
 // The navigation reads as a quiet column: muted items, a soft tint on hover,
 // and the current page marked by a tinted pill with an accent bar.
-@nav-text: #a3adbd;
-@nav-text-strong: #f1f5f9;
-@nav-heading: #64748b;
-@nav-accent: #3b82f6;
-@nav-hover: rgba(255, 255, 255, 0.06);
-@nav-active: rgba(59, 130, 246, 0.16);
 @nav-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
 .menu-item,
@@ -20,34 +14,34 @@
     flex: none;
     width: 18px;
     height: 18px;
-    color: @nav-heading;
+    color: var(--sb-muted);
     transition: color 0.15s ease;
   }
 }
 
 .menu-item:hover {
-  color: @nav-text-strong !important;
-  background-color: @nav-hover;
+  color: var(--sb-text-strong) !important;
+  background-color: var(--sb-hover);
   svg {
-    color: @nav-text-strong;
+    color: var(--sb-text-strong);
   }
 }
 
 .menu-item-active {
-  color: @nav-text-strong !important;
-  background-color: @nav-active;
+  color: var(--sb-active-text) !important;
+  background-color: var(--sb-active);
   &::before {
     position: absolute;
     top: 8px;
     bottom: 8px;
     left: -12px;
     width: 3px;
-    background-color: @nav-accent;
+    background-color: var(--sb-accent);
     border-radius: 0 3px 3px 0;
     content: '';
   }
   svg {
-    color: #60a5fa;
+    color: var(--sb-accent);
   }
 }
 
@@ -67,7 +61,7 @@
 }
 
 .menu-item-text-active {
-  color: @nav-text-strong !important;
+  color: var(--sb-text-strong) !important;
 }
 
 a:hover {
@@ -91,25 +85,25 @@ a:hover {
   flex-direction: column;
   font-family: @nav-font;
   a:link {
-    color: @nav-text !important;
+    color: var(--sb-text) !important;
   }
   ul,
   li {
     list-style: none;
     a {
-      color: @nav-text;
+      color: var(--sb-text);
     }
   }
   .first-nav {
-    color: @nav-heading;
+    color: var(--sb-muted);
   }
   .nav-container {
-    color: @nav-heading;
+    color: var(--sb-muted);
     .main-nav {
       height: auto;
       margin: 0 0 6px;
       padding-left: 26px !important;
-      color: @nav-heading;
+      color: var(--sb-muted);
       font-weight: 600;
       font-size: 11px;
       line-height: 16px;
