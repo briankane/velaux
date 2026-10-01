@@ -16,6 +16,7 @@ import kubernetes from '../../../../assets/kubernetes.svg';
 import terraform from '../../../../assets/terraform.svg';
 import Empty from '../../../../components/Empty';
 import Permission from '../../../../components/Permission';
+import { PropertyList } from '../../../../components/RowList';
 import { StatusBadge } from '../../../../components/StatusBadge';
 import { Translation } from '../../../../components/Translation';
 import i18n from '../../../../i18n';
@@ -23,7 +24,7 @@ import { healthLabels } from '../../../ApplicationList/components/AppStatus/heal
 import { dependencyItems } from '../../../../utils/dependencies';
 import { locale } from '../../../../utils/locale';
 import type { ComponentStatusIn } from './model';
-import { componentDependsOn, componentHealth, flattenProperties } from './model';
+import { componentDependsOn, componentHealth } from './model';
 import './index.less';
 
 type Props = {
@@ -82,8 +83,8 @@ const ComponentList = (props: Props) => {
   }
 
   return (
-    <div className="component-list">
-      <div className="component-list-head">
+    <div className="row-list component-list">
+      <div className="row-list-head">
         <span />
         <span>
           <Translation>Name</Translation>
@@ -105,21 +106,21 @@ const ComponentList = (props: Props) => {
         const detail = open[com.name];
         const expanded = !!detail;
         return (
-          <div key={com.name} className={`component-row ${expanded ? 'expanded' : ''}`}>
-            <div className="component-row-main">
-              <span className="component-row-chevron" onClick={() => toggle(com.name)}>
+          <div key={com.name} className={`row-list-row ${expanded ? 'expanded' : ''}`}>
+            <div className="row-list-main">
+              <span className="row-list-chevron" onClick={() => toggle(com.name)}>
                 {expanded ? <AiOutlineDown /> : <AiOutlineRight />}
               </span>
-              <span className="component-row-name" onClick={() => toggle(com.name)}>
+              <span className="row-list-name" onClick={() => toggle(com.name)}>
                 <img src={typeIcon(com)} />
                 <span>
-                  <span className="component-row-title">{com.alias || com.name}</span>
-                  <span className="component-row-type">{com.componentType}</span>
+                  <span className="row-list-title">{com.alias || com.name}</span>
+                  <span className="row-list-type">{com.componentType}</span>
                 </span>
               </span>
               <span className="component-row-health">
                 {health.length === 0 ? (
-                  <span className="component-row-muted">
+                  <span className="row-list-muted">
                     <Translation>Not deployed</Translation>
                   </span>
                 ) : (
@@ -181,7 +182,7 @@ const ComponentList = (props: Props) => {
               </span>
               <span className="component-row-deps">
                 {dependsOn.length === 0 ? (
-                  <span className="component-row-muted">-</span>
+                  <span className="row-list-muted">-</span>
                 ) : (
                   dependsOn.map((d) =>
                     d.inferred ? (
@@ -198,7 +199,7 @@ const ComponentList = (props: Props) => {
                   )
                 )}
               </span>
-              <span className="component-row-actions">
+              <span className="row-list-actions">
                 <Button text type="primary" onClick={() => props.editComponent(com)}>
                   <Translation>Edit</Translation>
                 </Button>
@@ -210,39 +211,32 @@ const ComponentList = (props: Props) => {
                     }}
                     project={projectName}
                   >
-                    <AiOutlineDelete className="component-row-delete" onClick={() => remove(com.name)} />
+                    <AiOutlineDelete className="row-list-delete" onClick={() => remove(com.name)} />
                   </Permission>
                 )}
               </span>
             </div>
             {expanded && (
-              <div className="component-row-detail">
-                {com.description && <p className="component-row-description">{com.description}</p>}
+              <div className="row-list-detail">
+                {com.description && <p className="row-list-description">{com.description}</p>}
                 {detail === 'loading' ? (
-                  <span className="component-row-muted">
+                  <span className="row-list-muted">
                     <Translation>Loading</Translation>
                   </span>
                 ) : (
-                  <div className="component-detail-grid">
+                  <div className="row-list-detail-grid">
                     <div>
-                      <div className="component-detail-title">
+                      <div className="row-list-detail-title">
                         <Translation>Properties</Translation>
                       </div>
-                      <dl className="component-properties">
-                        {flattenProperties(detail.properties).map((p) => (
-                          <React.Fragment key={p.key}>
-                            <dt>{p.key}</dt>
-                            <dd title={p.value}>{p.value}</dd>
-                          </React.Fragment>
-                        ))}
-                      </dl>
+                      <PropertyList properties={detail.properties} />
                     </div>
                     <div>
-                      <div className="component-detail-title">
+                      <div className="row-list-detail-title">
                         <Translation>Status</Translation>
                       </div>
                       {health.length === 0 ? (
-                        <span className="component-row-muted">
+                        <span className="row-list-muted">
                           <Translation>Not deployed</Translation>
                         </span>
                       ) : (
@@ -250,7 +244,7 @@ const ComponentList = (props: Props) => {
                           <div key={h.env} className="component-status-line">
                             <span className="component-status-env">{h.env}</span>
                             <StatusBadge tone={h.health} label={healthLabels[h.health]} />
-                            {h.message && <span className="component-row-muted">{h.message}</span>}
+                            {h.message && <span className="row-list-muted">{h.message}</span>}
                           </div>
                         ))
                       )}

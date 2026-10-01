@@ -1,10 +1,10 @@
 import { expect } from 'chai';
 
+import { flattenProperties } from '../../components/RowList/properties';
 import {
   componentDependsOn,
   componentHealth,
   dependsOnOptions,
-  flattenProperties,
 } from '../../pages/ApplicationConfig/components/ComponentList/model';
 
 describe('component list', () => {
