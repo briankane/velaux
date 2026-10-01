@@ -142,7 +142,11 @@ const ComponentList = (props: Props) => {
                   <span
                     key={trait.type}
                     className={`component-trait${application?.readOnly ? ' readonly' : ''}`}
-                    title={[trait.alias, trait.description].filter(Boolean).join('\n') || undefined}
+                    title={
+                      [trait.alias !== trait.type ? trait.alias : undefined, trait.description]
+                        .filter(Boolean)
+                        .join('\n') || undefined
+                    }
                     onClick={application?.readOnly ? undefined : () => props.changeTraitStats(true, trait, com.name)}
                   >
                     {trait.type}
