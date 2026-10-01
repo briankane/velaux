@@ -1,8 +1,9 @@
-import { Button, Dialog, Message, Table } from '@alifd/next';
+import { Dialog, Message, Table } from '@alifd/next';
 import { connect } from 'dva';
 import { Link } from 'dva/router';
 import React from 'react';
-import { AiFillDelete } from 'react-icons/ai';
+import { RowAction } from '../../components/RowAction';
+import { AiOutlineDelete } from 'react-icons/ai';
 import type { Dispatch } from 'redux';
 
 import { deleteWorkflow } from '../../api/workflows';
@@ -137,18 +138,14 @@ class ApplicationWorkflowList extends React.Component<Props, State> {
                         action: 'delete',
                       }}
                     >
-                      <Button
-                        text
-                        size={'medium'}
-                        className={'danger-btn'}
-                        component={'a'}
+                      <RowAction
+                        icon={<AiOutlineDelete />}
+                        label="Remove"
+                        danger
                         onClick={() => {
                           this.onDeleteWorkflow(v);
                         }}
-                      >
-                        <AiFillDelete />
-                        <Translation>Remove</Translation>
-                      </Button>
+                      />
                     </Permission>
                   </If>
                 </div>
