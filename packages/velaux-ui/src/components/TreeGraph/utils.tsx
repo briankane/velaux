@@ -35,6 +35,7 @@ import svc from '../../assets/resources/svc.svg';
 import user from '../../assets/resources/user.svg';
 import vol from '../../assets/resources/vol.svg';
 
+import { componentNodeHeight, componentNodeWidth, layoutTraits, maxTraitRows, traitArea } from './traits';
 import type { GraphNode, TreeNode, Node } from './interface';
 
 // componentSections lists what a component depends on and what depends on it,
@@ -128,8 +129,9 @@ export function getNodeSize(node: TreeNode): { width: number; height: number } {
     height = 60;
   }
   if (node.nodeType == 'component') {
-    width = 320;
-    height = 40;
+    const types = (node.resource.service?.traits || []).map((t) => t.type);
+    width = componentNodeWidth;
+    height = componentNodeHeight(layoutTraits(types, traitArea, maxTraitRows).rows.length);
   }
   return { width, height };
 }

@@ -1,6 +1,6 @@
 import { Button } from '@alifd/next';
 import { connect } from 'dva';
-import { routerRedux } from 'dva/router';
+import { Link, routerRedux } from 'dva/router';
 import React, { useState } from 'react';
 import { AiOutlineDown, AiOutlineEnvironment, AiOutlineEye, AiOutlineRight } from 'react-icons/ai';
 
@@ -84,7 +84,7 @@ const ApplicationOrbits = (props: Props) => {
 export default connect((store: any) => ({ ...store.application }))(ApplicationOrbits);
 
 // OrbitList lists the envs an application is bound to as rows of their
-// health, each expanding to its targets and opening the env's live view.
+// health, each expanding to its targets; its name opens the env's live view.
 export const OrbitList = (props: {
   appName: string;
   envbinding: EnvBinding[];
@@ -134,7 +134,13 @@ export const OrbitList = (props: {
               <span className="row-list-name" onClick={() => toggle(binding.name)}>
                 <AiOutlineEnvironment className="row-list-icon" />
                 <span>
-                  <span className="row-list-title">{binding.alias || binding.name}</span>
+                  <Link
+                    className="row-list-title orbit-list-link"
+                    to={`/applications/${appName}/envbinding/${binding.name}/status`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {binding.alias || binding.name}
+                  </Link>
                   {binding.alias && binding.alias !== binding.name && (
                     <span className="row-list-type">{binding.name}</span>
                   )}
