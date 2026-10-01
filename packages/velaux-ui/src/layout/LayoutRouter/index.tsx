@@ -2,6 +2,8 @@ import { Redirect, Route, Switch } from 'dva/router';
 import React from 'react';
 
 import Addons from '../../pages/Addons/index';
+import PackageDetail from '../../pages/PackageDetail';
+import Packages from '../../pages/Packages';
 import ApplicationConfig from '../../pages/ApplicationConfig';
 import ApplicationEnvRoute from '../../pages/ApplicationEnvRoute';
 import ApplicationInstanceList from '../../pages/ApplicationInstanceList';
@@ -272,6 +274,9 @@ export default function Router() {
           return <Addons {...props} />;
         }}
       />
+      <Route exact path="/packages" component={Packages} />
+      <Route exact path="/packages/builtin" component={PackageDetail} />
+      <Route exact path="/packages/:namespace/:name" component={PackageDetail} />
       <Route
         path="/addons"
         render={(props: any) => {
