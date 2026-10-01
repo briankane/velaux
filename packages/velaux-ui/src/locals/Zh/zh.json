@@ -707,5 +707,10 @@
   "The workflow each environment deploys with. Open one to edit its steps.": "每个环境部署所用的工作流，打开即可编辑其步骤。",
   "There are no sources": "暂无数据源",
   "Trigger": "触发",
-  "Where the application deploys, and what it overrides there.": "应用部署到哪里，以及在那里覆盖了什么。"
+  "Where the application deploys, and what it overrides there.": "应用部署到哪里，以及在那里覆盖了什么。",
+  "Unhealthy": "不健康",
+  "Latest": "最新",
+  "Zoom in": "放大",
+  "Zoom out": "缩小",
+  "Reset zoom": "重置缩放"
 }
