@@ -15,15 +15,19 @@
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
 }
+// The page fits the window, sidebar and search bar always in view; a page
+// narrower than its content scrolls within the content area instead.
 .layout {
   display: flex;
-  min-width: var(--min-layout-width);
   height: 100vh;
 }
 
 .layout-content {
   flex: 1;
   min-height: 0;
+  > * {
+    min-width: calc(var(--min-layout-width) - 500px);
+  }
   padding: 15px;
   overflow: auto;
   background-color: #f7f7f7;
