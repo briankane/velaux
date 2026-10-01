@@ -1,4 +1,4 @@
-import { Dialog, Grid, Message, Tab } from '@alifd/next';
+import { Button, Dialog, Grid, Message, Tab } from '@alifd/next';
 import React, { Component } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 
@@ -7,13 +7,13 @@ import Empty from '../../../../components/Empty';
 import { If } from '../../../../components/If';
 import Item from '../../../../components/Item';
 import Permission from '../../../../components/Permission';
-import { Chip, ResourceCard, ResourceGrid } from '../../../../components/ResourceCard';
+import '../../../../components/RowList';
 import { Translation } from '../../../../components/Translation';
 import type { ApplicationComponentBase, ApplicationComponent, Trigger, ApplicationDetail } from '@velaux/data';
-import { momentDate, showAlias } from '../../../../utils/common';
+import { beautifyTime, momentDate, showAlias } from '../../../../utils/common';
 import './index.less';
 import { locale } from '../../../../utils/locale';
-import { AiOutlineApi, AiOutlineDelete } from 'react-icons/ai';
+import { AiOutlineApi, AiOutlineDelete, AiOutlineDown, AiOutlineRight } from 'react-icons/ai';
 
 type Props = {
   appName: string;
@@ -29,13 +29,19 @@ type State = {
   showTrigger?: Trigger;
   component?: ApplicationComponent;
   customTriggerType?: string;
+  // open holds the triggers whose rows are expanded.
+  open: Record<string, boolean>;
 };
 
 class TriggerList extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = {};
+    this.state = { open: {} };
   }
+
+  toggle = (name: string) => {
+    this.setState({ open: { ...this.state.open, [name]: !this.state.open[name] } });
+  };
 
   componentWillReceiveProps(nextProps: Props) {
     const { createTriggerInfo } = nextProps;
@@ -86,7 +92,7 @@ class TriggerList extends Component<Props, State> {
     const { Row, Col } = Grid;
     const { triggers, applicationDetail } = this.props;
 
-    const { showTrigger, component, customTriggerType } = this.state;
+    const { showTrigger, component, customTriggerType, open } = this.state;
 
     const domain = `${window.location.protocol}//${window.location.host}`;
     const webHookURL = `${domain}/api/v1/webhook/${showTrigger?.token}`;
@@ -153,54 +159,105 @@ class TriggerList extends Component<Props, State> {
     const projectName = applicationDetail && applicationDetail.project?.name;
     return (
       <div>
-        <ResourceGrid>
-          {(triggers || []).map((item: Trigger) => (
-            <ResourceCard
-              key={item.name}
-              icon={<AiOutlineApi />}
-              title={showAlias(item)}
-              subtitle={item.type == 'webhook' ? <Translation>On Webhook Event</Translation> : item.type}
-              onOpen={() => this.props.onEditTrigger(item)}
-              aside={
-                <Permission
-                  request={{
-                    resource: `project:${projectName}/application:${applicationDetail?.name}/trigger:${item.name}`,
-                    action: 'delete',
-                  }}
-                  project={projectName}
-                >
-                  <AiOutlineDelete
-                    className="resource-card-more danger-icon"
-                    onClick={() => this.handleTriggerDelete(item.token || '')}
-                  />
-                </Permission>
-              }
-              description={item.description || `Runs ${item.workflowName}`}
-              chips={
-                <React.Fragment>
-                  <Chip>{item.workflowName}</Chip>
-                  {item.payloadType && <Chip>payload: {item.payloadType}</Chip>}
-                  {item.componentName && <Chip>{item.componentName}</Chip>}
-                </React.Fragment>
-              }
-              footLeft={item.createTime && momentDate(item.createTime)}
-              footRight={
-                <a onClick={() => this.showWebhook(item)}>
-                  <Translation>Manual Trigger</Translation>
-                </a>
-              }
-            />
-          ))}
-        </ResourceGrid>
         <If condition={!triggers || triggers.length == 0}>
-          <Empty
-            style={{ minHeight: '400px' }}
-            message={
+          <Empty message={<Translation>There are no triggers</Translation>} />
+        </If>
+        <If condition={triggers && triggers.length > 0}>
+          <div className="row-list trigger-list">
+            <div className="row-list-head">
+              <span />
               <span>
-                <Translation>There are no triggers</Translation>
+                <Translation>Name</Translation>
               </span>
-            }
-          />
+              <span>
+                <Translation>Execute Workflow</Translation>
+              </span>
+              <span>
+                <Translation>Payload</Translation>
+              </span>
+              <span>
+                <Translation>Create Time</Translation>
+              </span>
+              <span />
+            </div>
+            {(triggers || []).map((item: Trigger) => {
+              const expanded = !!open[item.name];
+              return (
+                <div key={item.name} className={`row-list-row ${expanded ? 'expanded' : ''}`}>
+                  <div className="row-list-main">
+                    <span className="row-list-chevron" onClick={() => this.toggle(item.name)}>
+                      {expanded ? <AiOutlineDown /> : <AiOutlineRight />}
+                    </span>
+                    <span className="row-list-name" onClick={() => this.toggle(item.name)}>
+                      <AiOutlineApi className="row-list-icon" />
+                      <span>
+                        <span className="row-list-title">{showAlias(item)}</span>
+                        <span className="row-list-type">
+                          {item.type == 'webhook' ? <Translation>On Webhook Event</Translation> : item.type}
+                        </span>
+                      </span>
+                    </span>
+                    <span>{item.workflowName}</span>
+                    <span>{item.payloadType || <span className="row-list-muted">-</span>}</span>
+                    <span>
+                      {item.createTime ? (
+                        <span title={momentDate(item.createTime)}>{beautifyTime(item.createTime)}</span>
+                      ) : (
+                        <span className="row-list-muted">-</span>
+                      )}
+                    </span>
+                    <span className="row-list-actions">
+                      <Button text type="primary" onClick={() => this.showWebhook(item)}>
+                        <Translation>Trigger</Translation>
+                      </Button>
+                      <Button text type="primary" onClick={() => this.props.onEditTrigger(item)}>
+                        <Translation>Edit</Translation>
+                      </Button>
+                      <Permission
+                        request={{
+                          resource: `project:${projectName}/application:${applicationDetail?.name}/trigger:${item.name}`,
+                          action: 'delete',
+                        }}
+                        project={projectName}
+                      >
+                        <AiOutlineDelete
+                          className="row-list-delete"
+                          onClick={() => this.handleTriggerDelete(item.token || '')}
+                        />
+                      </Permission>
+                    </span>
+                  </div>
+                  {expanded && (
+                    <div className="row-list-detail">
+                      {item.description && <p className="row-list-description">{item.description}</p>}
+                      <dl className="row-list-properties">
+                        <dt>
+                          <Translation>Webhook URL</Translation>
+                        </dt>
+                        <dd>{`${domain}/api/v1/webhook/${item.token}`}</dd>
+                        {item.componentName && (
+                          <React.Fragment>
+                            <dt>
+                              <Translation>Component</Translation>
+                            </dt>
+                            <dd>{item.componentName}</dd>
+                          </React.Fragment>
+                        )}
+                        {item.registry && (
+                          <React.Fragment>
+                            <dt>
+                              <Translation>Registry</Translation>
+                            </dt>
+                            <dd>{item.registry}</dd>
+                          </React.Fragment>
+                        )}
+                      </dl>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </If>
         <If condition={showTrigger}>
           <Dialog
