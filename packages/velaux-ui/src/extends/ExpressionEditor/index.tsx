@@ -13,6 +13,11 @@ export type { ExpressionEnv, ExpressionVariable } from './completion';
 
 const language = 'vela-cel';
 
+// theme is the expression editor's light theme. Monaco keeps one theme for the
+// whole page, and VelaUX's code editors set a dark one, so an expression editor
+// claims its own whenever it mounts or takes focus.
+const theme = 'vela-expression';
+
 // envs are the variables each open editor may read, by model URI, since a
 // Monaco completion provider is registered once for every editor.
 const envs = new Map<string, ExpressionEnv | undefined>();
@@ -31,6 +36,7 @@ function register() {
     return;
   }
   registered = true;
+  monaco.editor.defineTheme(theme, { base: 'vs', inherit: true, rules: [], colors: {} });
   monaco.languages.register({ id: language });
   monaco.languages.setMonarchTokensProvider(language, {
     tokenizer: {
@@ -144,6 +150,9 @@ type Props = {
   // reserve is room at the right of the input kept for the parent's own
   // control, such as the form's ƒx toggle; the status mark sits left of it.
   reserve?: number;
+  // autoFocus focuses the editor when it mounts, its cursor at the end: a
+  // field that becomes an expression as it is typed in keeps the keystrokes.
+  autoFocus?: boolean;
 };
 
 type State = {
@@ -183,6 +192,7 @@ class ExpressionEditor extends React.Component<Props, State> {
     envs.set(this.model.uri.toString(), this.props.env);
     this.editor = monaco.editor.create(this.container.current, {
       model: this.model,
+      theme,
       readOnly: this.props.disabled,
       minimap: { enabled: false },
       lineNumbers: 'off',
@@ -219,6 +229,12 @@ class ExpressionEditor extends React.Component<Props, State> {
     this.resize.observe(container);
     // Enter accepts a suggestion and otherwise does nothing.
     this.editor.addCommand(monaco.KeyCode.Enter, () => undefined, '!suggestWidgetVisible');
+    monaco.editor.setTheme(theme);
+    this.editor.onDidFocusEditorText(() => monaco.editor.setTheme(theme));
+    if (this.props.autoFocus && this.model) {
+      this.editor.focus();
+      this.editor.setPosition({ lineNumber: 1, column: this.model.getLineMaxColumn(1) });
+    }
     this.frame();
     this.model.onDidChangeContent(() => {
       this.frame();

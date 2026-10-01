@@ -297,6 +297,8 @@ class UISchema extends Component<Props, State> {
     const held = typeof v === 'string' && v.indexOf('$(') > -1 && param.style?.expression !== 'never';
     if (held) {
       this.openedAsExpression[param.jsonKey] = true;
+      const typing = document.activeElement?.closest(`[data-param="${CSS.escape(param.jsonKey)}"]`);
+      this.focusOnSwitch[param.jsonKey] = !!typing;
     }
     return held;
   };
@@ -318,8 +320,13 @@ class UISchema extends Component<Props, State> {
   };
 
   toggleExpression = (param: UIParam, active: boolean) => {
+    this.focusOnSwitch[param.jsonKey] = !active;
     this.setExpressionMode(param, !active);
   };
+
+  // focusOnSwitch records the params whose expression editor takes focus as it
+  // mounts: one switched on with ƒx, or one typed into until it held a $(.
+  focusOnSwitch: Record<string, boolean> = {};
 
   // expressionsToggle is the switch that lets the application read $( )
   // expressions, shown once, at the top of the outermost form.
@@ -1393,6 +1400,7 @@ class UISchema extends Component<Props, State> {
             component={this.props.expressions?.component}
             draft={this.props.expressions?.draft}
             reserve={fxWidth}
+            autoFocus={!!this.focusOnSwitch[param.jsonKey]}
             env={this.props.expressions?.env}
             kind={expressionKind(param)}
             disabled={disableEdit}
@@ -1409,6 +1417,7 @@ class UISchema extends Component<Props, State> {
           span={colSpan}
           style={{ padding: '0 4px' }}
           className={expressible ? 'ui-schema-expressible' : undefined}
+          data-param={param.jsonKey}
         >
           {expressible && (
             <span
