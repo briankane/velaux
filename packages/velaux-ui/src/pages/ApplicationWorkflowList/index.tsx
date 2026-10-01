@@ -77,6 +77,11 @@ class ApplicationWorkflowList extends React.Component<Props, State> {
     const projectName = applicationDetail?.project?.name;
     return (
       <div>
+        <div className="app-tab-toolbar">
+          <span className="app-tab-hint">
+            <Translation>The workflow each environment deploys with. Open one to edit its steps.</Translation>
+          </span>
+        </div>
         <Table dataSource={workflows}>
           <Table.Column
             dataIndex="name"
