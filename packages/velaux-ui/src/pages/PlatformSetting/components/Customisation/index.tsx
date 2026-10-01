@@ -16,6 +16,7 @@ import './index.less';
 const offeredTerms = ['Application', 'Pipeline', 'Environment', 'Target', 'Project', 'Cluster'];
 
 type State = {
+  pageTitle: string;
   logoURL: string;
   iconURL: string;
   sidebarColor: string;
@@ -32,7 +33,16 @@ const hex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 class CustomisationCard extends React.Component<{}, State> {
   constructor(props: {}) {
     super(props);
-    this.state = { logoURL: '', iconURL: '', sidebarColor: '', accentColor: '', terms: {}, newTerm: '', saving: false };
+    this.state = {
+      pageTitle: '',
+      logoURL: '',
+      iconURL: '',
+      sidebarColor: '',
+      accentColor: '',
+      terms: {},
+      newTerm: '',
+      saving: false,
+    };
   }
 
   componentDidMount() {
@@ -41,6 +51,7 @@ class CustomisationCard extends React.Component<{}, State> {
 
   load = (c: Customisation) => {
     this.setState({
+      pageTitle: c.pageTitle || '',
       logoURL: c.logoURL || '',
       iconURL: c.iconURL || '',
       sidebarColor: c.sidebarColor || '',
@@ -68,7 +79,7 @@ class CustomisationCard extends React.Component<{}, State> {
   };
 
   onSave = () => {
-    const { logoURL, iconURL, sidebarColor, accentColor, terms } = this.state;
+    const { pageTitle, logoURL, iconURL, sidebarColor, accentColor, terms } = this.state;
     // A term is renamed only once it has a singular; its plural defaults to
     // the singular's.
     const terminology: Record<string, Term> = {};
@@ -79,6 +90,7 @@ class CustomisationCard extends React.Component<{}, State> {
       }
     });
     this.save({
+      pageTitle: pageTitle.trim() || undefined,
       logoURL: logoURL.trim() || undefined,
       iconURL: iconURL.trim() || undefined,
       sidebarColor: hex.test(sidebarColor) ? sidebarColor : undefined,
@@ -112,7 +124,7 @@ class CustomisationCard extends React.Component<{}, State> {
   };
 
   render() {
-    const { logoURL, iconURL, terms, newTerm, saving } = this.state;
+    const { pageTitle, logoURL, iconURL, terms, newTerm, saving } = this.state;
     const names = [...offeredTerms, ...Object.keys(terms).filter((t) => !offeredTerms.includes(t))];
     return (
       <Card
@@ -123,6 +135,19 @@ class CustomisationCard extends React.Component<{}, State> {
         subTitle={<span>velaux-configuration</span>}
       >
         <div className="customisation-grid">
+          <div className="customisation-field">
+            <label>
+              <Translation>Page title (browser tab)</Translation>
+            </label>
+            <Input
+              value={pageTitle}
+              maxLength={100}
+              placeholder="KubeVela-Make shipping applications more enjoyable."
+              onChange={(v: string) => this.setState({ pageTitle: v })}
+              hasClear
+            />
+          </div>
+          <div />
           <div className="customisation-field">
             <label>
               <Translation>Logo URL</Translation>
