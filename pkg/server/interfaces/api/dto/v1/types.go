@@ -971,6 +971,44 @@ type DefinitionBase struct {
 	Component    *v1beta1.ComponentDefinitionSpec    `json:"component,omitempty"`
 	Policy       *v1beta1.PolicyDefinitionSpec       `json:"policy,omitempty"`
 	WorkflowStep *v1beta1.WorkflowStepDefinitionSpec `json:"workflowStep,omitempty"`
+	// Restrictions are the namespaces that may use the definition and its quota,
+	// as the Application webhook enforces them: spec.restrictions combined with
+	// the restrict-namespaces annotation. Absent means unrestricted.
+	Restrictions *common.DefinitionRestrictions `json:"restrictions,omitempty"`
+	// UnusableIn are the namespaces asked about whose Applications the
+	// restrictions keep from using the definition.
+	UnusableIn []string `json:"unusableIn,omitempty"`
+}
+
+// DefinitionUsageResponse is how much each namespace uses a definition, against
+// the quota that governs it.
+type DefinitionUsageResponse struct {
+	Usage []NamespaceUsage `json:"usage"`
+}
+
+// Usage states: how a namespace's use of a definition compares with its quota.
+const (
+	// UsageStateOK is use below the level the quota flags.
+	UsageStateOK = "ok"
+	// UsageStateWarn is use at or above the quota's warn level.
+	UsageStateWarn = "warn"
+	// UsageStateOver is use beyond the quota's limit; the next Application to add
+	// to it is refused.
+	UsageStateOver = "over"
+	// UsageStateExempt is a namespace annotated to skip every quota.
+	UsageStateExempt = "exempt"
+	// UsageStateUnlimited is a namespace no quota entry governs.
+	UsageStateUnlimited = "unlimited"
+)
+
+// NamespaceUsage is one namespace's use of a definition, counted as the
+// Application webhook counts it, with the quota entry that governs it.
+type NamespaceUsage struct {
+	Namespace string `json:"namespace"`
+	Used      int    `json:"used"`
+	Warn      *int32 `json:"warn,omitempty"`
+	Limit     *int32 `json:"limit,omitempty"`
+	State     string `json:"state"`
 }
 
 // CreatePolicyRequest create app policy
@@ -1202,6 +1240,9 @@ type ApplicationDeployRequest struct {
 type ApplicationDeployResponse struct {
 	ApplicationRevisionBase `json:",inline"`
 	WorkflowRecord          WorkflowRecordBase `json:"record"`
+	// Warnings are what the API server returned with the admitted Application,
+	// such as an admission webhook's notice that a namespace nears its quota.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // ApplicationRollbackResponse the response body that rollback with the revision
