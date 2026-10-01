@@ -19,6 +19,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 
 	"github.com/kubevela/pkg/multicluster"
@@ -235,10 +236,22 @@ func liveKind(v interface{}) string {
 	return "dyn"
 }
 
+// hyphenatedComponentRead is a component read with a dot whose name has a
+// hyphen, which CEL parses as subtraction: component.my-db is component.my - db.
+var hyphenatedComponentRead = regexp.MustCompile(`\bcomponent\.([A-Za-z_][A-Za-z0-9_]*(?:-[A-Za-z0-9_]+)+)`)
+
 // componentIssues reports the component reads in an expression the controller
-// would refuse: on a surface that cannot read components, of the component
-// itself, or of a component the application does not have.
+// would refuse: a hyphenated name read with a dot, a read on a surface that
+// cannot read components, of the component itself, or of a component the
+// application does not have.
 func (e *expressionServiceImpl) componentIssues(ctx context.Context, app *model.Application, req apisv1.ExpressionCheckRequest, expr string, start int) []*apisv1.ExpressionIssue {
+	if m := hyphenatedComponentRead.FindStringSubmatchIndex(expr); m != nil {
+		name := expr[m[2]:m[3]]
+		return []*apisv1.ExpressionIssue{{
+			Message: fmt.Sprintf("write component[%q]: a component whose name has a hyphen is read by index", name),
+			Start:   start + m[0], End: start + m[1],
+		}}
+	}
 	refs, err := celexpr.PropertyReferences(expr)
 	if err != nil {
 		return nil

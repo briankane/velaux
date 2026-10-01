@@ -24,6 +24,9 @@ export type Suggestion = {
   documentation?: string;
   insertText: string;
   snippet?: boolean;
+  // replaceBefore is how many characters before the typed part the suggestion
+  // also replaces: the dot, for a name inserted by index.
+  replaceBefore?: number;
 };
 
 // globals are the functions an expression may call at its top level.
@@ -116,8 +119,6 @@ const placements: Record<string, Suggestion> = {
   },
 };
 
-const placementCall = /\.(cluster|namespace)\([^)]*\)/g;
-
 // placementsAfter is what placement calls may follow a component read that has
 // made the given calls: cluster before namespace, each once.
 function placementsAfter(calls: string[]): Suggestion[] {
@@ -176,8 +177,44 @@ function find(vars: ExpressionVariable[] | undefined, path: string[]): Expressio
   return found;
 }
 
+const identifier = /^[A-Za-z_]\w*$/;
+
+// fieldSuggestion offers a field by name, or by index where the name is not an
+// identifier: a component named my-db is read as component["my-db"], since CEL
+// reads component.my-db as subtraction.
 function fieldSuggestion(v: ExpressionVariable): Suggestion {
-  return { label: v.name, kind: 'field', detail: v.type, documentation: v.description, insertText: v.name };
+  const s: Suggestion = {
+    label: v.name,
+    kind: 'field',
+    detail: v.type,
+    documentation: v.description,
+    insertText: v.name,
+  };
+  if (!identifier.test(v.name)) {
+    s.insertText = `["${v.name}"]`;
+    s.replaceBefore = 1;
+  }
+  return s;
+}
+
+// chainTokens reads a chain of names into its names and the placement calls in
+// it: a.b, a["b"] and a.b.cluster("c") each read a then b.
+const chainToken = /\.(cluster|namespace)\([^)]*\)|\["([^"]*)"\]|\.?([A-Za-z_]\w*)/g;
+
+function chainTokens(chain: string): { names: string[]; calls: string[]; endsWithIndex: boolean } {
+  const names: string[] = [];
+  const calls: string[] = [];
+  let endsWithIndex = false;
+  for (const m of chain.matchAll(chainToken)) {
+    if (m[1]) {
+      calls.push(m[1]);
+      endsWithIndex = false;
+    } else {
+      names.push(m[2] !== undefined ? m[2] : m[3]);
+      endsWithIndex = m[2] !== undefined;
+    }
+  }
+  return { names, calls, endsWithIndex };
 }
 
 // suggest lists what may follow the text before the cursor, and how many
@@ -200,16 +237,19 @@ export function suggest(before: string, env?: ExpressionEnv): { items: Suggestio
     };
   }
   const expr = before.substring(start);
-  const m = /([A-Za-z_]\w*(?:\.[A-Za-z_]\w*|\.(?:cluster|namespace)\([^)]*\))*)(\.?)([A-Za-z_]\w*)?$/.exec(expr);
+  const m = /([A-Za-z_]\w*(?:\.[A-Za-z_]\w*|\["[^"]*"\]|\.(?:cluster|namespace)\([^)]*\))*)(\.?)([A-Za-z_]\w*)?$/.exec(
+    expr
+  );
   let path: string[] = [];
   let partial = '';
-  const calls: string[] = [];
+  let calls: string[] = [];
   if (m) {
-    const chain = m[1].replace(placementCall, (_call: string, fn: string) => {
-      calls.push(fn);
-      return '';
-    });
-    const parts = chain.split('.');
+    const tokens = chainTokens(m[1]);
+    calls = tokens.calls;
+    if (m[2] !== '.' && !m[3] && tokens.endsWithIndex) {
+      return { items: [], replace: 0 };
+    }
+    const parts = tokens.names;
     if (m[2] === '.') {
       path = parts;
       partial = m[3] || '';
@@ -308,10 +348,34 @@ export function hoverAt(text: string, offset: number, env?: ExpressionEnv): Hove
   }
   const path = [text.substring(start, end)];
   let i = start;
-  while (text[i - 1] === '.') {
+  for (;;) {
+    if (text[i - 1] === ']') {
+      const index = /\["([^"]*)"\]$/.exec(text.substring(0, i));
+      if (!index) {
+        break;
+      }
+      path.unshift(index[1]);
+      i = index.index;
+      let j = i;
+      while (j > 0 && identChar.test(text[j - 1])) {
+        j--;
+      }
+      if (j < i) {
+        path.unshift(text.substring(j, i));
+        i = j;
+      }
+      continue;
+    }
+    if (text[i - 1] !== '.') {
+      break;
+    }
     const call = /\.(cluster|namespace)\([^)]*\)$/.exec(text.substring(0, i - 1));
     if (call) {
       i = call.index + 1;
+      continue;
+    }
+    if (text[i - 2] === ']') {
+      i -= 1;
       continue;
     }
     let j = i - 1;
