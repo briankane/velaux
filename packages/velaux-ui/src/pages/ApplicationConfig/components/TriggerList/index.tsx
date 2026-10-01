@@ -1,4 +1,4 @@
-import { Card, Dialog, Grid, Message , Tab } from '@alifd/next';
+import { Dialog, Grid, Message, Tab } from '@alifd/next';
 import React, { Component } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 
@@ -7,17 +7,13 @@ import Empty from '../../../../components/Empty';
 import { If } from '../../../../components/If';
 import Item from '../../../../components/Item';
 import Permission from '../../../../components/Permission';
+import { Chip, ResourceCard, ResourceGrid } from '../../../../components/ResourceCard';
 import { Translation } from '../../../../components/Translation';
-import type {
-  ApplicationComponentBase,
-  ApplicationComponent,
-  Trigger,
-  ApplicationDetail,
-} from '@velaux/data';
+import type { ApplicationComponentBase, ApplicationComponent, Trigger, ApplicationDetail } from '@velaux/data';
 import { momentDate, showAlias } from '../../../../utils/common';
 import './index.less';
 import { locale } from '../../../../utils/locale';
-import { AiOutlineDelete } from 'react-icons/ai';
+import { AiOutlineApi, AiOutlineDelete } from 'react-icons/ai';
 
 type Props = {
   appName: string;
@@ -84,7 +80,7 @@ class TriggerList extends Component<Props, State> {
 
   handleCustomTriggerTab = (token: string) => {
     this.setState({ customTriggerType: token });
-  }
+  };
 
   render() {
     const { Row, Col } = Grid;
@@ -97,7 +93,7 @@ class TriggerList extends Component<Props, State> {
     let command = `curl -X POST -H 'content-type: application/json' --url ${webHookURL}`;
 
     if (showTrigger?.payloadType == 'custom' && component) {
-      const customTriggerBody: {[x: string]: Object} = {
+      const customTriggerBody: { [x: string]: Object } = {
         execute: {
           action: 'execute',
           upgrade: {
@@ -111,20 +107,20 @@ class TriggerList extends Component<Props, State> {
             user: '',
           },
         },
-        approve:{
+        approve: {
           action: 'approve',
-          step : 'suspend'
+          step: 'suspend',
         },
-        terminate:{
+        terminate: {
           action: 'terminate',
-          step : 'suspend'
+          step: 'suspend',
         },
-        rollback :{
+        rollback: {
           action: 'rollback',
-          step : 'suspend'
-        }
-      }
-      let body =  customTriggerType ? customTriggerBody[customTriggerType] : " ";
+          step: 'suspend',
+        },
+      };
+      let body = customTriggerType ? customTriggerBody[customTriggerType] : ' ';
       command = `curl -X POST -H 'content-type: application/json' --url ${webHookURL} -d '${JSON.stringify(body)}'`;
     }
 
@@ -156,99 +152,56 @@ class TriggerList extends Component<Props, State> {
     const customTriggerTypes = ['execute', 'approve', 'terminate', 'rollback'];
     const projectName = applicationDetail && applicationDetail.project?.name;
     return (
-      <div className="list-warper">
-        <div className="box">
+      <div>
+        <ResourceGrid>
           {(triggers || []).map((item: Trigger) => (
-            <Row wrap={true} key={item.type} className="box-item">
-              <Col span={24}>
-                <Card free={true} style={{ padding: '16px' }} locale={locale().Card}>
-                  <div className="trigger-list-nav">
-                    <div
-                      onClick={() => {
-                        this.props.onEditTrigger(item);
-                      }}
-                      className="trigger-list-title"
-                    >
-                      {showAlias(item)}
-                    </div>
-                    <div className="trigger-list-operation">
-                      <Permission
-                        request={{
-                          resource: `project:${projectName}/application:${applicationDetail?.name}/trigger:${item.name}`,
-                          action: 'delete',
-                        }}
-                        project={projectName}
-                      >
-                        <AiOutlineDelete
-                          size={14}
-                          className="margin-right-0 cursor-pointer danger-icon"
-                          onClick={() => {
-                            this.handleTriggerDelete(item.token || '');
-                          }}
-                        />
-                      </Permission>
-                    </div>
-                  </div>
-                  <div className="trigger-list-content">
-                    <Row>
-                      <Col span={24}>
-                        <Item
-                          marginBottom="8px"
-                          labelWidth={160}
-                          label={<Translation>Type</Translation>}
-                          value={item.type == 'webhook' ? <Translation>On Webhook Event</Translation> : item.type}
-                        />
-                      </Col>
-                    </Row>
-                    <Row>
-                      <Col span={24}>
-                        <Item
-                          marginBottom="8px"
-                          labelWidth={160}
-                          label={<Translation>Execute Workflow</Translation>}
-                          value={item.workflowName}
-                        />
-                      </Col>
-                    </Row>
-                    <Row>
-                      <Col span={24}>
-                        <Item
-                          marginBottom="8px"
-                          labelWidth={160}
-                          label={<Translation>Create Time</Translation>}
-                          value={momentDate(item.createTime)}
-                        />
-                      </Col>
-                    </Row>
-                    <Row>
-                      <Col>
-                        <div className="trigger-list-operation">
-                          <a
-                            onClick={() => {
-                              this.showWebhook(item);
-                            }}
-                          >
-                            <Translation>Manual Trigger</Translation>
-                          </a>
-                        </div>
-                      </Col>
-                    </Row>
-                  </div>
-                </Card>
-              </Col>
-            </Row>
-          ))}
-          <If condition={!triggers || triggers.length == 0}>
-            <Empty
-              style={{ minHeight: '400px' }}
-              message={
-                <span>
-                  <Translation>There are no triggers</Translation>
-                </span>
+            <ResourceCard
+              key={item.name}
+              icon={<AiOutlineApi />}
+              title={showAlias(item)}
+              subtitle={item.type == 'webhook' ? <Translation>On Webhook Event</Translation> : item.type}
+              onOpen={() => this.props.onEditTrigger(item)}
+              aside={
+                <Permission
+                  request={{
+                    resource: `project:${projectName}/application:${applicationDetail?.name}/trigger:${item.name}`,
+                    action: 'delete',
+                  }}
+                  project={projectName}
+                >
+                  <AiOutlineDelete
+                    className="resource-card-more danger-icon"
+                    onClick={() => this.handleTriggerDelete(item.token || '')}
+                  />
+                </Permission>
+              }
+              description={item.description || `Runs ${item.workflowName}`}
+              chips={
+                <React.Fragment>
+                  <Chip>{item.workflowName}</Chip>
+                  {item.payloadType && <Chip>payload: {item.payloadType}</Chip>}
+                  {item.componentName && <Chip>{item.componentName}</Chip>}
+                </React.Fragment>
+              }
+              footLeft={item.createTime && momentDate(item.createTime)}
+              footRight={
+                <a onClick={() => this.showWebhook(item)}>
+                  <Translation>Manual Trigger</Translation>
+                </a>
               }
             />
-          </If>
-        </div>
+          ))}
+        </ResourceGrid>
+        <If condition={!triggers || triggers.length == 0}>
+          <Empty
+            style={{ minHeight: '400px' }}
+            message={
+              <span>
+                <Translation>There are no triggers</Translation>
+              </span>
+            }
+          />
+        </If>
         <If condition={showTrigger}>
           <Dialog
             v2
@@ -295,29 +248,41 @@ class TriggerList extends Component<Props, State> {
               </Col>
             </Row>
             <h4>
-                    <Translation>Curl Command</Translation>
-                    <CopyToClipboard
-                      onCopy={() => {
-                        Message.success('Copy successfully');
-                      }}
-                      text={command}
-                    >
-                      {copy}
-                    </CopyToClipboard>
-                  </h4>
+              <Translation>Curl Command</Translation>
+              <CopyToClipboard
+                onCopy={() => {
+                  Message.success('Copy successfully');
+                }}
+                text={command}
+              >
+                {copy}
+              </CopyToClipboard>
+            </h4>
             <Row>
               <Tab size="small" shape="wrapped">
-              {(customTriggerTypes).map((item: string) => (
-                  <Tab.Item className="justify-tabs-tab" onClick={()=>{this.handleCustomTriggerTab(item)}} key={item} title={item}>
-                  <Col span={24} className="curlCode">
-                  <code>{command}</code>
-                  <span>
-                    <Translation>Please set the properties that need to be changed, such as `image`, `step`.</Translation>
-                    <Message type='notice'> If action is not provided then it will by default execute the workflow.</Message>
-                  </span>
-                </Col>
+                {customTriggerTypes.map((item: string) => (
+                  <Tab.Item
+                    className="justify-tabs-tab"
+                    onClick={() => {
+                      this.handleCustomTriggerTab(item);
+                    }}
+                    key={item}
+                    title={item}
+                  >
+                    <Col span={24} className="curlCode">
+                      <code>{command}</code>
+                      <span>
+                        <Translation>
+                          Please set the properties that need to be changed, such as `image`, `step`.
+                        </Translation>
+                        <Message type="notice">
+                          {' '}
+                          If action is not provided then it will by default execute the workflow.
+                        </Message>
+                      </span>
+                    </Col>
                   </Tab.Item>
-              ))}
+                ))}
               </Tab>
             </Row>
           </Dialog>

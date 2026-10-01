@@ -1,15 +1,14 @@
-import { Card, Dialog, Grid } from '@alifd/next';
+import { Dialog } from '@alifd/next';
 import React from 'react';
-import { AiOutlineDelete } from 'react-icons/ai';
+import { AiOutlineDelete, AiOutlineImport } from 'react-icons/ai';
 
 import Empty from '../../../../components/Empty';
 import { If } from '../../../../components/If';
-import Item from '../../../../components/Item';
 import Permission from '../../../../components/Permission';
+import { Chip, ResourceCard, ResourceGrid } from '../../../../components/ResourceCard';
 import { Translation } from '../../../../components/Translation';
 import type { ApplicationDetail, ApplicationSource } from '@velaux/data';
 import { locale } from '../../../../utils/locale';
-import '../PolicyList/index.less';
 
 type Props = {
   sources: ApplicationSource[];
@@ -18,7 +17,20 @@ type Props = {
   onShowSource: (source: ApplicationSource) => void;
 };
 
-const { Row, Col } = Grid;
+// propertyChips shows a source's first few scalar properties; anything longer
+// is in the source dialog.
+const propertyChips = (properties?: Record<string, any>) =>
+  Object.entries(properties || {})
+    .filter(([, v]) => v !== null && typeof v !== 'object')
+    .slice(0, 3)
+    .map(([k, v]) => (
+      <Chip key={k}>
+        {k}: {String(v)}
+      </Chip>
+    ));
+
+const autoUpdateLabel = (autoUpdate?: boolean) =>
+  autoUpdate === undefined ? 'Auto update: default' : autoUpdate ? 'Auto update: on' : 'Auto update: off';
 
 const SourceList = ({ sources, applicationDetail, onDeleteSource, onShowSource }: Props) => {
   const projectName = applicationDetail?.project?.name;
@@ -30,62 +42,46 @@ const SourceList = ({ sources, applicationDetail, onDeleteSource, onShowSource }
     });
   };
   return (
-    <div className="list-warper">
-      <div className="box">
-        <Row wrap={true}>
-          {sources.map((item) => (
-            <Col span={24} key={item.name} className="box-item">
-              <Card free={true} style={{ padding: '16px' }} hasBorder contentHeight="auto" locale={locale().Card}>
-                <div className="policy-list-nav">
-                  <div className="policy-list-title">
-                    <a onClick={() => onShowSource(item)}>{item.name}</a>
-                  </div>
-                  <div className="trigger-list-operation">
-                    <Permission
-                      request={{
-                        resource: `project:${projectName}/application:${applicationDetail?.name}/source:${item.name}`,
-                        action: 'delete',
-                      }}
-                      project={projectName}
-                    >
-                      <AiOutlineDelete
-                        size={14}
-                        className="margin-right-0 cursor-pointer danger-icon"
-                        onClick={() => confirmDelete(item.name)}
-                      />
-                    </Permission>
-                  </div>
-                </div>
-                <div className="policy-list-content">
-                  <Item marginBottom="8px" labelWidth={160} label={<Translation>Type</Translation>} value={item.type} />
-                  <Item
-                    marginBottom="8px"
-                    labelWidth={160}
-                    label={<Translation>Auto Update</Translation>}
-                    value={item.autoUpdate === undefined ? 'Default' : item.autoUpdate ? 'On' : 'Off'}
-                  />
-                  <Item
-                    marginBottom="8px"
-                    labelWidth={160}
-                    label={<Translation>Read with</Translation>}
-                    value={<code>{`$(source.${item.name})`}</code>}
-                  />
-                </div>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-        <If condition={sources.length == 0}>
-          <Empty
-            style={{ minHeight: '400px' }}
-            message={
-              <span>
-                <Translation>There are no sources</Translation>
-              </span>
+    <div>
+      <ResourceGrid>
+        {sources.map((item) => (
+          <ResourceCard
+            key={item.name}
+            icon={<AiOutlineImport />}
+            title={item.name}
+            subtitle={item.type}
+            onOpen={() => onShowSource(item)}
+            aside={
+              <Permission
+                request={{
+                  resource: `project:${projectName}/application:${applicationDetail?.name}/source:${item.name}`,
+                  action: 'delete',
+                }}
+                project={projectName}
+              >
+                <AiOutlineDelete className="resource-card-more danger-icon" onClick={() => confirmDelete(item.name)} />
+              </Permission>
+            }
+            description={`Read with $(source.${item.name})`}
+            chips={
+              <React.Fragment>
+                <Chip tone={item.autoUpdate ? 'accent' : undefined}>{autoUpdateLabel(item.autoUpdate)}</Chip>
+                {propertyChips(item.properties)}
+              </React.Fragment>
             }
           />
-        </If>
-      </div>
+        ))}
+      </ResourceGrid>
+      <If condition={sources.length == 0}>
+        <Empty
+          style={{ minHeight: '400px' }}
+          message={
+            <span>
+              <Translation>There are no sources</Translation>
+            </span>
+          }
+        />
+      </If>
     </div>
   );
 };
