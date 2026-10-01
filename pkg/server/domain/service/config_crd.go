@@ -146,8 +146,10 @@ func (u *configServiceImpl) writeConfigCR(ctx context.Context, ct *configv1alpha
 	c := existing
 	if c == nil {
 		c = &configv1alpha1.Config{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}}
+		// Only on create: the Config webhook refuses any change to templateRef,
+		// including spelling out a namespace it left to the default.
+		c.Spec.TemplateRef = &configv1alpha1.ConfigTemplateReference{Name: ct.Name, Namespace: ct.Namespace}
 	}
-	c.Spec.TemplateRef = &configv1alpha1.ConfigTemplateReference{Name: ct.Name, Namespace: ct.Namespace}
 	c.Spec.Properties = &runtime.RawExtension{Raw: raw}
 	c.Spec.Alias, c.Spec.Description = alias, description
 	if existing == nil {

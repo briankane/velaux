@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -86,6 +87,26 @@ func TestListTemplatesMarksLegacy(t *testing.T) {
 	}
 	assert.Equal(t, map[string]bool{"cluster-info": false, "image-registry": true}, legacy,
 		"a ConfigTemplate is listed, a ConfigMap template is legacy, and a source's generated template is not offered")
+}
+
+// The Config webhook refuses any change to templateRef, so an update has to
+// leave it as written, even where it names the template's namespace only by
+// default.
+func TestUpdatingAConfigKeepsItsTemplateRef(t *testing.T) {
+	ctx := context.Background()
+	existing := &configv1alpha1.Config{
+		ObjectMeta: metav1.ObjectMeta{Name: "cluster-info", Namespace: types.DefaultKubeVelaNS},
+		Spec: configv1alpha1.ConfigSpec{
+			TemplateRef: &configv1alpha1.ConfigTemplateReference{Name: "cluster-info"},
+			Properties:  &runtime.RawExtension{Raw: []byte(`{"clusterName":"a","environment":"dev"}`)},
+		},
+	}
+	svc, cli := configCRDService(t, existing)
+	_, err := svc.UpdateConfig(ctx, NoProject, "cluster-info", apis.UpdateConfigRequest{Properties: `{"clusterName":"a","environment":"prod"}`})
+	require.NoError(t, err)
+	got := &configv1alpha1.Config{}
+	require.NoError(t, cli.Get(ctx, client.ObjectKey{Namespace: types.DefaultKubeVelaNS, Name: "cluster-info"}, got))
+	assert.Equal(t, configv1alpha1.ConfigTemplateReference{Name: "cluster-info"}, *got.Spec.TemplateRef)
 }
 
 func TestConfigsOfATemplateCRDAreConfigCRs(t *testing.T) {
