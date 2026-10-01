@@ -129,6 +129,13 @@ func TestExpressionEnvReadsComponents(t *testing.T) {
 	assert.Equal(t, "string", child(components, "db", "outputs", "route", "spec", "clusterIP").Type)
 	assert.Nil(t, child(components, "db", "output", "metadata", "managedFields"))
 
+	for _, path := range [][]string{{"db", "output", "status"}, {"db", "outputs", "route", "status"}} {
+		status := child(components, path...)
+		require.NotNil(t, status, "%v is offered whether or not the object has one yet", path)
+		assert.Equal(t, "dyn", status.Type, "%v is the controller's, read as any and cast", path)
+		assert.Empty(t, status.Children)
+	}
+
 	trait, err := svc.Env(context.Background(), app, "trait", "", "db")
 	require.NoError(t, err)
 	var traitReads []string
