@@ -1,5 +1,7 @@
 import { Grid, Button, Message, Dialog, Loading } from '@alifd/next';
 import React, { Component } from 'react';
+import { RelativeTime } from '../../components/RelativeTime';
+import { isDefaultDescription, syncInfo, visibleLabels } from '../../utils/appMeta';
 import './index.less';
 import { connect } from 'dva';
 
@@ -41,7 +43,6 @@ import type {
   DefinitionBase,
   ApplicationSource,
 } from '@velaux/data';
-import { beautifyTime, momentDate } from '../../utils/common';
 import type { APIError } from '../../utils/errors';
 import { handleError } from '../../utils/errors';
 import { locale } from '../../utils/locale';
@@ -558,6 +559,9 @@ class ApplicationConfig extends Component<Props, State> {
     if (!applicationDetail) {
       return <Loading visible />;
     }
+    const description = isDefaultDescription(applicationDetail?.description) ? '' : applicationDetail?.description;
+    const sync = syncInfo(applicationDetail?.labels);
+    const labelKeys = visibleLabels(applicationDetail?.labels);
     return (
       <div>
         {!section && (
@@ -590,8 +594,8 @@ class ApplicationConfig extends Component<Props, State> {
                   )}
                 </div>
               </div>
-              <p className={`app-overview-description ${applicationDetail?.description ? '' : 'empty'}`}>
-                {applicationDetail?.description || <Translation>No description</Translation>}
+              <p className={`app-overview-description ${description ? '' : 'empty'}`}>
+                {description || <Translation>No description</Translation>}
               </p>
               <div className="app-overview-facts">
                 <div>
@@ -606,22 +610,34 @@ class ApplicationConfig extends Component<Props, State> {
                   <span>
                     <Translation>Created</Translation>
                   </span>
-                  <span title={momentDate(applicationDetail.createTime)}>
-                    {beautifyTime(applicationDetail.createTime)}
-                  </span>
+                  <RelativeTime time={applicationDetail.createTime} />
                 </div>
                 <div>
                   <span>
                     <Translation>Updated</Translation>
                   </span>
-                  <span title={momentDate(applicationDetail.updateTime)}>
-                    {beautifyTime(applicationDetail.updateTime)}
-                  </span>
+                  <RelativeTime time={applicationDetail.updateTime} />
                 </div>
+                {sync.fromCluster && sync.namespace && (
+                  <div>
+                    <span>
+                      <Translation>Synced from</Translation>
+                    </span>
+                    <span>{sync.namespace}</span>
+                  </div>
+                )}
+                {sync.fromCluster && sync.revision && (
+                  <div>
+                    <span>
+                      <Translation>Synced revision</Translation>
+                    </span>
+                    <span title={sync.generation ? `generation ${sync.generation}` : undefined}>{sync.revision}</span>
+                  </div>
+                )}
               </div>
-              {applicationDetail?.labels && Object.keys(applicationDetail.labels).length > 0 && (
+              {labelKeys.length > 0 && (
                 <div className="app-overview-labels">
-                  {Object.keys(applicationDetail.labels).map((key) => (
+                  {labelKeys.map((key) => (
                     <span key={key} className="resource-chip">{`${key}=${applicationDetail.labels?.[key]}`}</span>
                   ))}
                 </div>

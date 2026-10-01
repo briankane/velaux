@@ -4,6 +4,7 @@ import { Loading, Button, Table, Dialog, Message, Balloon } from '@alifd/next';
 import { connect } from 'dva';
 import { Link, routerRedux } from 'dva/router';
 import React, { Component } from 'react';
+import { RelativeTime } from '../../components/RelativeTime';
 import { RowAction } from '../../components/RowAction';
 import { AiOutlineCopy, AiOutlineDelete, AiOutlineEdit, AiOutlineHistory, AiOutlinePlayCircle } from 'react-icons/ai';
 import type { Dispatch } from 'redux';
@@ -25,7 +26,7 @@ import type {
   RunStateInfo,
   LoginUserInfo,
 } from '@velaux/data';
-import { beautifyTime, momentDate } from '../../utils/common';
+import { momentDate } from '../../utils/common';
 import { locale } from '../../utils/locale';
 import type { Tone } from '../../components/StatusBadge';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -229,7 +230,7 @@ class PipelineListPage extends Component<Props, State> {
                       >
                         {run.pipelineRunName}
                       </Link>
-                      <span>{beautifyTime(run.status?.startTime)}</span>
+                      <RelativeTime time={run.status?.startTime} />
                     </div>
                     <StatusBadge tone={runTone(run.status?.status)} label={runLabel(run.status?.status)} />
                   </div>

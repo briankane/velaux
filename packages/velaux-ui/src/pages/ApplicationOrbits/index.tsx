@@ -2,6 +2,7 @@ import { Button } from '@alifd/next';
 import { connect } from 'dva';
 import { Link, routerRedux } from 'dva/router';
 import React, { useState } from 'react';
+import { RelativeTime } from '../../components/RelativeTime';
 import { AiOutlineDown, AiOutlineEnvironment, AiOutlineEye, AiOutlineRight } from 'react-icons/ai';
 
 import type { ApplicationDetail, EnvBinding } from '@velaux/data';
@@ -14,7 +15,6 @@ import '../../components/RowList';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Translation } from '../../components/Translation';
 import AddAndEditEnvBind from '../../layout/Application/components/AddAndEditEnvBind';
-import { beautifyTime } from '../../utils/common';
 import type { OrbitStatus } from '../ApplicationList/components/AppStatus/health';
 import {
   healthLabels,
@@ -214,7 +214,9 @@ export const OrbitList = (props: {
                           <dt>
                             <Translation>Bound</Translation>
                           </dt>
-                          <dd>{beautifyTime(binding.createTime)}</dd>
+                          <dd>
+                            <RelativeTime time={binding.createTime} />
+                          </dd>
                         </React.Fragment>
                       )}
                     </dl>

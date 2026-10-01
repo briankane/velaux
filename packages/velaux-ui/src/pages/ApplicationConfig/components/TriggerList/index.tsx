@@ -1,5 +1,6 @@
 import { Dialog, Grid, Message, Tab } from '@alifd/next';
 import React, { Component } from 'react';
+import { RelativeTime } from '../../../../components/RelativeTime';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 
 import { getApplicationComponent } from '../../../../api/application';
@@ -11,7 +12,7 @@ import '../../../../components/RowList';
 import { RowAction } from '../../../../components/RowAction';
 import { Translation } from '../../../../components/Translation';
 import type { ApplicationComponentBase, ApplicationComponent, Trigger, ApplicationDetail } from '@velaux/data';
-import { beautifyTime, momentDate, showAlias } from '../../../../utils/common';
+import { showAlias } from '../../../../utils/common';
 import './index.less';
 import { locale } from '../../../../utils/locale';
 import {
@@ -209,7 +210,7 @@ class TriggerList extends Component<Props, State> {
                     <span>{item.payloadType || <span className="row-list-muted">-</span>}</span>
                     <span>
                       {item.createTime ? (
-                        <span title={momentDate(item.createTime)}>{beautifyTime(item.createTime)}</span>
+                        <RelativeTime time={item.createTime} />
                       ) : (
                         <span className="row-list-muted">-</span>
                       )}

@@ -1,6 +1,7 @@
 import { Message, Loading, Button } from '@alifd/next';
 import { connect } from 'dva';
 import React, { Component } from 'react';
+import { visibleLabels } from '../../utils/appMeta';
 
 import { deleteApplication } from '../../api/application';
 import { getComponentDefinitions } from '../../api/definitions';
@@ -156,7 +157,7 @@ class Application extends Component<Props, State> {
     applicationList?.map((app) => {
       app.labels &&
         Object.keys(app.labels).map((key: string) => {
-          if (key.indexOf('ux.oam.dev') < 0 && key.indexOf('app.oam.dev')) {
+          if (visibleLabels(app.labels).includes(key)) {
             if (app.labels) {
               appLabels.push(key + '=' + app.labels[key]);
             }
