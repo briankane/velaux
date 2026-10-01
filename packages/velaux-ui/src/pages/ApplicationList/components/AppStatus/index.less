@@ -1,55 +1,4 @@
-// Health colours, shared by the badge, env chips and the card's edge.
-@healthy: #16a34a;
-@progressing: #2563eb;
-@suspended: #d97706;
-@unhealthy: #ea580c;
-@failed: #dc2626;
-@undeployed: #94a3b8;
-
-.health-colour(@name, @c) {
-  .app-health-@{name} {
-    --health: @c;
-    --health-bg: fade(@c, 10%);
-  }
-}
-.health-colour(healthy, @healthy);
-.health-colour(progressing, @progressing);
-.health-colour(suspended, @suspended);
-.health-colour(unhealthy, @unhealthy);
-.health-colour(failed, @failed);
-.health-colour(undeployed, @undeployed);
-
-.app-health {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  padding: 3px 12px 3px 10px;
-  color: var(--health);
-  font-weight: 600;
-  font-size: 12px;
-  line-height: 20px;
-  white-space: nowrap;
-  background: var(--health-bg);
-  border-radius: 999px;
-}
-
-.app-health-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  background: var(--health);
-  border-radius: 50%;
-}
-
-.app-health-progressing .app-health-dot {
-  animation: app-health-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes app-health-pulse {
-  50% {
-    opacity: 0.35;
-  }
-}
+@import '../../../../components/StatusBadge/index.less';
 
 .app-workflow {
   color: #64748b;
@@ -88,10 +37,10 @@
     border-radius: 2px;
   }
   .full {
-    background: @healthy;
+    background: @tone-healthy;
   }
   .partial {
-    background: @unhealthy;
+    background: @tone-unhealthy;
   }
 }
 

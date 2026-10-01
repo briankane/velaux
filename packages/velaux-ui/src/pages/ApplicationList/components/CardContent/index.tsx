@@ -345,7 +345,7 @@ class CardContent extends React.Component<Props, State> {
             (key) => key.indexOf('ux.oam.dev') < 0 && key.indexOf('app.oam.dev') < 0
           );
           return (
-            <div className={`app-card app-health-${healthOf(status)}`} key={name}>
+            <div className={`app-card tone-${healthOf(status)}`} key={name}>
               <div className="app-card-head">
                 <Link to={`/applications/${name}/config`} className="app-card-icon">
                   {icon && icon !== 'none' ? <img src={icon} /> : <AiOutlineAppstore />}
