@@ -156,12 +156,18 @@ class CardContent extends React.Component<Props, State> {
     return [
       {
         key: 'name',
-        title: <Translation>Name(Alias)</Translation>,
+        title: <Translation>Name</Translation>,
         dataIndex: 'name',
-        cell: (v: string, i: number, app: ApplicationBase) => {
-          const showName = app.name + '(' + (app.alias || '-') + ')';
-          return <Link to={`/applications/${v}/config`}>{showName}</Link>;
-        },
+        cell: (v: string, i: number, app: ApplicationBase) => (
+          <span className="app-table-name">
+            <Link to={`/applications/${v}/config`}>{v}</Link>
+            {app.alias && app.alias !== v && (
+              <span className="app-table-alias">
+                <Translation>alias</Translation>: {app.alias}
+              </span>
+            )}
+          </span>
+        ),
       },
       {
         key: 'health',
@@ -306,7 +312,7 @@ class CardContent extends React.Component<Props, State> {
     const columns = this.getColumns();
     if (showMode == 'table') {
       return (
-        <div style={{ overflow: 'auto' }}>
+        <div className="app-table">
           <Table
             locale={locale().Table}
             className="customTable"
