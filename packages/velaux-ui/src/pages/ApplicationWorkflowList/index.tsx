@@ -1,9 +1,9 @@
 import { Dialog, Message, Table } from '@alifd/next';
 import { connect } from 'dva';
-import { Link } from 'dva/router';
+import { Link, routerRedux } from 'dva/router';
 import React from 'react';
 import { RowAction } from '../../components/RowAction';
-import { AiOutlineDelete } from 'react-icons/ai';
+import { AiOutlineDelete, AiOutlineEdit } from 'react-icons/ai';
 import type { Dispatch } from 'redux';
 
 import { deleteWorkflow } from '../../api/workflows';
@@ -130,10 +130,29 @@ class ApplicationWorkflowList extends React.Component<Props, State> {
             cell={(v: string, i: number, w: Workflow) => {
               return (
                 <div>
+                  <Permission
+                    project={projectName}
+                    request={{
+                      resource: `project:${projectName}/application:${applicationDetail?.name}/workflow:${v}`,
+                      action: 'update',
+                    }}
+                  >
+                    <RowAction
+                      icon={<AiOutlineEdit />}
+                      label="Edit"
+                      onClick={() => {
+                        this.props.dispatch(
+                          routerRedux.push(
+                            `/applications/${applicationDetail?.name}/envbinding/${w.envName}/workflow/${v}/studio`
+                          )
+                        );
+                      }}
+                    />
+                  </Permission>
                   <If condition={v != 'workflow-' + w.envName}>
                     <Permission
                       project={projectName}
-                      resource={{
+                      request={{
                         resource: `project:${projectName}/application:${applicationDetail?.name}/workflow:${v}`,
                         action: 'delete',
                       }}
