@@ -6,6 +6,7 @@ import { getUserList, deleteUser, changeUserDisable, changeUserEnable } from '..
 import { If } from '../../components/If';
 import { ListTitle } from '../../components/ListTitle';
 import Permission from '../../components/Permission';
+import { StatusBadge } from '../../components/StatusBadge';
 import { Translation } from '../../components/Translation';
 import type { NameAlias, RolesBase, User } from '@velaux/data';
 import { momentDate } from '../../utils/common';
@@ -280,6 +281,14 @@ class Users extends Component<Props, State> {
             <span className="roles-permPolicies margin-right-5">{item.alias || item.name}</span>
           ));
         },
+      },
+      {
+        key: 'status',
+        title: <Translation>Status</Translation>,
+        dataIndex: 'disabled',
+        cell: (disabled: boolean) => (
+          <StatusBadge tone={disabled ? 'neutral' : 'healthy'} label={disabled ? 'Disabled' : 'Active'} />
+        ),
       },
       {
         key: 'email',
