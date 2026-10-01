@@ -6,6 +6,7 @@ import {
   describeNamespaces,
   describeQuota,
   describeSelector,
+  defaultComponentType,
   isUsable,
   restrictsNamespaces,
   usageState,
@@ -93,5 +94,16 @@ describe('test definition restrictions', () => {
     assert.deepEqual(usageState('over'), { label: 'Over limit', type: 'error' });
     assert.deepEqual(usageState('exempt'), { label: 'Exempt', type: 'normal' });
     assert.deepEqual(usageState('unlimited'), { label: 'No quota', type: 'normal' });
+  });
+});
+
+describe('defaultComponentType', () => {
+  it('starts a new component as webservice where it is usable', () => {
+    assert.equal(defaultComponentType([{ name: 'worker' }, { name: 'webservice' }]), 'webservice');
+  });
+  it('starts it as nothing where webservice is restricted or absent', () => {
+    assert.equal(defaultComponentType([{ name: 'webservice', unusableIn: ['default'] }, { name: 'worker' }]), '');
+    assert.equal(defaultComponentType([{ name: 'worker' }]), '');
+    assert.equal(defaultComponentType([]), '');
   });
 });

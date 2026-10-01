@@ -14,7 +14,7 @@ import type { ExpressionEnv } from '../../../../extends/ExpressionEditor';
 import { checkName } from '../../../../utils/common';
 import type { DefinitionDetail, DefinitionBase, Env, Target, LoginUserInfo, UserProject } from '@velaux/data';
 import { locale } from '../../../../utils/locale';
-import { deployNamespaces, isUsable } from '../../../../utils/restrictions';
+import { defaultComponentType, deployNamespaces, isUsable } from '../../../../utils/restrictions';
 import type { DeployTarget } from '../../../../utils/restrictions';
 import { transComponentDefinitions } from '../../../../utils/utils';
 import EnvDialog from '../../../EnvPage/components/EnvDialog';
@@ -109,7 +109,10 @@ class AppDialog extends React.Component<Props, State> {
         this.loadEnvs();
       });
     }
-    this.onDetailComponentDefinition('webservice');
+    const type = defaultComponentType(this.props.componentDefinitions || []);
+    if (type) {
+      this.onDetailComponentDefinition(type);
+    }
   }
 
   onClose = () => {
@@ -455,7 +458,7 @@ class AppDialog extends React.Component<Props, State> {
                         showSearch
                         className="select"
                         {...init(`componentType`, {
-                          initValue: 'webservice',
+                          initValue: defaultComponentType(this.props.componentDefinitions || []),
                           rules: [
                             {
                               required: true,

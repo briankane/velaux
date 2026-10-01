@@ -28,6 +28,7 @@ import type {
 } from '@velaux/data';
 import { checkName } from '../../../../utils/common';
 import { locale } from '../../../../utils/locale';
+import { defaultComponentType } from '../../../../utils/restrictions';
 import { transComponentDefinitions } from '../../../../utils/utils';
 
 import './index.less';
@@ -130,6 +131,19 @@ class ComponentDialog extends React.Component<Props, State> {
     };
   };
 
+  // componentDidUpdate gives a new component its default type once the
+  // definitions it is chosen from arrive, unless a type is already chosen.
+  componentDidUpdate(prev: Props) {
+    if (this.props.isEditComponent || prev.componentDefinitions === this.props.componentDefinitions) {
+      return;
+    }
+    const type = defaultComponentType(this.props.componentDefinitions);
+    if (type && !this.field.getValue('componentType')) {
+      this.field.setValue('componentType', type);
+      this.onDetailsComponentDefinition(type);
+    }
+  }
+
   componentDidMount() {
     this.loadExpressionEnv();
     const { isEditComponent, dispatch, appName, project } = this.props;
@@ -152,7 +166,9 @@ class ComponentDialog extends React.Component<Props, State> {
       });
     } else {
       const getInitComponentType: string = this.field.getValue('componentType') || '';
-      this.onDetailsComponentDefinition(getInitComponentType);
+      if (getInitComponentType) {
+        this.onDetailsComponentDefinition(getInitComponentType);
+      }
     }
     dispatch({
       type: 'uischema/setAppName',
@@ -456,7 +472,7 @@ class ComponentDialog extends React.Component<Props, State> {
                       disabled={isEditComponent ? true : false}
                       className="select"
                       {...init(`componentType`, {
-                        initValue: isEditComponent ? '' : 'webservice',
+                        initValue: isEditComponent ? '' : defaultComponentType(componentDefinitions),
                         rules: [
                           {
                             required: true,
