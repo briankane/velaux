@@ -1,6 +1,7 @@
 import type { ApplicationStatusSummary } from '@velaux/data';
 import React from 'react';
 
+import { StatusBadge } from '../../../../components/StatusBadge';
 import { Translation } from '../../../../components/Translation';
 import i18n from '../../../../i18n';
 
@@ -10,12 +11,7 @@ import './index.less';
 // HealthBadge is an application's health as a coloured pill.
 export const HealthBadge = (props: { status?: ApplicationStatusSummary }) => {
   const health = healthOf(props.status);
-  return (
-    <span className={`app-health app-health-${health}`}>
-      <span className="app-health-dot" />
-      <Translation>{healthLabels[health]}</Translation>
-    </span>
-  );
+  return <StatusBadge tone={health} label={healthLabels[health]} />;
 };
 
 // WorkflowBadge is the phase of the workflow behind the health, if one ran.
@@ -70,10 +66,10 @@ export const EnvHealth = (props: { status?: ApplicationStatusSummary }) => {
       {envs.map((e) => (
         <span
           key={e.env}
-          className={`app-env app-health-${e.health}`}
+          className={`app-env tone-${e.health}`}
           title={`${i18n.t(healthLabels[e.health])}: ${e.healthyComponents}/${e.components}`}
         >
-          <span className="app-health-dot" />
+          <span className="status-dot" />
           {e.env}
         </span>
       ))}
