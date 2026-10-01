@@ -205,7 +205,17 @@
     padding-top: 6px;
     color: #64748b;
     font-weight: 600;
+    white-space: nowrap;
     background: #f8fafc;
+  }
+  // Words wrap whole: the page's tables otherwise break anywhere.
+  .next-table th .next-table-cell-wrapper,
+  .next-table td .next-table-cell-wrapper {
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+  .app-table-nowrap {
+    white-space: nowrap;
   }
 }
 
