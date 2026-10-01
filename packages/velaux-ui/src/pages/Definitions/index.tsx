@@ -61,6 +61,10 @@ class Definitions extends Component<Props, State> {
   }
 
   componentWillReceiveProps(nextProps: Props) {
+    // The list waits on the user, to check the permission to list.
+    if (!this.props.userInfo && nextProps.userInfo) {
+      this.lisDefinitions(nextProps.userInfo);
+    }
     const nextPropsParams = nextProps.match.params || {};
     if (nextPropsParams.definitionType !== this.state.definitionType) {
       this.setState(
@@ -74,8 +78,7 @@ class Definitions extends Component<Props, State> {
     }
   }
 
-  lisDefinitions() {
-    const { userInfo } = this.props;
+  lisDefinitions(userInfo = this.props.userInfo) {
     const { definitionType } = this.state;
     if (!definitionType) {
       return;
