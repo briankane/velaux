@@ -54,10 +54,12 @@ export const ResourceCard = (props: Props) => (
       {props.description}
     </div>
     {props.chips && <div className="resource-card-chips">{props.chips}</div>}
-    <div className="resource-card-foot">
-      <span>{props.footLeft}</span>
-      <span>{props.footRight}</span>
-    </div>
+    {(props.footLeft || props.footRight) && (
+      <div className="resource-card-foot">
+        <span>{props.footLeft}</span>
+        <span>{props.footRight}</span>
+      </div>
+    )}
   </div>
 );
 
