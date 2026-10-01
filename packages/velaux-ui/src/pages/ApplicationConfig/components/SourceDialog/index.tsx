@@ -16,6 +16,8 @@ import i18n from '../../../../i18n';
 import type { ApplicationSource, DefinitionBase, DefinitionDetail } from '@velaux/data';
 import { checkName } from '../../../../utils/common';
 import { locale } from '../../../../utils/locale';
+import { deployNamespaces, isUsable } from '../../../../utils/restrictions';
+import type { DeployTarget } from '../../../../utils/restrictions';
 import { sourceFields } from '../../../../utils/source';
 
 const { Row, Col } = Grid;
@@ -24,6 +26,9 @@ type Props = {
   appName: string;
   project: string;
   source?: ApplicationSource;
+  // envbinding are where the application deploys, whose namespaces a source
+  // type's restrictions are checked against.
+  envbinding?: DeployTarget[];
   onClose: () => void;
   onOK: () => void;
   dispatch?: ({}) => {};
@@ -63,9 +68,12 @@ class SourceDialog extends React.Component<Props, State> {
       dispatch({ type: 'uischema/setProject', payload: project });
     }
     this.loadExpressionEnv();
-    getSourceDefinitions().then((res) => {
+    const namespaces = deployNamespaces(this.props.envbinding);
+    // Without a namespace to check, an unfiltered list offers types the webhook
+    // then refuses.
+    getSourceDefinitions(namespaces.length > 0 ? namespaces : undefined).then((res) => {
       if (res) {
-        this.setState({ definitions: res.definitions || [] });
+        this.setState({ definitions: namespaces.length > 0 ? (res.definitions || []).filter(isUsable) : [] });
       }
     });
     if (source) {

@@ -69,9 +69,9 @@ export function detailPolicyDefinition(params: { name: string }) {
   return get(_url, { params: { type: 'policy' } }).then((res) => res);
 }
 
-export function getSourceDefinitions() {
+export function getSourceDefinitions(namespaces?: string[]) {
   const _url = base + definition;
-  return get(_url, { params: { type: 'source' } }).then((res) => res);
+  return get(_url, { params: { type: 'source', namespaces: namespaces?.join(',') } }).then((res) => res);
 }
 
 export function detailSourceDefinition(params: { name: string }) {

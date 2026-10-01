@@ -899,6 +899,7 @@ class ApplicationConfig extends Component<Props, State> {
             project={applicationDetail?.project?.name || ''}
             appName={appName}
             source={editSource}
+            envbinding={envbinding}
             onClose={() => this.setState({ visibleSource: false, editSource: undefined })}
             onOK={() => {
               this.loadSources();
