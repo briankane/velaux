@@ -5,7 +5,8 @@ import { AiOutlineControl, AiOutlineDelete, AiOutlineDown, AiOutlineEdit, AiOutl
 import Empty from '../../../../components/Empty';
 import Permission from '../../../../components/Permission';
 import { PolicyScopeTag } from '../../../../components/PolicyScopeTag';
-import { flattenProperties, PropertyList, RowAction } from '../../../../components/RowList';
+import { flattenProperties, PropertyList } from '../../../../components/RowList';
+import { RowAction } from '../../../../components/RowAction';
 import type { Tone } from '../../../../components/StatusBadge';
 import { StatusBadge } from '../../../../components/StatusBadge';
 import { Translation } from '../../../../components/Translation';

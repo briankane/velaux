@@ -4,7 +4,8 @@ import { AiOutlineDelete, AiOutlineDown, AiOutlineEdit, AiOutlineImport, AiOutli
 
 import Empty from '../../../../components/Empty';
 import Permission from '../../../../components/Permission';
-import { flattenProperties, PropertyList, RowAction } from '../../../../components/RowList';
+import { flattenProperties, PropertyList } from '../../../../components/RowList';
+import { RowAction } from '../../../../components/RowAction';
 import { Translation } from '../../../../components/Translation';
 import type { ApplicationDetail, ApplicationSource } from '@velaux/data';
 import { locale } from '../../../../utils/locale';

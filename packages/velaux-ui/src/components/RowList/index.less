@@ -79,39 +79,8 @@
 
 .row-list-actions {
   display: flex;
-  gap: 6px;
   align-items: center;
   justify-content: flex-end;
-}
-
-.row-list-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  color: #475569;
-  font-size: 15px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-  &:hover {
-    color: var(--primary-color, #1b58f4);
-    background: #f8fafc;
-    border-color: #cbd5e1;
-  }
-  &:focus-visible {
-    outline: 2px solid var(--primary-color, #1b58f4);
-    outline-offset: 1px;
-  }
-  &.danger:hover {
-    color: #dc2626;
-    background: #fef2f2;
-    border-color: #fecaca;
-  }
 }
 
 .row-list-muted {
