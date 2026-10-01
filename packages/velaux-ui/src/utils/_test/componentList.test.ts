@@ -1,6 +1,10 @@
 import { expect } from 'chai';
 
-import { componentHealth, flattenProperties } from '../../pages/ApplicationConfig/components/ComponentList/model';
+import {
+  componentDependsOn,
+  componentHealth,
+  flattenProperties,
+} from '../../pages/ApplicationConfig/components/ComponentList/model';
 
 describe('component list', () => {
   it("gives a component's health in each env it is placed in", () => {
@@ -49,6 +53,30 @@ describe('component list', () => {
       { key: 'env.LOG', value: 'debug' },
       { key: 'args', value: 'a, b' },
       { key: 'replicas', value: '2' },
+    ]);
+  });
+
+  it('lists written dependencies, then inferred ones not already written', () => {
+    const deps = componentDependsOn(
+      ['db'],
+      [
+        { name: 'db', direction: 'outbound' },
+        { name: 'db', direction: 'outbound', inferred: 'reads db' },
+        { name: 'cache', direction: 'outbound', inferred: 'reads cache' },
+        { name: 'web', direction: 'inbound' },
+      ]
+    );
+    expect(deps.map((d) => [d.name, !!d.inferred])).to.deep.equal([
+      ['db', false],
+      ['cache', true],
+    ]);
+  });
+
+  it('keeps an inferred read of another placement beside the written one', () => {
+    const deps = componentDependsOn(['db'], [{ name: 'db', direction: 'outbound', inferred: 'reads', where: 'east' }]);
+    expect(deps.map((d) => [d.name, d.where])).to.deep.equal([
+      ['db', undefined],
+      ['db', 'east'],
     ]);
   });
 });

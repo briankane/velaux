@@ -1,6 +1,6 @@
 import { Button, Dialog } from '@alifd/next';
 import React, { useState } from 'react';
-import { AiOutlineDelete, AiOutlineDown, AiOutlineRight } from 'react-icons/ai';
+import { AiOutlineDelete, AiOutlineDown, AiOutlineLink, AiOutlineRight } from 'react-icons/ai';
 import { IoMdAdd } from 'react-icons/io';
 
 import type {
@@ -23,7 +23,7 @@ import { healthLabels } from '../../../ApplicationList/components/AppStatus/heal
 import { dependencyItems } from '../../../../utils/dependencies';
 import { locale } from '../../../../utils/locale';
 import type { ComponentStatusIn } from './model';
-import { componentHealth, flattenProperties } from './model';
+import { componentDependsOn, componentHealth, flattenProperties } from './model';
 import './index.less';
 
 type Props = {
@@ -101,14 +101,7 @@ const ComponentList = (props: Props) => {
       </div>
       {components.map((com) => {
         const health = componentHealth(com.name, statuses);
-        const dependsOn = Array.from(
-          new Set([
-            ...(com.dependsOn || []),
-            ...dependencyItems(com.name, allDependencies)
-              .filter((d) => d.direction === 'outbound')
-              .map((d) => d.name),
-          ])
-        );
+        const dependsOn = componentDependsOn(com.dependsOn, dependencyItems(com.name, allDependencies));
         const detail = open[com.name];
         const expanded = !!detail;
         return (
@@ -188,11 +181,19 @@ const ComponentList = (props: Props) => {
                 {dependsOn.length === 0 ? (
                   <span className="component-row-muted">-</span>
                 ) : (
-                  dependsOn.map((d) => (
-                    <span key={d} className="resource-chip">
-                      {d}
-                    </span>
-                  ))
+                  dependsOn.map((d) =>
+                    d.inferred ? (
+                      <span key={d.name + d.where} className="component-dep inferred" title={d.inferred}>
+                        <AiOutlineLink />
+                        {d.name}
+                        {d.where && <span className="component-dep-where">{d.where}</span>}
+                      </span>
+                    ) : (
+                      <span key={d.name} className="component-dep">
+                        {d.name}
+                      </span>
+                    )
+                  )
                 )}
               </span>
               <span className="component-row-actions" onClick={(e) => e.stopPropagation()}>

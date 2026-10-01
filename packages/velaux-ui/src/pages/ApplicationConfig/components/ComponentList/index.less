@@ -200,3 +200,28 @@
   color: #0f172a;
   font-size: 13px;
 }
+
+.component-dep {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 1px 8px;
+  color: #334155;
+  font-size: 12px;
+  line-height: 18px;
+  background: #f1f5f9;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  // Inferred from an expression rather than written: greyed, with a link icon.
+  &.inferred {
+    color: #94a3b8;
+    background: transparent;
+    border: 1px dashed #cbd5e1;
+    cursor: help;
+  }
+}
+
+.component-dep-where {
+  color: #94a3b8;
+  font-size: 11px;
+}
