@@ -79,3 +79,20 @@
 .trait-panel-state {
   color: #64748b;
 }
+
+// The name, with its health at the right.
+.component-node-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.component-node-name {
+  overflow: hidden;
+  color: #0f172a;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

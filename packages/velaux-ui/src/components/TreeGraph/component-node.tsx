@@ -10,7 +10,7 @@ import { layoutTraits, maxTraitRows, traitArea } from './traits';
 
 import './component-node.less';
 import type { TraitStatus } from '@velaux/data';
-import { If } from '../If';
+import { StatusBadge } from '../StatusBadge';
 import { traitState, traitStateCircle } from '../../utils/status';
 import { traitTooltip } from './tooltip';
 import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
@@ -85,17 +85,15 @@ export const ComponentNode = (props: ComponentNodeProps) => {
       <div className="component-node-body">
         {WithBalloon(
           <div className={classNames('name')}>
-            <div>{node.resource.name}</div>
-            <div className={classNames('healthy', { success: node.resource.service?.healthy })}>
-              <If condition={node.resource.service?.healthy}>
-                <span className="circle circle-success" />
-                <Translation>Healthy</Translation>
-              </If>
-              <If condition={!node.resource.service?.healthy}>
-                <span className="circle circle-warning" />
-                <Translation>UnHealthy</Translation>
-              </If>
+            <div className="component-node-title">
+              <span className="component-node-name">{node.resource.name}</span>
+              {node.resource.service?.healthy ? (
+                <StatusBadge tone="healthy" label="Healthy" />
+              ) : (
+                <StatusBadge tone="unhealthy" label="Unhealthy" />
+              )}
             </div>
+            <div className="kind">{node.resource.component?.componentType}</div>
           </div>
         )}
         {shown.length > 0 && (
