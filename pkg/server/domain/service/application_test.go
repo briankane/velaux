@@ -169,8 +169,10 @@ var _ = Describe("Test application service function", Ordered, func() {
 		Expect(err).Should(BeNil())
 		Expect(appService.ListSources(ctx, appModel)).Should(HaveLen(1))
 
-		_, err = appService.UpdateSource(ctx, appModel, "db", v1.UpdateSourceRequest{Type: "db-lookup", Properties: `{"secret":"other"}`})
+		live := true
+		updated, err := appService.UpdateSource(ctx, appModel, "db", v1.UpdateSourceRequest{Type: "db-lookup", Properties: `{"secret":"other"}`, AutoUpdate: &live})
 		Expect(err).Should(BeNil())
+		Expect(*updated.AutoUpdate).Should(BeTrue())
 		_, err = appService.UpdateSource(ctx, appModel, "missing", v1.UpdateSourceRequest{Type: "db-lookup"})
 		Expect(err).Should(Equal(bcode.ErrApplicationSourceNotExist))
 
@@ -179,6 +181,7 @@ var _ = Describe("Test application service function", Ordered, func() {
 		Expect(err).Should(BeNil())
 		Expect(oamApp.Spec.Sources).Should(HaveLen(1))
 		Expect(string(oamApp.Spec.Sources[0].Properties.Raw)).Should(MatchJSON(`{"secret":"other"}`))
+		Expect(*oamApp.Spec.Sources[0].AutoUpdate).Should(BeTrue(), "the binding's autoUpdate reaches the Application")
 
 		Expect(appService.DeleteSource(ctx, appModel, "db")).Should(BeNil())
 		Expect(appService.DeleteSource(ctx, appModel, "db")).Should(Equal(bcode.ErrApplicationSourceNotExist))

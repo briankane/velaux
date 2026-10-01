@@ -1058,6 +1058,9 @@ type SourceBase struct {
 	Type string `json:"type"`
 	// Properties is the source's parameter, as a JSON object.
 	Properties *model.JSONStruct `json:"properties,omitempty"`
+	// AutoUpdate is whether a change to the source's value re-dispatches what
+	// reads it; unset follows the source definition, then the controller.
+	AutoUpdate *bool `json:"autoUpdate,omitempty"`
 }
 
 // ListApplicationSourceResponse lists the sources of an application
@@ -1073,6 +1076,8 @@ type CreateSourceRequest struct {
 	Type string `json:"type" validate:"checkname"`
 	// Properties json data
 	Properties string `json:"properties"`
+	// AutoUpdate is the binding's own say; unset follows the source definition.
+	AutoUpdate *bool `json:"autoUpdate,omitempty"`
 }
 
 // UpdateSourceRequest changes the type or parameter of an application source
@@ -1080,6 +1085,8 @@ type UpdateSourceRequest struct {
 	Type string `json:"type" validate:"checkname"`
 	// Properties json data
 	Properties string `json:"properties"`
+	// AutoUpdate is the binding's own say; unset follows the source definition.
+	AutoUpdate *bool `json:"autoUpdate,omitempty"`
 }
 
 // WorkflowPolicyBinding define the relation binding relationShip between policy and workflowStep

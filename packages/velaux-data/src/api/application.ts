@@ -480,6 +480,9 @@ export interface ApplicationSource {
   name: string;
   type: string;
   properties?: Record<string, any>;
+  // autoUpdate is whether a change to the source's value re-dispatches what
+  // reads it; unset follows the source definition, then the controller.
+  autoUpdate?: boolean;
 }
 
 export interface ApplicationPolicyDetail extends ApplicationPolicyBase {

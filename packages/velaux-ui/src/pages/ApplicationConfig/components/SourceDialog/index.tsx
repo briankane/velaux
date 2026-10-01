@@ -21,6 +21,22 @@ import { sourceBindingName, sourceFields, sourceNamePattern } from '../../../../
 
 const { Row, Col } = Grid;
 
+// autoUpdateOption and autoUpdateValue map a binding's autoUpdate to the
+// select's options and back: unset is "default", which follows the definition.
+function autoUpdateOption(autoUpdate?: boolean): string {
+  if (autoUpdate === undefined) {
+    return 'default';
+  }
+  return autoUpdate ? 'on' : 'off';
+}
+
+function autoUpdateValue(option?: string): boolean | undefined {
+  if (option === 'on') {
+    return true;
+  }
+  return option === 'off' ? false : undefined;
+}
+
 type Props = {
   appName: string;
   project: string;
@@ -84,7 +100,12 @@ class SourceDialog extends React.Component<Props, State> {
       }
     });
     if (source) {
-      this.field.setValues({ name: source.name, type: source.type, properties: source.properties });
+      this.field.setValues({
+        name: source.name,
+        type: source.type,
+        properties: source.properties,
+        autoUpdate: autoUpdateOption(source.autoUpdate),
+      });
       this.loadDefinition(source.type);
     }
   }
@@ -140,10 +161,11 @@ class SourceDialog extends React.Component<Props, State> {
       }
       const { appName, source } = this.props;
       const { name, type, properties } = values;
+      const autoUpdate = autoUpdateValue(values.autoUpdate);
       this.setState({ saving: true });
       const request = source
-        ? updateSource(appName, source.name, { type, properties: JSON.stringify(properties || {}) })
-        : createSource(appName, { name, type, properties: JSON.stringify(properties || {}) });
+        ? updateSource(appName, source.name, { type, properties: JSON.stringify(properties || {}), autoUpdate })
+        : createSource(appName, { name, type, properties: JSON.stringify(properties || {}), autoUpdate });
       request
         .then((res) => {
           if (res) {
@@ -212,6 +234,26 @@ class SourceDialog extends React.Component<Props, State> {
                     })}
                     disabled={source != undefined}
                     locale={locale().Input}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row>
+              <Col span={12} style={{ padding: '0 8px' }}>
+                <Form.Item
+                  label={i18n.t('Auto Update').toString()}
+                  help={i18n
+                    .t('Whether a change to the value re-deploys what reads it, without a new deploy')
+                    .toString()}
+                >
+                  <Select
+                    {...init('autoUpdate', { initValue: 'default' })}
+                    locale={locale().Select}
+                    dataSource={[
+                      { label: i18n.t('Default (as the source type says)').toString(), value: 'default' },
+                      { label: i18n.t('On: refresh live').toString(), value: 'on' },
+                      { label: i18n.t('Off: wait for the next deploy').toString(), value: 'off' },
+                    ]}
                   />
                 </Form.Item>
               </Col>
