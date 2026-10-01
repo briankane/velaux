@@ -2179,6 +2179,8 @@ type ExpressionIssue struct {
 // Customisation is how this VelaUX is branded, kept in the
 // velaux-configuration ConfigMap.
 type Customisation struct {
+	// PageTitle is the browser tab's title.
+	PageTitle string `json:"pageTitle,omitempty"`
 	// LogoURL replaces the KubeVela wordmark; an http(s), data or same-origin URL.
 	LogoURL string `json:"logoURL,omitempty"`
 	// IconURL replaces the sail mark shown when the sidebar is minimised.

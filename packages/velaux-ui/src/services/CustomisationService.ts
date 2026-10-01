@@ -4,6 +4,8 @@ import { applyTerminology } from '../utils/terminology';
 // Customisation is how this VelaUX is branded, kept in the vela-system
 // velaux-configuration ConfigMap.
 export interface Customisation {
+  // pageTitle is the browser tab's title.
+  pageTitle?: string;
   logoURL?: string;
   iconURL?: string;
   // sidebarColor and accentColor are hex colours for the sidebar's background
@@ -21,6 +23,8 @@ type Listener = (c: Customisation) => void;
 class CustomisationService {
   private current: Customisation = {};
   private listeners: Listener[] = [];
+  // defaultTitle is the tab's title as the page set it.
+  private defaultTitle = typeof document !== 'undefined' ? document.title : '';
 
   get(): Customisation {
     return this.current;
@@ -28,6 +32,9 @@ class CustomisationService {
 
   set(c: Customisation) {
     this.current = c;
+    if (typeof document !== 'undefined') {
+      document.title = c.pageTitle || this.defaultTitle;
+    }
     this.listeners.forEach((l) => l(c));
   }
 
