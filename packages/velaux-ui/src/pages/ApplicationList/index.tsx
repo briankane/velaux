@@ -1,6 +1,9 @@
 import { Message, Loading, Button } from '@alifd/next';
 import { connect } from 'dva';
 import React, { Component } from 'react';
+import type { HealthFilter } from './components/AppStatus/health';
+import { byHealth, healthCounts } from './components/AppStatus/health';
+import { HealthChips } from './components/HealthChips';
 import { visibleLabels } from '../../utils/appMeta';
 
 import { deleteApplication } from '../../api/application';
@@ -35,6 +38,7 @@ type State = {
   editItem?: ApplicationBase;
   labelValue: string[];
   showMode: ShowMode;
+  health: HealthFilter;
 };
 
 @connect((store: any) => {
@@ -54,6 +58,7 @@ class Application extends Component<Props, State> {
       isLoading: false,
       showEditApplication: false,
       showMode: mode,
+      health: 'all',
     };
   }
 
@@ -201,9 +206,14 @@ class Application extends Component<Props, State> {
             this.getApplications(params);
           }}
         />
+        <HealthChips
+          counts={healthCounts(applicationList || [])}
+          value={this.state.health}
+          onChange={(health: HealthFilter) => this.setState({ health })}
+        />
         <Loading visible={isLoading} fullScreen>
           <CardContend
-            applications={applicationList}
+            applications={byHealth(applicationList || [], this.state.health)}
             editAppPlan={(item: ApplicationBase) => {
               this.editAppPlan(item);
             }}

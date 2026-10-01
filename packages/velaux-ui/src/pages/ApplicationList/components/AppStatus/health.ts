@@ -104,3 +104,23 @@ export function summariseStatuses(statuses: OrbitStatus[]): ApplicationStatusSum
   });
   return summary;
 }
+
+// HealthFilter is a health to list applications by, or all of them.
+export type HealthFilter = AppHealth | 'all';
+
+// healthCounts counts the applications in each health they are in, and all of them.
+export function healthCounts(
+  apps: Array<{ status?: ApplicationStatusSummary }>
+): Partial<Record<HealthFilter, number>> {
+  const counts: Partial<Record<HealthFilter, number>> = { all: apps.length };
+  apps.forEach((app) => {
+    const h = healthOf(app.status);
+    counts[h] = (counts[h] || 0) + 1;
+  });
+  return counts;
+}
+
+// byHealth keeps the applications in a health, or all of them.
+export function byHealth<T extends { status?: ApplicationStatusSummary }>(apps: T[], health: HealthFilter): T[] {
+  return health === 'all' ? apps : apps.filter((app) => healthOf(app.status) === health);
+}
