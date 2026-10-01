@@ -19,6 +19,7 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/kubevela/pkg/controller/reconciler"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
@@ -134,4 +135,23 @@ func TestPatchApplicationAnnotation(t *testing.T) {
 	require.NoError(t, patchApplicationMetadata(ctx, cli, key, "annotations", oam.AnnotationReconcileInterval, nil))
 	require.NoError(t, cli.Get(ctx, key, got))
 	require.Equal(t, map[string]string{"owner": "orders"}, got.Annotations)
+}
+
+// KubeVela restarts from status.workflowRestartScheduledAt, so cancelling clears
+// it as well as the annotation that scheduled it.
+func TestCancelWorkflowRestart(t *testing.T) {
+	ctx := context.Background()
+	app := &v1beta1.Application{ObjectMeta: metav1.ObjectMeta{
+		Name: "shop", Namespace: "prod",
+		Annotations: map[string]string{oam.AnnotationWorkflowRestart: "10m", "owner": "orders"},
+	}}
+	app.Status.WorkflowRestartScheduledAt = &metav1.Time{Time: time.Date(2026, 10, 1, 20, 0, 0, 0, time.UTC)}
+	cli := fake.NewClientBuilder().WithScheme(common2.Scheme).WithObjects(app).WithStatusSubresource(app).Build()
+	key := types.NamespacedName{Namespace: "prod", Name: "shop"}
+
+	require.NoError(t, cancelWorkflowRestart(ctx, cli, key))
+	got := &v1beta1.Application{}
+	require.NoError(t, cli.Get(ctx, key, got))
+	require.Equal(t, map[string]string{"owner": "orders"}, got.Annotations)
+	require.Nil(t, got.Status.WorkflowRestartScheduledAt)
 }

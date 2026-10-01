@@ -29,3 +29,11 @@ describe('restartPlan', () => {
     expect(plan.next?.toISOString()).to.equal('2026-10-01T20:00:01.000Z');
   });
 });
+
+describe('restartPlan, once KubeVela has taken the annotation', () => {
+  it('reads a scheduled time with no annotation as a one-off still to run', () => {
+    const plan = restartPlan(undefined, '2026-10-01T20:00:00Z');
+    expect(plan.mode).to.equal('once');
+    expect(plan.next?.toISOString()).to.equal('2026-10-01T20:00:00.000Z');
+  });
+});

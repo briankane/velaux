@@ -91,13 +91,29 @@ func (c *applicationServiceImpl) RestartWorkflow(ctx context.Context, appmodel *
 	return patchApplicationMetadata(ctx, c.KubeClient, key, "annotations", oam.AnnotationWorkflowRestart, &value)
 }
 
-// CancelWorkflowRestart drops a scheduled or recurring workflow restart.
+// CancelWorkflowRestart drops a pending or recurring workflow restart.
 func (c *applicationServiceImpl) CancelWorkflowRestart(ctx context.Context, appmodel *model.Application, envName string) error {
 	key, err := c.deployedApplication(ctx, appmodel, envName)
 	if err != nil {
 		return err
 	}
-	return patchApplicationMetadata(ctx, c.KubeClient, key, "annotations", oam.AnnotationWorkflowRestart, nil)
+	return cancelWorkflowRestart(ctx, c.KubeClient, key)
+}
+
+// cancelWorkflowRestart removes the restart annotation, then clears
+// status.workflowRestartScheduledAt: KubeVela moves a restart's time into status
+// and restarts from there, deleting the annotation outright for a one-off. In
+// this order the controller cannot schedule it again from the annotation.
+func cancelWorkflowRestart(ctx context.Context, cli client.Client, key types.NamespacedName) error {
+	if err := patchApplicationMetadata(ctx, cli, key, "annotations", oam.AnnotationWorkflowRestart, nil); err != nil {
+		return err
+	}
+	obj := &unstructured.Unstructured{}
+	obj.SetGroupVersionKind(v1beta1.ApplicationKindVersionKind)
+	obj.SetNamespace(key.Namespace)
+	obj.SetName(key.Name)
+	patch := []byte(`{"status":{"workflowRestartScheduledAt":null}}`)
+	return cli.Status().Patch(ctx, obj, client.RawPatch(types.MergePatchType, patch))
 }
 
 // validReconcileInterval accepts an empty interval or one KubeVela honours.

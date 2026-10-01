@@ -486,6 +486,7 @@ class Header extends Component<Props, State> {
               >
                 <Button
                   type="secondary"
+                  className="orbit-toolbar-icon-btn"
                   loading={pauseLoading}
                   disabled={applicationDetail?.readOnly}
                   onClick={() => this.setPaused(!applicationStatus?.paused)}

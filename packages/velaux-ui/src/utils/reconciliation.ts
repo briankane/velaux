@@ -15,10 +15,12 @@ const date = (value?: string): Date | undefined => {
 
 // restartPlan reads the annotation's value: "true" restarts now, an RFC3339
 // time restarts once then, and anything else is an interval between restarts.
-// KubeVela's scheduled time, where it has one, is when the next run happens.
+// KubeVela's scheduled time, where it has one, is when the next run happens; it
+// deletes the annotation of a one-off as it schedules it, leaving only that time.
 export function restartPlan(annotation?: string, scheduledAt?: string): RestartPlan {
   if (!annotation) {
-    return { mode: 'none' };
+    const next = date(scheduledAt);
+    return next ? { mode: 'once', next } : { mode: 'none' };
   }
   if (annotation === 'true') {
     return { mode: 'now' };
