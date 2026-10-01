@@ -66,7 +66,9 @@ class AppDialog extends React.Component<Props, State> {
       envs: [],
       visibleEnvDialog: false,
       createLoading: false,
-      optIn: false,
+      // The fx toggles show from the start; the application is opted in on
+      // create only if a value uses an expression.
+      optIn: true,
     };
     this.field = new Field(this, {
       autoUnmount: false,
@@ -115,45 +117,54 @@ class AppDialog extends React.Component<Props, State> {
       if (error) {
         return;
       }
-      const {
-        description,
+      const { alias, description, icon = '', componentType, properties, name, componentName } = values;
+      const serialized = JSON.stringify(properties);
+      this.create(values, {
         alias,
-        name,
-        icon = '',
         componentType,
-        properties,
-        envBindings,
-        project,
-        componentName,
-      } = values;
-      const envbinding = envBindings?.map((env: string) => {
-        return { name: env };
-      });
-      const params = {
-        alias,
-        icon,
-        name,
         description,
-        project: project || 'default',
-        envBinding: envbinding,
-        annotations: this.state.optIn ? { 'app.oam.dev/cel-expressions': 'true' } : undefined,
-        component: {
-          alias,
-          componentType,
-          description,
-          icon,
-          name: componentName || name,
-          properties: JSON.stringify(properties),
-        },
-      };
-      this.setState({ createLoading: true });
-      createApplication(params).then((res) => {
-        if (res && res.name) {
-          Message.success(<Translation>Application created successfully</Translation>);
-          this.props.onOK(name);
-        }
-        this.setState({ createLoading: false });
+        icon,
+        name: componentName || name,
+        properties: serialized,
       });
+    });
+  };
+
+  // onSkip creates the application without a main component and opens it, so
+  // its components can be added from the application's own page.
+  onSkip = () => {
+    this.field.validate(['name', 'alias', 'description', 'project', 'envBindings'], (error: any, values: any) => {
+      if (error) {
+        return;
+      }
+      this.create(values);
+    });
+  };
+
+  create = (values: any, component?: Record<string, any>) => {
+    const { description, alias, name, icon = '', envBindings, project } = values;
+    const envbinding = envBindings?.map((env: string) => {
+      return { name: env };
+    });
+    // Reading expressions is opted into only where a value uses one.
+    const usesExpressions = this.state.optIn && !!component && component.properties?.includes('$(');
+    const params = {
+      alias,
+      icon,
+      name,
+      description,
+      project: project || 'default',
+      envBinding: envbinding,
+      annotations: usesExpressions ? { 'app.oam.dev/cel-expressions': 'true' } : undefined,
+      component,
+    };
+    this.setState({ createLoading: true });
+    createApplication(params).then((res) => {
+      if (res && res.name) {
+        Message.success(<Translation>Application created successfully</Translation>);
+        this.props.onOK(name);
+      }
+      this.setState({ createLoading: false });
     });
   };
 
@@ -305,6 +316,9 @@ class AppDialog extends React.Component<Props, State> {
           <Button type="secondary" onClick={onClose} className="margin-right-10">
             <Translation>Cancel</Translation>
           </Button>
+          <Button type="secondary" onClick={this.onSkip} loading={createLoading} className="margin-right-10">
+            <Translation>Skip</Translation>
+          </Button>
           <Button
             type="primary"
             onClick={() => {
@@ -326,6 +340,9 @@ class AppDialog extends React.Component<Props, State> {
             className="margin-right-10"
           >
             <Translation>Previous</Translation>
+          </Button>
+          <Button type="secondary" onClick={this.onSkip} loading={createLoading} className="margin-right-10">
+            <Translation>Skip</Translation>
           </Button>
           <Button loading={createLoading} type="primary" onClick={this.onSubmit}>
             <Translation>Create</Translation>
