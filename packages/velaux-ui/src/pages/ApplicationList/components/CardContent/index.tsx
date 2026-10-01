@@ -160,7 +160,9 @@ class CardContent extends React.Component<Props, State> {
         dataIndex: 'name',
         cell: (v: string, i: number, app: ApplicationBase) => (
           <span className="app-table-name">
-            <Link to={`/applications/${v}/config`}>{v}</Link>
+            <Link className="app-table-nowrap" to={`/applications/${v}/config`}>
+              {v}
+            </Link>
             {app.alias && app.alias !== v && (
               <span className="app-table-alias">
                 <Translation>alias</Translation>: {app.alias}
@@ -179,7 +181,9 @@ class CardContent extends React.Component<Props, State> {
         key: 'workflow',
         title: <Translation>Workflow</Translation>,
         dataIndex: 'status',
-        cell: (v: ApplicationStatusSummary) => <span>{workflowLabel(v?.workflow) || '-'}</span>,
+        cell: (v: ApplicationStatusSummary) => (
+          <span className="app-table-nowrap">{workflowLabel(v?.workflow) || '-'}</span>
+        ),
       },
       {
         key: 'components',
@@ -199,7 +203,11 @@ class CardContent extends React.Component<Props, State> {
         dataIndex: 'project',
         cell: (v: Project) => {
           if (v && v.name) {
-            return <Link to={`/projects/${v.name}/summary`}>{v && v.name}</Link>;
+            return (
+              <Link className="app-table-nowrap" to={`/projects/${v.name}/summary`}>
+                {v.alias || v.name}
+              </Link>
+            );
           } else {
             return null;
           }
