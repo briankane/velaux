@@ -1,95 +1,199 @@
-.layout-top-bar {
-  width: 100%;
-  padding: 0 16px;
-  box-shadow: 5px 0 8px #888;
-  cursor: auto !important;
-  .logo {
-    width: 200px;
-  }
-  .cycle-mode {
-    color: #fff;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-  }
-  .nav-wrapper {
-    position: relative;
-    width: 100%;
-    height: 48px;
-    .logo {
-      display: flex;
-      align-items: center;
-      margin-left: 9px;
-      border-radius: 3px;
-      img {
-        height: 30px;
-      }
-    }
-  }
-  .right {
-    display: flex;
-    float: right;
-    height: 48px;
-    margin-left: auto;
-    overflow: hidden;
-    .vela-item {
-      display: flex;
-      align-items: center;
-      justify-items: center;
-      height: 48px;
-      padding: 0 8px;
-      color: #fff;
-      cursor: pointer;
-      transition: all 0.3s;
-      a {
-        color: #fff;
-        cursor: pointer;
-      }
-    }
-    .user-item {
-      padding: 0 8px;
-      span {
-        margin-left: 8px;
-      }
-    }
-  }
-  .workspace-items {
-    display: flex;
-    flex-wrap: nowrap;
-    height: 100%;
-    .item {
-      line-height: var(--layout-header-height);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: #fff;
-      padding: 0 var(--spacing-4);
-      img {
-        width: 30px;
-      }
-      &:hover,
-      &.active {
-        background: var(--hover-color);
-      }
-      svg {
-        margin-right: var(--spacing-2);
-      }
-    }
+// The sidebar holds what the top bar did: brand, search, workspaces, the
+// workspace's menu, and settings and the user at the foot.
+@sb-text: #a3adbd;
+@sb-text-strong: #f1f5f9;
+@sb-muted: #64748b;
+@sb-hover: rgba(255, 255, 255, 0.06);
+@sb-active: rgba(59, 130, 246, 0.16);
+@sb-border: rgba(255, 255, 255, 0.06);
+
+.layout-sidebar {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 240px;
+  height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+  border-right: 1px solid @sb-border;
+  transition: width 0.2s ease;
+  &.collapsed {
+    width: 64px;
   }
 }
-.margin-left-10 {
-  margin-left: 10px;
-}
-.margin-top-10 {
-  margin-top: 10px;
-}
-.user-actions {
+
+.sidebar-brand {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-top: 32px;
-  .next-btn-helper {
-    font-size: 12px;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 12px 0 20px;
+  img {
+    height: 22px;
   }
+  .collapsed & {
+    justify-content: center;
+    padding: 0;
+  }
+}
+
+.sidebar-collapse {
+  display: flex;
+  padding: 6px;
+  color: @sb-muted;
+  border-radius: 6px;
+  cursor: pointer;
+  &:hover {
+    color: @sb-text-strong;
+    background: @sb-hover;
+  }
+}
+
+.sidebar-workspaces {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  margin: 0 12px 14px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  .collapsed & {
+    grid-auto-flow: row;
+    margin: 0 10px 14px;
+  }
+}
+
+.sidebar-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  padding: 6px 4px;
+  color: @sb-muted !important;
+  font-size: 11px;
+  line-height: 13px;
+  text-align: center;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+  &:hover {
+    color: @sb-text-strong !important;
+    background: @sb-hover;
+  }
+  &.active {
+    color: @sb-text-strong !important;
+    background: @sb-active;
+  }
+}
+
+.sidebar-menu {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  &::-webkit-scrollbar {
+    width: 0;
+  }
+  .collapsed & {
+    .main-nav,
+    .menu-item-text {
+      display: none;
+    }
+    .menu-item,
+    .menu-item-active {
+      margin: 2px 10px;
+      padding: 10px 0;
+      > div {
+        justify-content: center;
+      }
+    }
+    .sub-wrapper {
+      margin-bottom: 10px;
+    }
+  }
+}
+
+.sidebar-footer {
+  padding: 10px 0 12px;
+  border-top: 1px solid @sb-border;
+}
+
+.sidebar-footer-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 2px 12px;
+  padding: 8px 14px;
+  color: @sb-text !important;
+  font-size: 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  svg {
+    flex: none;
+    color: @sb-muted;
+  }
+  &:hover {
+    color: @sb-text-strong !important;
+    background: @sb-hover;
+    svg {
+      color: @sb-text-strong;
+    }
+  }
+  .collapsed & {
+    justify-content: center;
+    margin: 2px 10px;
+    padding: 9px 0;
+  }
+}
+
+.sidebar-language {
+  // The language switch is its own dropdown; its trigger is the icon.
+  > :first-child {
+    display: flex;
+  }
+}
+
+.sidebar-user {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 8px 12px 0;
+  padding: 8px 10px;
+  color: @sb-text-strong;
+  border-radius: 8px;
+  cursor: pointer;
+  &:hover {
+    background: @sb-hover;
+  }
+  .collapsed & {
+    justify-content: center;
+    margin: 8px 10px 0;
+    padding: 8px 0;
+  }
+}
+
+.sidebar-avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  border-radius: 50%;
+}
+
+.sidebar-user-name {
+  overflow: hidden;
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
