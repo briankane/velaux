@@ -95,7 +95,7 @@ class ComponentDialog extends React.Component<Props, State> {
       return;
     }
     try {
-      const env: ExpressionEnv = await getExpressionEnv(appName, 'component');
+      const env: ExpressionEnv = await getExpressionEnv(appName, 'component', undefined, this.props.componentName);
       this.setState({ expressionEnv: env });
     } catch (e) {
       this.setState({ expressionEnv: undefined });
@@ -124,6 +124,7 @@ class ComponentDialog extends React.Component<Props, State> {
     return {
       appName,
       surface: 'component',
+      component: this.props.componentName,
       env: this.state.expressionEnv,
       onOptIn: this.setExpressionOptIn,
     };

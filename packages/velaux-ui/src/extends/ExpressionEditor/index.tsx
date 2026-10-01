@@ -32,7 +32,7 @@ function register() {
         [/"([^"\\]|\\.)*"|'([^'\\]|\\.)*'/, 'string'],
         [/\d+(\.\d+)?/, 'number'],
         [/\b(true|false|null|in)\b/, 'keyword'],
-        [/\b(context|source)\b/, 'type'],
+        [/\b(context|source|component)\b/, 'type'],
       ],
     },
   });
@@ -104,6 +104,8 @@ type Props = {
   surface: string;
   // source names the source being edited, on the source surface.
   source?: string;
+  // component names the component being edited, or the one a trait is on.
+  component?: string;
   // draft is an application being created, checked without it.
   draft?: boolean;
   // kind is the type the parameter expects: string, integer, number or boolean.
@@ -247,12 +249,12 @@ class ExpressionEditor extends React.Component<Props, State> {
       return;
     }
     this.checked = value;
-    const { appName, surface, source, kind, draft } = this.props;
+    const { appName, surface, source, component, kind, draft } = this.props;
     let res: any;
     try {
       res = draft
         ? await checkDraftExpression({ surface, value, kind })
-        : await checkExpression(appName, { surface, value, kind, source });
+        : await checkExpression(appName, { surface, value, kind, source, component });
     } catch (e) {
       return;
     }

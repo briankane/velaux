@@ -71,14 +71,13 @@ class TraitDialog extends React.Component<Props, State> {
     this.uiSchemaRef = React.createRef();
   }
 
-
   loadExpressionEnv = async () => {
     const { appName } = this.props;
     if (!appName) {
       return;
     }
     try {
-      const env: ExpressionEnv = await getExpressionEnv(appName, 'trait');
+      const env: ExpressionEnv = await getExpressionEnv(appName, 'trait', undefined, this.props.componentName);
       this.setState({ expressionEnv: env });
     } catch (e) {
       this.setState({ expressionEnv: undefined });
@@ -107,6 +106,7 @@ class TraitDialog extends React.Component<Props, State> {
     return {
       appName,
       surface: 'trait',
+      component: this.props.componentName,
       env: this.state.expressionEnv,
       onOptIn: this.setExpressionOptIn,
     };
@@ -162,22 +162,20 @@ class TraitDialog extends React.Component<Props, State> {
       getTraitDefinitions({
         appliedWorkload: component?.definition.workload.type,
         namespaces: deployNamespaces(this.props.envbinding),
-      }).then(
-        (res: { definitions?: DefinitionBase[] }) => {
-          if (res) {
-            const podDisruptive: any = {};
-            res.definitions?.map((def) => {
-              if (def.trait?.podDisruptive) {
-                podDisruptive[def.name] = true;
-              }
-            });
-            this.setState({
-              traitDefinitions: res && res.definitions,
-              podDisruptive: podDisruptive,
-            });
-          }
+      }).then((res: { definitions?: DefinitionBase[] }) => {
+        if (res) {
+          const podDisruptive: any = {};
+          res.definitions?.map((def) => {
+            if (def.trait?.podDisruptive) {
+              podDisruptive[def.name] = true;
+            }
+          });
+          this.setState({
+            traitDefinitions: res && res.definitions,
+            podDisruptive: podDisruptive,
+          });
         }
-      );
+      });
     }
   };
 
@@ -253,10 +251,10 @@ class TraitDialog extends React.Component<Props, State> {
       .then((re) => {
         if (re) {
           this.setState({ definitionDetail: re, definitionLoading: false });
-          this.setDefaultProperties(re)
-            if (callback) {
-              callback();
-            }
+          this.setDefaultProperties(re);
+          if (callback) {
+            callback();
+          }
         }
       })
       .catch(() => this.setState({ definitionLoading: false }));
@@ -265,13 +263,13 @@ class TraitDialog extends React.Component<Props, State> {
   setDefaultProperties = (definitionDetail: any) => {
     const properties = definitionDetail.schema?.properties;
     if (properties) {
-        const defaultValues: Record<string, any> = {};
-        for (const key in properties) {
-            if (properties[key].default !== undefined) {
-                defaultValues[key] = properties[key].default;
-            }
+      const defaultValues: Record<string, any> = {};
+      for (const key in properties) {
+        if (properties[key].default !== undefined) {
+          defaultValues[key] = properties[key].default;
         }
-        this.field.setValues({ properties: defaultValues });
+      }
+      this.field.setValues({ properties: defaultValues });
     }
   };
 

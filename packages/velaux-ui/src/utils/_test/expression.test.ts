@@ -17,7 +17,11 @@ const env: ExpressionEnv = {
         { name: 'appLabels', type: 'map(string, string)' },
       ],
     },
-    { name: 'source', type: 'object', children: [{ name: 'db', type: 'object', children: [{ name: 'host', type: 'string' }] }] },
+    {
+      name: 'source',
+      type: 'object',
+      children: [{ name: 'db', type: 'object', children: [{ name: 'host', type: 'string' }] }],
+    },
   ],
 };
 
@@ -78,5 +82,54 @@ describe('expression hover', () => {
   it('names nothing outside an expression or for an unknown name', () => {
     expect(hoverAt(value, 1, env)).to.equal(undefined);
     expect(hoverAt('$(context.nope)', 11, env)).to.equal(undefined);
+  });
+});
+
+describe('component read suggestions', () => {
+  const withComponents: ExpressionEnv = {
+    ...env,
+    variables: [
+      ...(env.variables || []),
+      {
+        name: 'component',
+        type: 'object',
+        children: [
+          {
+            name: 'db',
+            type: 'object',
+            children: [
+              {
+                name: 'output',
+                type: 'object',
+                children: [{ name: 'data', type: 'object', children: [{ name: 'host', type: 'string' }] }],
+              },
+              { name: 'outputs', type: 'object' },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const items = (before: string) => suggest(before, withComponents).items.map((i) => i.label);
+
+  it('offers a component its output and the placements it can be read at', () => {
+    expect(items('$(component.db.')).to.deep.equal(['output', 'outputs', 'cluster', 'namespace']);
+  });
+  it('reads through a placement call to the output beyond it', () => {
+    expect(items('$(component.db.cluster("east").')).to.deep.equal(['output', 'outputs', 'namespace']);
+    expect(items('$(component.db.cluster("east").namespace("orders").output.data.')).to.deep.equal(['host']);
+  });
+  it('offers no placement anywhere but straight after the component', () => {
+    expect(items('$(component.db.output.')).to.deep.equal(['data']);
+  });
+  it('hovers a field read past a placement call', () => {
+    const text = '$(component.db.namespace("orders").output.data.host)';
+    expect(hoverAt(text, text.indexOf('host'), withComponents)?.path).to.deep.equal([
+      'component',
+      'db',
+      'output',
+      'data',
+      'host',
+    ]);
   });
 });

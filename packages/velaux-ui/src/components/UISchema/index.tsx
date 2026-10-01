@@ -54,6 +54,9 @@ export type ExpressionContext = {
   // source names the source being edited, on the source surface: it reads only
   // the sources declared before it.
   source?: string;
+  // component names the component being edited, or the one a trait is on: it
+  // cannot read its own output.
+  component?: string;
   // draft is an application being created, which the expression endpoints of
   // an existing one cannot answer for.
   draft?: boolean;
@@ -1384,6 +1387,7 @@ class UISchema extends Component<Props, State> {
             appName={this.props.expressions?.appName || ''}
             surface={this.props.expressions?.surface || ''}
             source={this.props.expressions?.source}
+            component={this.props.expressions?.component}
             draft={this.props.expressions?.draft}
             env={this.props.expressions?.env}
             kind={expressionKind(param)}

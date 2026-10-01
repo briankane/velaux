@@ -28,9 +28,30 @@ export type Suggestion = {
 
 // globals are the functions an expression may call at its top level.
 const globals: Suggestion[] = [
-  { label: 'has', kind: 'function', detail: 'has(a.b) bool', documentation: 'Whether a field is set. Guard a read that may be absent: has(x.y) ? x.y : fallback', insertText: 'has(${1})', snippet: true },
-  { label: 'size', kind: 'function', detail: 'size(x) int', documentation: 'The length of a string, list or map', insertText: 'size(${1})', snippet: true },
-  { label: 'int', kind: 'function', detail: 'int(x) int', documentation: 'Converts to an int; needed when a value has no known type', insertText: 'int(${1})', snippet: true },
+  {
+    label: 'has',
+    kind: 'function',
+    detail: 'has(a.b) bool',
+    documentation: 'Whether a field is set. Guard a read that may be absent: has(x.y) ? x.y : fallback',
+    insertText: 'has(${1})',
+    snippet: true,
+  },
+  {
+    label: 'size',
+    kind: 'function',
+    detail: 'size(x) int',
+    documentation: 'The length of a string, list or map',
+    insertText: 'size(${1})',
+    snippet: true,
+  },
+  {
+    label: 'int',
+    kind: 'function',
+    detail: 'int(x) int',
+    documentation: 'Converts to an int; needed when a value has no known type',
+    insertText: 'int(${1})',
+    snippet: true,
+  },
   { label: 'double', kind: 'function', detail: 'double(x) double', insertText: 'double(${1})', snippet: true },
   { label: 'string', kind: 'function', detail: 'string(x) string', insertText: 'string(${1})', snippet: true },
   { label: 'bool', kind: 'function', detail: 'bool(x) bool', insertText: 'bool(${1})', snippet: true },
@@ -73,6 +94,38 @@ const methods: Record<string, Suggestion[]> = {
     snippet: true,
   })),
 };
+
+// placements are the calls that read a component at a named placement, straight
+// after its name: cluster("c"), namespace("ns"), or cluster("c").namespace("ns").
+const placements: Record<string, Suggestion> = {
+  cluster: {
+    label: 'cluster',
+    kind: 'method',
+    detail: 'cluster("name")',
+    documentation: 'Reads the component in that cluster instead of beside the reader',
+    insertText: 'cluster("${1}")',
+    snippet: true,
+  },
+  namespace: {
+    label: 'namespace',
+    kind: 'method',
+    detail: 'namespace("name")',
+    documentation: "Reads the component in that namespace, in the reader's cluster unless cluster() precedes it",
+    insertText: 'namespace("${1}")',
+    snippet: true,
+  },
+};
+
+const placementCall = /\.(cluster|namespace)\([^)]*\)/g;
+
+// placementsAfter is what placement calls may follow a component read that has
+// made the given calls: cluster before namespace, each once.
+function placementsAfter(calls: string[]): Suggestion[] {
+  if (calls.includes('namespace')) {
+    return [];
+  }
+  return calls.includes('cluster') ? [placements.namespace] : [placements.cluster, placements.namespace];
+}
 
 // openExpression reports whether the cursor sits inside a $( ) not yet
 // closed, and where that expression starts.
@@ -133,16 +186,30 @@ export function suggest(before: string, env?: ExpressionEnv): { items: Suggestio
   const start = openExpression(before);
   if (start === undefined) {
     return {
-      items: [{ label: '$( )', kind: 'snippet', detail: 'expression', documentation: 'A CEL expression, evaluated when the application renders', insertText: '$(${1})', snippet: true }],
+      items: [
+        {
+          label: '$( )',
+          kind: 'snippet',
+          detail: 'expression',
+          documentation: 'A CEL expression, evaluated when the application renders',
+          insertText: '$(${1})',
+          snippet: true,
+        },
+      ],
       replace: 0,
     };
   }
   const expr = before.substring(start);
-  const m = /([A-Za-z_][\w]*(?:\.[A-Za-z_][\w]*)*)(\.?)([A-Za-z_]\w*)?$/.exec(expr);
+  const m = /([A-Za-z_]\w*(?:\.[A-Za-z_]\w*|\.(?:cluster|namespace)\([^)]*\))*)(\.?)([A-Za-z_]\w*)?$/.exec(expr);
   let path: string[] = [];
   let partial = '';
+  const calls: string[] = [];
   if (m) {
-    const parts = m[1].split('.');
+    const chain = m[1].replace(placementCall, (_call: string, fn: string) => {
+      calls.push(fn);
+      return '';
+    });
+    const parts = chain.split('.');
     if (m[2] === '.') {
       path = parts;
       partial = m[3] || '';
@@ -160,6 +227,9 @@ export function suggest(before: string, env?: ExpressionEnv): { items: Suggestio
     return { items: [], replace: partial.length };
   }
   const fields = (parent.children || []).map(fieldSuggestion);
+  if (path.length === 2 && path[0] === 'component') {
+    return { items: [...fields, ...placementsAfter(calls)], replace: partial.length };
+  }
   const kind = parent.type.startsWith('list') ? 'list' : parent.type;
   return { items: [...fields, ...(methods[kind] || [])], replace: partial.length };
 }
@@ -239,6 +309,11 @@ export function hoverAt(text: string, offset: number, env?: ExpressionEnv): Hove
   const path = [text.substring(start, end)];
   let i = start;
   while (text[i - 1] === '.') {
+    const call = /\.(cluster|namespace)\([^)]*\)$/.exec(text.substring(0, i - 1));
+    if (call) {
+      i = call.index + 1;
+      continue;
+    }
     let j = i - 1;
     while (j > 0 && identChar.test(text[j - 1])) {
       j--;
