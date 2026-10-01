@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import LayoutRouter from './LayoutRouter';
 import LeftMenu from './LeftMenu';
 import Header from './Header';
+import QuickSearch from '../components/QuickSearch';
 import './index.less';
 import { LayoutMode, LayoutModes, Workspace } from '@velaux/data';
 import { locationService } from '../services/LocationService';
@@ -39,6 +40,11 @@ export default function MainLayout(props: any) {
                 </Header>
               )}
               <div className="layout-shell">
+                {mode !== LayoutModes.NeatPro && (
+                  <div className="layout-topbar">
+                    <QuickSearch userInfo={props.userInfo} />
+                  </div>
+                )}
                 <div className="layout-content">
                   <LayoutRouter></LayoutRouter>
                 </div>

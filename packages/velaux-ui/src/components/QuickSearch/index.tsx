@@ -25,8 +25,6 @@ const definitionTypes: Array<'component' | 'trait' | 'policy' | 'workflowstep'> 
 
 type Props = {
   userInfo?: LoginUserInfo;
-  // compact draws the trigger as an icon, for the collapsed sidebar.
-  compact?: boolean;
 };
 
 type State = {
@@ -36,7 +34,8 @@ type State = {
   active: number;
 };
 
-// QuickSearch is the sidebar's search box and the palette it opens, also on
+// QuickSearch is the search bar across the top of the page and the palette it
+// opens, also on
 // Cmd+K or Ctrl+K: pages, applications, projects, environments, targets,
 // definitions and config templates, read once when it first opens.
 class QuickSearch extends React.Component<Props, State> {
@@ -238,17 +237,11 @@ class QuickSearch extends React.Component<Props, State> {
     const mac = /Mac|iPhone|iPad/.test(navigator.platform);
     return (
       <>
-        {this.props.compact ? (
-          <div className="quick-search-trigger compact" title={i18n.t('Search').toString()} onClick={this.open}>
-            <AiOutlineSearch size={18} />
-          </div>
-        ) : (
-          <div className="quick-search-trigger" onClick={this.open}>
-            <AiOutlineSearch size={16} />
-            <span>{i18n.t('Search').toString()}</span>
-            <kbd>{mac ? '⌘K' : 'Ctrl K'}</kbd>
-          </div>
-        )}
+        <div className="quick-search-trigger" onClick={this.open}>
+          <AiOutlineSearch size={16} />
+          <span>{i18n.t('Search applications, projects, definitions, pages…').toString()}</span>
+          <kbd>{mac ? '⌘K' : 'Ctrl K'}</kbd>
+        </div>
         {this.state.open && this.renderPalette()}
       </>
     );

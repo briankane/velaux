@@ -1,5 +1,5 @@
-// The sidebar holds what the top bar did: brand, search, workspaces, the
-// workspace's menu, and settings and the user at the foot.
+// The sidebar holds the brand, every section's menu, and at its foot Cloud
+// Shell, the admin dashboard, settings and the user.
 @sb-text: #a3adbd;
 @sb-text-strong: #f1f5f9;
 @sb-muted: #64748b;
@@ -47,47 +47,6 @@
   &:hover {
     color: @sb-text-strong;
     background: @sb-hover;
-  }
-}
-
-.sidebar-workspaces {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 2px;
-  margin: 0 12px 14px;
-  padding: 3px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
-  .collapsed & {
-    grid-auto-flow: row;
-    margin: 0 10px 14px;
-  }
-}
-
-.sidebar-workspace {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  align-items: center;
-  padding: 6px 4px;
-  color: @sb-muted !important;
-  font-size: 11px;
-  line-height: 13px;
-  text-align: center;
-  border-radius: 6px;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-  &:hover {
-    color: @sb-text-strong !important;
-    background: @sb-hover;
-  }
-  &.active {
-    color: @sb-text-strong !important;
-    background: @sb-active;
   }
 }
 
@@ -142,6 +101,13 @@
     background: @sb-hover;
     svg {
       color: @sb-text-strong;
+    }
+  }
+  &.active {
+    color: @sb-text-strong !important;
+    background: @sb-active;
+    svg {
+      color: #60a5fa;
     }
   }
   .collapsed & {

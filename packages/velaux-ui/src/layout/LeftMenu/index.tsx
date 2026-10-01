@@ -37,9 +37,8 @@ const LeftMenuModule = (props: Props) => {
   useEffect(() => {
     menuService.resetPluginMenus();
     menuService.loadPluginMenus().then(() => {
-      const workspace = menuService.loadCurrentWorkspace();
-      const menus = workspace && props.userInfo ? menuService.loadMenus(workspace, props.userInfo) : [];
-      if (grafanaConfigs && workspace?.name === 'extension') {
+      const menus = props.userInfo ? menuService.loadSidebarMenus(props.userInfo) : [];
+      if (grafanaConfigs && grafanaConfigs.length > 0) {
         const grafanaLeftMenu: LeftMenu = { catalog: 'Grafana', menus: [] };
         grafanaConfigs.map((g) => {
           if (g.properties && g.properties['endpoint']) {
@@ -55,7 +54,9 @@ const LeftMenuModule = (props: Props) => {
             });
           }
         });
-        menus.push(grafanaLeftMenu);
+        if (grafanaLeftMenu.menus.length > 0) {
+          menus.push(grafanaLeftMenu);
+        }
       }
       setMenus(menus);
     });
