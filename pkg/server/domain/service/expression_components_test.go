@@ -51,7 +51,8 @@ func shopExpressionService(t *testing.T) *expressionServiceImpl {
 	app := &v1beta1.Application{
 		ObjectMeta: metav1.ObjectMeta{Name: "shop", Namespace: "prod"},
 		Spec: v1beta1.ApplicationSpec{Components: []common.ApplicationComponent{
-			{Name: "db", Type: "k8s-objects"}, {Name: "api", Type: "webservice"},
+			{Name: "db", Type: "k8s-objects"},
+			{Name: "api", Type: "webservice", Traits: []common.ApplicationTrait{{Type: "expose"}}},
 		}},
 	}
 	rt := &v1beta1.ResourceTracker{
@@ -77,8 +78,23 @@ func shopExpressionService(t *testing.T) *expressionServiceImpl {
 		ObjectMeta: metav1.ObjectMeta{Name: "db-route", Namespace: "prod", Labels: map[string]string{oam.TraitResource: "route"}},
 		Spec:       corev1.ServiceSpec{ClusterIP: "10.0.0.7"},
 	}
-	cli := fake.NewClientBuilder().WithScheme(common2.Scheme).WithObjects(app, rt, workload, route).Build()
+	schemas := []*corev1.ConfigMap{
+		schemaConfigMap("component-schema-webservice", map[string]string{
+			componentOutputSchemaKey: `{"type":"object","properties":{"kind":{"type":"string"},"spec":{"type":"object","properties":{"replicas":{"type":"integer"}}},"status":{}}}`,
+		}),
+		schemaConfigMap("component-schema-k8s-objects", map[string]string{
+			componentOutputSchemaKey: `{"type":"object","properties":{"kind":{"type":"string"},"data":{"type":"object","properties":{"host":{"type":"integer"}}}}}`,
+		}),
+		schemaConfigMap("trait-schema-expose", map[string]string{
+			componentOutputsSchemaKey: `{"service":{"type":"object","properties":{"spec":{"type":"object","properties":{"ports":{"type":"array","items":{"type":"object","properties":{"port":{"type":"integer"}}}}}}}}}`,
+		}),
+	}
+	cli := fake.NewClientBuilder().WithScheme(common2.Scheme).WithObjects(app, rt, workload, route, schemas[0], schemas[1], schemas[2]).Build()
 	return &expressionServiceImpl{enabled: true, KubeClient: cli, EnvBindingService: oneEnv{namespace: "prod", name: "shop"}}
+}
+
+func schemaConfigMap(name string, data map[string]string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "vela-system"}, Data: data}
 }
 
 func root(env *apisv1.ExpressionEnvResponse, name string) *apisv1.ExpressionVariable {
@@ -147,6 +163,29 @@ func TestExpressionEnvReadsComponents(t *testing.T) {
 	src, err := svc.Env(context.Background(), app, "source", "first", "")
 	require.NoError(t, err)
 	assert.Nil(t, root(src, "component"), "a source cannot read a component")
+}
+
+// A component offers what its type and traits declare they apply, with its live
+// fields layered on top once it is deployed.
+func TestExpressionEnvReadsOutputSchemas(t *testing.T) {
+	svc := shopExpressionService(t)
+	app := &model.Application{Name: "shop", Annotations: map[string]string{oam.AnnotationCelExpressions: "true"}}
+
+	env, err := svc.Env(context.Background(), app, "component", "", "db")
+	require.NoError(t, err)
+	api := child(root(env, "component"), "api")
+	require.NotNil(t, api)
+	assert.Equal(t, "int", child(api, "output", "spec", "replicas").Type, "an undeployed component offers its type's output")
+	assert.Equal(t, "dyn", child(api, "output", "status").Type)
+	assert.Equal(t, "list(object)", child(api, "outputs", "service", "spec", "ports").Type, "and each trait's outputs")
+	assert.Equal(t, "dyn", child(api, "outputs", "service", "status").Type)
+
+	env, err = svc.Env(context.Background(), app, "component", "", "api")
+	require.NoError(t, err)
+	db := child(root(env, "component"), "db")
+	assert.Equal(t, "string", child(db, "output", "kind").Type, "a declared field is offered before the object has it")
+	assert.Equal(t, "string", child(db, "output", "data", "host").Type, "a live field's type is what the object holds")
+	assert.NotNil(t, child(db, "output", "data", "port"), "a live field the template does not declare is offered")
 }
 
 // The check refuses a component read where the controller would.
