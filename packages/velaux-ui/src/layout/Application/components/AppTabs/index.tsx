@@ -24,7 +24,7 @@ export function appTabs(appName: string): Tab[] {
   return [
     { key: 'overview', label: 'Overview', to: `${base}/config`, active: (path) => path === `${base}/config` },
     { key: 'sources', label: 'Sources', ...config('sources') },
-    { key: 'components', label: 'Components & Traits', ...config('components') },
+    { key: 'components', label: 'Components', ...config('components') },
     { key: 'policies', label: 'Policies', ...config('policies') },
     { key: 'triggers', label: 'Triggers', ...config('triggers') },
     {
