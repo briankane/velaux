@@ -88,7 +88,10 @@ function register() {
           insertText: item.insertText,
           insertTextRules: item.snippet ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet : undefined,
           sortText: String(i).padStart(3, '0'),
-          range,
+          // An item that also replaces the dot before it is matched against
+          // the dot as well, or Monaco would filter it out.
+          filterText: item.replaceBefore ? `.${item.label}` : undefined,
+          range: item.replaceBefore ? { ...range, startColumn: range.startColumn - item.replaceBefore } : range,
         })),
       };
     },

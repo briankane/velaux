@@ -133,3 +133,61 @@ describe('component read suggestions', () => {
     ]);
   });
 });
+
+describe('hyphenated component names', () => {
+  const env2: ExpressionEnv = {
+    enabled: true,
+    optedIn: true,
+    surface: 'component',
+    variables: [
+      {
+        name: 'component',
+        type: 'object',
+        children: [
+          { name: 'db', type: 'object', children: [{ name: 'output', type: 'object' }] },
+          {
+            name: 'my-db',
+            type: 'object',
+            children: [
+              {
+                name: 'output',
+                type: 'object',
+                children: [{ name: 'data', type: 'object', children: [{ name: 'host', type: 'string' }] }],
+              },
+              { name: 'outputs', type: 'object' },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const items = (before: string) => suggest(before, env2).items;
+
+  it('inserts a name that is not an identifier by index, replacing the dot', () => {
+    const myDb = items('$(component.').find((i) => i.label === 'my-db');
+    expect(myDb?.insertText).to.equal('["my-db"]');
+    expect(myDb?.replaceBefore).to.equal(1);
+    const db = items('$(component.').find((i) => i.label === 'db');
+    expect(db?.insertText).to.equal('db');
+    expect(db?.replaceBefore).to.equal(undefined);
+  });
+  it('reads through an index to the fields beyond it', () => {
+    expect(items('$(component["my-db"].').map((i) => i.label)).to.deep.equal([
+      'output',
+      'outputs',
+      'cluster',
+      'namespace',
+    ]);
+    expect(items('$(component["my-db"].cluster("east").output.data.').map((i) => i.label)).to.deep.equal(['host']);
+  });
+  it('hovers a field read past an index', () => {
+    const text = '$(component["my-db"].output.data.host)';
+    expect(hoverAt(text, text.indexOf('host'), env2)?.path).to.deep.equal([
+      'component',
+      'my-db',
+      'output',
+      'data',
+      'host',
+    ]);
+  });
+});

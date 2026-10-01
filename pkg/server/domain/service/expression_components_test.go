@@ -161,4 +161,8 @@ func TestExpressionCheckComponentReads(t *testing.T) {
 	assert.Equal(t, []string{"no component named cache"}, check("component", "api", "$(component.cache.output)"))
 	assert.Equal(t, []string{"only component and trait properties can read component.<name>"},
 		check("workflowstep", "", "$(component.db.output.data.host)"))
+	assert.Equal(t, []string{`write component["my-db"]: a component whose name has a hyphen is read by index`},
+		check("component", "api", "$(component.my-db.output.data.host)"))
+	assert.Equal(t, []string{"no component named my-db"}, check("component", "api", `$(component["my-db"].output)`),
+		"the index form reads the name it gives")
 }
