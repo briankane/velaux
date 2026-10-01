@@ -734,6 +734,7 @@ class ApplicationConfig extends Component<Props, State> {
         <If condition={visibleTrait}>
           <TraitDialog
             project={applicationDetail?.project?.name || ''}
+            deployed={statistics ? (statistics.revisionCount || 0) > 0 : undefined}
             visible={visibleTrait}
             isEditComponent={isEditComponent}
             appName={appName}
@@ -774,6 +775,7 @@ class ApplicationConfig extends Component<Props, State> {
         <If condition={visibleComponent}>
           <ComponentDialog
             project={applicationDetail?.project?.name || ''}
+            deployed={statistics ? (statistics.revisionCount || 0) > 0 : undefined}
             appName={appName}
             componentName={componentName}
             components={components || []}

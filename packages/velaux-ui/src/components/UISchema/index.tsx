@@ -4,7 +4,8 @@ import { Translation } from '../Translation';
 import type { ParamCondition, UIParam, UIParamValidate , Definition } from '@velaux/data';
 
 import type { Rule } from '@alifd/field';
-import { Form, Input, Select, Field, Switch, Grid, Divider } from '@alifd/next';
+import { Balloon, Form, Input, Select, Field, Switch, Grid, Divider } from '@alifd/next';
+import { AiOutlineLock } from 'react-icons/ai';
 
 import './index.less';
 import i18n from 'i18next';
@@ -34,6 +35,7 @@ import Structs from '../../extends/Structs';
 import { checkImageName, replaceUrl } from '../../utils/common';
 import { locale } from '../../utils/locale';
 import { getValue } from '../../utils/utils';
+import { immutableLocked } from '../../utils/immutable';
 import DefinitionCode from '../DefinitionCode';
 import { If } from '../If';
 
@@ -52,6 +54,10 @@ type Props = {
   mode: 'new' | 'edit';
   advanced?: boolean;
   definition?: Definition;
+  // deployed says the application has been deployed. Until it has, KubeVela
+  // lets any parameter change, so none is locked; left unset, the form assumes
+  // it has.
+  deployed?: boolean;
 };
 
 function convertRule(validate?: UIParamValidate) {
@@ -107,8 +113,13 @@ type State = {
 class UISchema extends Component<Props, State> {
   form: Field;
   registerForm: Record<string, Field>;
+  // stored holds the values the form opened with. KubeVela locks an immutable
+  // parameter only once a value has been deployed, so one that was never set
+  // can still be filled in.
+  stored: any;
   constructor(props: Props) {
     super(props);
+    this.stored = props.value;
     const paramKeyMap: Record<string, UIParam> = {};
     this.props.uiSchema?.map((param) => {
       paramKeyMap[param.jsonKey] = param;
@@ -355,7 +366,19 @@ class UISchema extends Component<Props, State> {
       if (initValue === undefined) {
         initValue = param.validate?.defaultValue;
       }
-      const disableEdit = (param.validate?.immutable && mode == 'edit') || false;
+      const disableEdit = immutableLocked(param, mode, this.props.deployed, this.stored);
+      // An immutable field is disabled when editing, as KubeVela refuses to change
+      // it once deployed; a lock beside its label says so on hover.
+      const fieldLabel: React.ReactNode = disableEdit ? (
+        <span className="ui-schema-locked-label">
+          {label}
+          <Balloon.Tooltip trigger={<AiOutlineLock className="ui-schema-lock" />} align="t">
+            {i18n.t('Cannot be changed once deployed')}
+          </Balloon.Tooltip>
+        </span>
+      ) : (
+        label
+      );
       const getGroup = (children?: React.ReactNode) => {
         return (
           <Group
@@ -398,7 +421,7 @@ class UISchema extends Component<Props, State> {
                 className="switch-container"
                 required={required}
                 key={param.jsonKey}
-                label={<span title={description}>{label}</span>}
+                label={<span title={description}>{fieldLabel}</span>}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
                 <Switch
@@ -415,7 +438,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 labelAlign={inline ? 'inset' : 'left'}
-                label={label}
+                label={fieldLabel}
                 key={param.jsonKey}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
@@ -434,7 +457,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 labelAlign={inline ? 'inset' : 'left'}
-                label={label}
+                label={fieldLabel}
                 key={param.jsonKey}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
@@ -454,7 +477,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 labelAlign={inline ? 'inset' : 'left'}
-                label={label}
+                label={fieldLabel}
                 key={param.jsonKey}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
@@ -474,7 +497,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
-                label={label}
+                label={fieldLabel}
                 key={param.jsonKey}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
@@ -519,7 +542,7 @@ class UISchema extends Component<Props, State> {
             return (
               <Form.Item
                 required={required}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 key={param.jsonKey}
               >
@@ -543,7 +566,7 @@ class UISchema extends Component<Props, State> {
             return (
               <Form.Item
                 required={required}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 key={param.jsonKey}
               >
@@ -567,7 +590,7 @@ class UISchema extends Component<Props, State> {
             return (
               <Form.Item
                 required={required}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 key={param.jsonKey}
               >
@@ -645,7 +668,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
@@ -667,7 +690,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 labelAlign={inline ? 'inset' : 'left'}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
@@ -686,7 +709,7 @@ class UISchema extends Component<Props, State> {
             return (
               <Form.Item
                 required={required}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
@@ -710,7 +733,7 @@ class UISchema extends Component<Props, State> {
             return (
               <Form.Item
                 required={required}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
@@ -734,7 +757,7 @@ class UISchema extends Component<Props, State> {
             return (
               <Form.Item
                 required={required}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
@@ -787,6 +810,7 @@ class UISchema extends Component<Props, State> {
                     }}
                     uiSchema={param.subParameters}
                     mode={this.props.mode}
+                    deployed={this.props.deployed}
                   />
                 </Group>
               );
@@ -836,6 +860,7 @@ class UISchema extends Component<Props, State> {
                       },
                     ],
                   })}
+                  deployed={this.props.deployed}
                   mode={this.props.mode}
                 />
               );
@@ -845,7 +870,7 @@ class UISchema extends Component<Props, State> {
             return (
               <Form.Item
                 required={required}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
@@ -868,7 +893,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
@@ -887,7 +912,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
@@ -906,7 +931,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
@@ -932,7 +957,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
-                label={label}
+                label={fieldLabel}
                 help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}

@@ -671,5 +671,6 @@
   "At warn level": "达到警告阈值",
   "Over limit": "超出上限",
   "Exempt": "豁免",
-  "No quota": "无配额"
+  "No quota": "无配额",
+  "Cannot be changed once deployed": "部署后不可更改"
 }
