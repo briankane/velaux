@@ -216,12 +216,17 @@ class AppDialog extends React.Component<Props, State> {
       if (res && request === this.definitionsRequest) {
         this.setState({ componentDefinitions: res.definitions });
         // A type chosen before the environments, such as the default, may be
-        // one they cannot use; clear it rather than submit a refusal.
+        // one they cannot use; move to the first they can rather than submit a
+        // refusal.
         const chosen = this.field.getValue<string>('componentType');
         const usable = (res.definitions || []).filter(isUsable).map((d: DefinitionBase) => d.name);
-        if (chosen && !usable.includes(chosen)) {
-          this.field.setValue('componentType', undefined);
-          this.setState({ definitionDetail: undefined });
+        if (!chosen || !usable.includes(chosen)) {
+          if (usable.length > 0) {
+            this.handleChange(usable[0]);
+          } else {
+            this.field.setValue('componentType', undefined);
+            this.setState({ definitionDetail: undefined });
+          }
         }
       }
     });
