@@ -89,8 +89,31 @@ func (u *configServiceImpl) ListTemplates(ctx context.Context, project, scope st
 		}
 		queryTemplates = append(queryTemplates, templates...)
 	}
-	var templates []*apis.ConfigTemplate
+	templates, err := u.templateCRs(listCtx, GlobalConfigNamespace, scope)
+	if err != nil {
+		return nil, err
+	}
+	if scope == "project" && project != "" {
+		pro, err := u.ProjectService.GetProject(ctx, project)
+		if err != nil {
+			return nil, err
+		}
+		projectTemplates, err := u.templateCRs(ctx, pro.GetNamespace(), scope)
+		if err != nil {
+			return nil, err
+		}
+		templates = append(templates, projectTemplates...)
+	}
+	// A ConfigTemplate shadows a legacy template of the same name, as the
+	// factory reads the ConfigTemplate first.
+	crd := map[config.NamespacedName]bool{}
+	for _, t := range templates {
+		crd[config.NamespacedName{Name: t.Name, Namespace: t.Namespace}] = true
+	}
 	for _, t := range queryTemplates {
+		if crd[t.NamespacedName] {
+			continue
+		}
 		templates = append(templates, &apis.ConfigTemplate{
 			Alias:       t.Alias,
 			Name:        t.Name,
@@ -99,6 +122,7 @@ func (u *configServiceImpl) ListTemplates(ctx context.Context, project, scope st
 			Scope:       t.Scope,
 			Sensitive:   t.Sensitive,
 			CreateTime:  t.CreateTime,
+			Legacy:      true,
 		})
 	}
 	sort.SliceStable(templates, func(i, j int) bool {
@@ -152,6 +176,9 @@ func (u *configServiceImpl) CreateConfig(ctx context.Context, project string, re
 		klog.Errorf("check config name exist fail %s", err.Error())
 		return nil, bcode.ErrConfigExist
 	}
+	if existing, err := u.configCR(ctx, ns, req.Name); err != nil || existing != nil {
+		exist = true
+	}
 	if exist {
 		return nil, bcode.ErrConfigExist
 	}
@@ -161,6 +188,20 @@ func (u *configServiceImpl) CreateConfig(ctx context.Context, project string, re
 	}
 	if req.Template.Namespace == "" {
 		req.Template.Namespace = GlobalConfigNamespace
+	}
+	ct, err := u.templateCR(ctx, config.NamespacedName(req.Template))
+	if err != nil {
+		return nil, err
+	}
+	if ct != nil {
+		if err := u.validateConfigCR(ctx, ct, req.Name, ns, properties); err != nil {
+			return nil, err
+		}
+		c, err := u.writeConfigCR(ctx, ct, nil, req.Name, ns, req.Alias, req.Description, properties)
+		if err != nil {
+			return nil, err
+		}
+		return convertConfigCR(project, *c, true), nil
 	}
 	configItem, err := u.Factory.ParseConfig(ctx, config.NamespacedName(req.Template), config.Metadata{
 		NamespacedName: config.NamespacedName{Name: req.Name, Namespace: ns},
@@ -187,6 +228,12 @@ func (u *configServiceImpl) UpdateConfig(ctx context.Context, project string, na
 			return nil, err
 		}
 		ns = pro.GetNamespace()
+	}
+
+	if c, err := u.configCR(ctx, ns, name); err != nil {
+		return nil, err
+	} else if c != nil {
+		return u.updateConfigCR(ctx, project, c, req)
 	}
 
 	it, err := u.Factory.GetConfig(ctx, ns, name, false)
@@ -244,6 +291,23 @@ func (u *configServiceImpl) ListConfigs(ctx context.Context, project string, tem
 		for i := range configs {
 			list = append(list, convertConfig(project, *configs[i]))
 		}
+		crs, err := u.configCRs(listCtx, pro.GetNamespace(), template)
+		if err != nil {
+			return nil, err
+		}
+		for _, c := range crs {
+			list = append(list, convertConfigCR(project, c, withProperties))
+		}
+	}
+
+	crs, err := u.configCRs(listCtx, GlobalConfigNamespace, template)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range crs {
+		item := convertConfigCR(project, c, withProperties)
+		item.Shared = !isGlobal(project)
+		list = append(list, item)
 	}
 
 	configs, err := u.Factory.ListConfigs(listCtx, GlobalConfigNamespace, template, scope, true)
@@ -331,6 +395,7 @@ func convertConfig(project string, config config.Config) *apis.Config {
 		Properties:  config.Properties,
 		Secret:      config.Secret,
 		Targets:     config.Targets,
+		Legacy:      true,
 	}
 }
 
@@ -342,6 +407,12 @@ func (u *configServiceImpl) GetConfig(ctx context.Context, project, name string)
 			return nil, err
 		}
 		ns = pro.GetNamespace()
+	}
+
+	if c, err := u.configCR(ctx, ns, name); err != nil {
+		return nil, err
+	} else if c != nil {
+		return convertConfigCR(project, *c, true), nil
 	}
 
 	it, err := u.Factory.GetConfig(ctx, ns, name, true)
@@ -370,6 +441,12 @@ func (u *configServiceImpl) DeleteConfig(ctx context.Context, project, name stri
 			return err
 		}
 		ns = pro.GetNamespace()
+	}
+	if c, err := u.configCR(ctx, ns, name); err != nil {
+		return err
+	} else if c != nil {
+		// The controller removes the Secret and outputs it owns.
+		return client.IgnoreNotFound(u.KubeClient.Delete(ctx, c))
 	}
 	return u.Factory.DeleteConfig(ctx, ns, name)
 }

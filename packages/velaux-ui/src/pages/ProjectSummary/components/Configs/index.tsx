@@ -174,24 +174,26 @@ class Configs extends Component<Props, State> {
                   </Button>
                 </Permission>
               </If>
-              <Permission
-                request={{
-                  resource: `project:${projectName}/config:${record.name}`,
-                  action: 'distribute',
-                }}
-                project={projectName}
-              >
-                <Button
-                  text
-                  size={'medium'}
-                  component={'a'}
-                  onClick={() => {
-                    this.onDistribute(record);
+              <If condition={record.legacy}>
+                <Permission
+                  request={{
+                    resource: `project:${projectName}/config:${record.name}`,
+                    action: 'distribute',
                   }}
+                  project={projectName}
                 >
-                  <Translation>Distribute</Translation>
-                </Button>
-              </Permission>
+                  <Button
+                    text
+                    size={'medium'}
+                    component={'a'}
+                    onClick={() => {
+                      this.onDistribute(record);
+                    }}
+                  >
+                    <Translation>Distribute</Translation>
+                  </Button>
+                </Permission>
+              </If>
             </Fragment>
           );
         },
