@@ -151,6 +151,21 @@ var _ = Describe("Test application service function", Ordered, func() {
 		Expect(err).Should(BeNil())
 	})
 
+	It("Test annotations given at creation reach the application", func() {
+		ctx := context.TODO()
+		_, err := appService.CreateApplication(ctx, v1.CreateApplicationRequest{
+			Name: "annotated-app", Project: testProject,
+			Annotations: map[string]string{"app.oam.dev/cel-expressions": "true"},
+			EnvBinding:  []*v1.EnvBinding{{Name: "app-dev"}},
+			Component:   &v1.CreateComponentRequest{Name: "web", ComponentType: "webservice", Properties: `{"image":"nginx"}`},
+		})
+		Expect(err).Should(BeNil())
+		appModel, err := appService.GetApplication(ctx, "annotated-app")
+		Expect(err).Should(BeNil())
+		Expect(appModel.Annotations).Should(HaveKeyWithValue("app.oam.dev/cel-expressions", "true"))
+		Expect(appService.DeleteApplication(ctx, appModel)).Should(BeNil())
+	})
+
 	It("Test application sources", func() {
 		ctx := context.TODO()
 		appModel, err := appService.GetApplication(ctx, testApp)

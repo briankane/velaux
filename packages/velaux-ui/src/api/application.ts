@@ -12,7 +12,7 @@ import type {
 } from '@velaux/data';
 import { getDomain } from '../utils/common';
 
-import { application } from './productionLink';
+import { application, expressions } from './productionLink';
 import { post, get, rdelete, put } from './request';
 
 interface TraitQuery {
@@ -274,6 +274,19 @@ export function getExpressionEnv(appName: string, surface: string, source?: stri
   return get(`${url}/${appName}/expressions/env`, { params: { surface, source }, customError: true }).then(
     (res) => res
   );
+}
+
+// getDraftExpressionEnv lists what a $( ) expression can read in an application
+// being created, which has no sources yet.
+export function getDraftExpressionEnv(surface: string, optIn: boolean) {
+  return get(`${baseURLOject.APIBASE}${expressions}/env`, { params: { surface, optIn }, customError: true }).then(
+    (res) => res
+  );
+}
+
+// checkDraftExpression checks a property value in an application being created.
+export function checkDraftExpression(params: { surface: string; value: string; kind?: string }) {
+  return post(`${baseURLOject.APIBASE}${expressions}/check`, params, true).then((res) => res);
 }
 
 // checkExpression checks the $( ) expressions of a property value.

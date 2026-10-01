@@ -495,6 +495,7 @@ func (c *applicationServiceImpl) CreateApplication(ctx context.Context, req apis
 		Description: req.Description,
 		Icon:        req.Icon,
 		Labels:      req.Labels,
+		Annotations: req.Annotations,
 	}
 	// check appUtil name.
 	exist, err := c.Store.IsExist(ctx, &application)
