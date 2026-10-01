@@ -3,13 +3,14 @@ import { Link } from 'dva/router';
 import React, { useEffect, useState } from 'react';
 import { locationService } from '../../services/LocationService';
 import { Translation } from '../../components/Translation';
-import type { SystemInfo , LoginUserInfo } from '@velaux/data';
+import i18n from '../../i18n';
+import type { SystemInfo, LoginUserInfo } from '@velaux/data';
 import { LeftMenu, menuService } from '../../services/MenuService';
 
 import './index.less';
 import { checkPermission } from '../../types';
 import { getConfigs } from '../../api/config';
-import { Config , MenuTypes, PluginMeta } from '@velaux/data';
+import { Config, MenuTypes, PluginMeta } from '@velaux/data';
 import { MdOutlineMonitorHeart } from 'react-icons/md';
 import { If } from '../../components/If';
 
@@ -34,7 +35,7 @@ const LeftMenuModule = (props: Props) => {
   }, [props.userInfo]);
 
   useEffect(() => {
-    menuService.resetPluginMenus()
+    menuService.resetPluginMenus();
     menuService.loadPluginMenus().then(() => {
       const workspace = menuService.loadCurrentWorkspace();
       const menus = workspace && props.userInfo ? menuService.loadMenus(workspace, props.userInfo) : [];
@@ -90,12 +91,17 @@ const LeftMenuModule = (props: Props) => {
                 target="_blank"
                 className={childrenItem.active ? 'menu-item-active' : 'menu-item'}
                 href={childrenItem.href}
+                title={i18n.t(childrenItem.label).toString()}
               >
                 {item}
               </a>
             </If>
             <If condition={childrenItem.to && !childrenItem.href}>
-              <Link to={childrenItem.to} className={childrenItem.active ? 'menu-item-active' : 'menu-item'}>
+              <Link
+                to={childrenItem.to}
+                className={childrenItem.active ? 'menu-item-active' : 'menu-item'}
+                title={i18n.t(childrenItem.label).toString()}
+              >
                 {item}
               </Link>
             </If>

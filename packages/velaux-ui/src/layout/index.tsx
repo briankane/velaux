@@ -33,13 +33,12 @@ export default function MainLayout(props: any) {
           }
           return (
             <div className="layout">
-              {mode !== LayoutModes.NeatPro && <Header currentWorkspace={workspace} mode={mode} {...props} />}
+              {mode !== LayoutModes.NeatPro && (
+                <Header currentWorkspace={workspace} mode={mode} {...props}>
+                  <LeftMenu {...props} />
+                </Header>
+              )}
               <div className="layout-shell">
-                {mode === LayoutModes.Default && (
-                  <div className="layout-navigation">
-                    <LeftMenu {...props} />
-                  </div>
-                )}
                 <div className="layout-content">
                   <LayoutRouter></LayoutRouter>
                 </div>
