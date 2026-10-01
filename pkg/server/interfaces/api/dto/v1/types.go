@@ -1939,3 +1939,26 @@ type InstallPluginRequest struct {
 	Disable bool                   `json:"disable,omitempty"`
 	Options *velacommon.HTTPOption `json:"options,omitempty"`
 }
+
+// Customisation is how this VelaUX is branded, kept in the
+// velaux-configuration ConfigMap.
+type Customisation struct {
+	// LogoURL replaces the KubeVela wordmark; an http(s), data or same-origin URL.
+	LogoURL string `json:"logoURL,omitempty"`
+	// IconURL replaces the sail mark shown when the sidebar is minimised.
+	IconURL string `json:"iconURL,omitempty"`
+	// SidebarColor is the sidebar's background, a hex colour; its text is
+	// light or dark to suit.
+	SidebarColor string `json:"sidebarColor,omitempty"`
+	// AccentColor marks the current page and highlights, a hex colour.
+	AccentColor string `json:"accentColor,omitempty"`
+	// Terminology renames the UI's words, keyed by the word as the UI writes it
+	// in the singular: Application, Environment, Cluster.
+	Terminology map[string]Term `json:"terminology,omitempty"`
+}
+
+// Term is the singular and plural a renamed word takes.
+type Term struct {
+	Singular string `json:"singular"`
+	Plural   string `json:"plural"`
+}

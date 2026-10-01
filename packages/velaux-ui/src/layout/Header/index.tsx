@@ -14,6 +14,11 @@ import {
 
 import logo from '../../assets/kubevela-logo-white.png';
 import logoMark from '../../assets/KubeVela-01.svg';
+import logoDark from '../../assets/kubevela-logo.png';
+import { loadCustomisation } from '../../api/customisation';
+import type { Customisation } from '../../services/CustomisationService';
+import { customisationService } from '../../services/CustomisationService';
+import { isLight, sidebarTheme } from '../../utils/theme';
 import { If } from '../../components/If';
 import Permission from '../../components/Permission';
 import SwitchLanguage from '../../components/SwitchButton/index';
@@ -48,6 +53,7 @@ type State = {
   platformSetting: boolean;
   grafanaConfigs?: Config[];
   workspaces: Workspace[];
+  customisation: Customisation;
 };
 
 const TelemetryDataCollectionKey = 'telemetryDataCollection';
@@ -61,13 +67,22 @@ class Header extends Component<Props, State> {
     this.state = {
       platformSetting: false,
       workspaces: [],
+      customisation: customisationService.get(),
     };
   }
+
+  unsubscribe?: () => void;
 
   componentDidMount() {
     this.loadSystemInfo();
     this.loadUserInfo();
     this.loadEnabledAddons();
+    this.unsubscribe = customisationService.subscribe((customisation) => this.setState({ customisation }));
+    loadCustomisation();
+  }
+
+  componentWillUnmount() {
+    this.unsubscribe?.();
   }
 
   loadWorkspaces = () => {
@@ -204,13 +219,24 @@ class Header extends Component<Props, State> {
     // while it is open.
     const admin = this.state.workspaces.find((ws) => ws.name === 'admin');
     const collapsed = !!this.props.collapsed;
+    const { customisation } = this.state;
+    const theme = sidebarTheme(customisation.sidebarColor, customisation.accentColor);
+    const light = !!customisation.sidebarColor && isLight(customisation.sidebarColor);
+    const wordmark = customisation.logoURL || (light ? logoDark : logo);
+    const logoSrc = collapsed ? customisation.iconURL || logoMark : wordmark;
     const userName = userInfo?.alias ? userInfo.alias : userInfo?.name;
 
     return (
-      <div className={classNames('layout-sidebar', { collapsed })}>
+      <div className={classNames('layout-sidebar', { collapsed })} style={theme as React.CSSProperties}>
         <div className="sidebar-brand">
           <Link to="/" className="sidebar-logo" title={'Make shipping applications more enjoyable.'}>
-            <img src={collapsed ? logoMark : logo} />
+            <img
+              src={logoSrc}
+              className={classNames({
+                'sidebar-logo-invert': collapsed && !customisation.iconURL && !light,
+                'sidebar-logo-plate': !collapsed && customisation.logoURL && !light,
+              })}
+            />
           </Link>
           <div
             className="sidebar-collapse"
