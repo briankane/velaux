@@ -7,7 +7,7 @@ import React, { Component, Fragment } from 'react';
 import { getDefinitionsList, updateDefinitionStatus } from '../../api/definitions';
 import Permission from '../../components/Permission';
 import { Translation } from '../../components/Translation';
-import type { DefinitionBase , LoginUserInfo } from '@velaux/data';
+import type { DefinitionBase, LoginUserInfo } from '@velaux/data';
 
 // import { momentDate } from '../../utils/common';
 
@@ -55,6 +55,10 @@ class Definitions extends Component<Props, State> {
   }
 
   componentWillReceiveProps(nextProps: Props) {
+    // The list waits on the user, to check the permission to list.
+    if (!this.props.userInfo && nextProps.userInfo) {
+      this.lisDefinitions(nextProps.userInfo);
+    }
     const nextPropsParams = nextProps.match.params || {};
     if (nextPropsParams.definitionType !== this.state.definitionType) {
       this.setState(
@@ -68,8 +72,7 @@ class Definitions extends Component<Props, State> {
     }
   }
 
-  lisDefinitions() {
-    const { userInfo } = this.props;
+  lisDefinitions(userInfo = this.props.userInfo) {
     const { definitionType } = this.state;
     if (!definitionType) {
       return;
