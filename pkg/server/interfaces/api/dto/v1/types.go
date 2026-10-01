@@ -989,7 +989,9 @@ type ListApplicationSourceResponse struct {
 
 // CreateSourceRequest adds a source to an application
 type CreateSourceRequest struct {
-	Name string `json:"name" validate:"checkname"`
+	// Name is the binding expressions read it by, $(source.<name>), so a CEL
+	// identifier: clusterInfo, not cluster-info.
+	Name string `json:"name" validate:"checkidentifier"`
 	Type string `json:"type" validate:"checkname"`
 	// Properties json data
 	Properties string `json:"properties"`

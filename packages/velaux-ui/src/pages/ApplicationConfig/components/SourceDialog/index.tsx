@@ -14,9 +14,8 @@ import type { ExpressionContext } from '../../../../components/UISchema';
 import type { ExpressionEnv } from '../../../../extends/ExpressionEditor';
 import i18n from '../../../../i18n';
 import type { ApplicationSource, DefinitionBase, DefinitionDetail } from '@velaux/data';
-import { checkName } from '../../../../utils/common';
 import { locale } from '../../../../utils/locale';
-import { sourceFields } from '../../../../utils/source';
+import { sourceBindingName, sourceFields, sourceNamePattern } from '../../../../utils/source';
 
 const { Row, Col } = Grid;
 
@@ -41,6 +40,8 @@ type State = {
 class SourceDialog extends React.Component<Props, State> {
   field: Field;
   uiSchemaRef: React.RefObject<UISchema>;
+  // suggestedName is the binding the dialog last filled in from the type.
+  suggestedName = '';
 
   constructor(props: Props) {
     super(props);
@@ -48,6 +49,12 @@ class SourceDialog extends React.Component<Props, State> {
     this.field = new Field(this, {
       onChange: (name: string, value: any) => {
         if (name === 'type') {
+          // Name the binding after the type, unless one was typed by hand.
+          const current = this.field.getValue<string>('name');
+          if (!this.props.source && (!current || current === this.suggestedName)) {
+            this.suggestedName = value ? sourceBindingName(value) : '';
+            this.field.setValue('name', this.suggestedName);
+          }
           this.field.remove('properties');
           this.setState({ definition: undefined }, () => this.loadDefinition(value));
         }
@@ -187,7 +194,13 @@ class SourceDialog extends React.Component<Props, State> {
                 <Form.Item label={i18n.t('Name').toString()} required>
                   <Input
                     {...init('name', {
-                      rules: [{ required: true, pattern: checkName, message: 'Please input a valid source name' }],
+                      rules: [
+                        {
+                          required: true,
+                          pattern: sourceNamePattern,
+                          message: i18n.t('Letters, digits and underscores, as in clusterInfo').toString(),
+                        },
+                      ],
                     })}
                     disabled={source != undefined}
                     locale={locale().Input}
