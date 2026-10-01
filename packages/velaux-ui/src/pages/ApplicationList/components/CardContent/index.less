@@ -69,7 +69,7 @@
   padding: 20px 22px 16px;
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-left: 3px solid var(--health);
+  border-left: 3px solid var(--tone);
   border-radius: 8px;
   transition: box-shadow 0.15s, border-color 0.15s;
   &:hover {
@@ -190,30 +190,10 @@
   color: #b45309;
 }
 
-// The table view, as a card like the rest of the page.
+// The table view; the table itself takes the page's card style.
 .app-table {
   margin-top: 20px;
   overflow: auto;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  .next-table,
-  .next-table table {
-    border: none;
-  }
-  .next-table th {
-    padding-top: 6px;
-    color: #64748b;
-    font-weight: 600;
-    white-space: nowrap;
-    background: #f8fafc;
-  }
-  // Words wrap whole: the page's tables otherwise break anywhere.
-  .next-table th .next-table-cell-wrapper,
-  .next-table td .next-table-cell-wrapper {
-    word-break: normal;
-    overflow-wrap: normal;
-  }
   .app-table-nowrap {
     white-space: nowrap;
   }
