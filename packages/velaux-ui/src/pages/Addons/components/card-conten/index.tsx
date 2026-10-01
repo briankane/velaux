@@ -83,7 +83,7 @@ class CardContent extends React.Component<Props, State> {
                   key={name}
                   tone={addonTone(phase)}
                   badge={addonLabel(phase)}
-                  icon={icon && icon != 'none' ? <img src={icon} /> : nameUpper(name)}
+                  icon={<AddonIcon icon={icon} initials={nameUpper(name)} />}
                   title={name}
                   onOpen={() => clickAddon(name)}
                   aside={
@@ -103,7 +103,7 @@ class CardContent extends React.Component<Props, State> {
                       </Fragment>
                     ) : undefined
                   }
-                  footLeft={`v${version || '0.0.0'}`}
+                  footLeft={(version || '0.0.0').replace(/^v?/, 'v')}
                   footRight={registryName}
                 />
               );
@@ -117,6 +117,16 @@ class CardContent extends React.Component<Props, State> {
     );
   }
 }
+
+// AddonIcon is the addon's icon, or its initials where it has none or the
+// icon fails to load.
+const AddonIcon = (props: { icon?: string; initials: string }) => {
+  const [failed, setFailed] = React.useState(false);
+  if (!props.icon || props.icon === 'none' || failed) {
+    return <Fragment>{props.initials}</Fragment>;
+  }
+  return <img src={props.icon} onError={() => setFailed(true)} />;
+};
 
 // addonTone colours an addon by its phase; one never enabled is neutral.
 function addonTone(phase?: string): Tone {
