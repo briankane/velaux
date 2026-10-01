@@ -52,7 +52,34 @@ type Props = {
   userInfo?: LoginUserInfo;
 };
 
+// refreshInterval is how often the status reloads while the page is visible.
+const refreshInterval = 15000;
+
+// RefreshedAt says the status reloads by itself, and how long ago it last did.
+const RefreshedAt = (props: { at?: number }) => {
+  const [, tick] = React.useState(0);
+  React.useEffect(() => {
+    const timer = setInterval(() => tick((n) => n + 1), 5000);
+    return () => clearInterval(timer);
+  }, []);
+  if (!props.at) {
+    return null;
+  }
+  const seconds = Math.max(0, Math.round((Date.now() - props.at) / 1000));
+  return (
+    <span
+      className="status-refreshed"
+      title={i18n.t('The status reloads every 15 seconds while this page is open').toString()}
+    >
+      <span className="status-refreshed-dot" />
+      <Translation>Updated</Translation> {seconds < 5 ? i18n.t('just now') : `${seconds}s ${i18n.t('ago')}`}
+    </span>
+  );
+};
+
 type State = {
+  // refreshedAt is when the status last loaded.
+  refreshedAt?: number;
   loading: boolean;
   target?: Target;
   componentName?: string;
@@ -83,6 +110,17 @@ class ApplicationStatusPage extends React.Component<Props, State> {
 
   componentDidMount() {
     this.loadApplicationStatus();
+    this.refreshTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        this.loadApplicationStatus(true);
+      }
+    }, refreshInterval);
+  }
+
+  componentWillUnmount() {
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer);
+    }
   }
 
   componentWillReceiveProps(nextProps: any) {
@@ -98,7 +136,9 @@ class ApplicationStatusPage extends React.Component<Props, State> {
     }
   }
 
-  loadApplicationStatus = async () => {
+  // loadApplicationStatus loads the env's status and resources; a silent load,
+  // the periodic refresh, keeps the page as it is while it runs.
+  loadApplicationStatus = async (silent = false) => {
     const {
       params: { appName, envName },
     } = this.props.match;
@@ -107,13 +147,17 @@ class ApplicationStatusPage extends React.Component<Props, State> {
         type: 'application/getApplicationStatus',
         payload: { appName: appName, envName: envName },
         callback: (res: any) => {
+          this.setState({ refreshedAt: Date.now() });
           if (res.status) {
-            this.loadApplicationAppliedResources();
+            this.loadApplicationAppliedResources(silent);
           }
         },
       });
     }
   };
+
+  // refreshTimer reloads the status while the page is visible.
+  refreshTimer?: ReturnType<typeof setInterval>;
 
   getTargets = () => {
     const { envbinding, match } = this.props;
@@ -132,10 +176,10 @@ class ApplicationStatusPage extends React.Component<Props, State> {
     return envbinding.find((env) => env.name === envName);
   };
 
-  loadApplicationAppliedResources = async () => {
+  loadApplicationAppliedResources = async (silent = false) => {
     const { mode } = this.state;
     if (mode === 'resource-graph') {
-      await this.loadResourceTree();
+      await this.loadResourceTree(silent);
       return;
     }
     const { applicationDetail } = this.props;
@@ -156,7 +200,9 @@ class ApplicationStatusPage extends React.Component<Props, State> {
         param.cluster = target.cluster?.clusterName || '';
         param.clusterNs = target.cluster?.namespace || '';
       }
-      this.setState({ resourceLoading: true });
+      if (!silent) {
+        this.setState({ resourceLoading: true });
+      }
       listApplicationServiceAppliedResources(param)
         .then((re) => {
           if (re && re.resources) {
@@ -171,7 +217,7 @@ class ApplicationStatusPage extends React.Component<Props, State> {
     }
   };
 
-  loadResourceTree = async () => {
+  loadResourceTree = async (silent = false) => {
     const { applicationDetail } = this.props;
     const env = this.getEnvbindingByName();
     const { target, componentName, resourceLoading } = this.state;
@@ -190,7 +236,9 @@ class ApplicationStatusPage extends React.Component<Props, State> {
         param.cluster = target.cluster?.clusterName || '';
         param.clusterNs = target.cluster?.namespace || '';
       }
-      this.setState({ resourceLoading: true });
+      if (!silent) {
+        this.setState({ resourceLoading: true });
+      }
       listApplicationResourceTree(param)
         .then((re) => {
           if (re && re.resources) {
@@ -330,7 +378,12 @@ class ApplicationStatusPage extends React.Component<Props, State> {
             dispatch={this.props.dispatch}
           />
         </Loading>
-        <Tab onChange={this.onChangeMode} defaultActiveKey={mode} shape="capsule">
+        <Tab
+          onChange={this.onChangeMode}
+          defaultActiveKey={mode}
+          shape="capsule"
+          extra={<RefreshedAt at={this.state.refreshedAt} />}
+        >
           <Tab.Item title={i18n.t('Overview').toString()} key="overview">
             <Loading visible={loading && resourceLoading} style={{ width: '100%' }}>
               <If condition={applicationStatus}>
