@@ -42,3 +42,18 @@ export function matchItems(items: SearchItem[], query: string, groups: string[],
 export function isQuickSearchKey(e: { key: string; metaKey: boolean; ctrlKey: boolean }): boolean {
   return e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey);
 }
+
+// maxRecent is how many recently opened things the search keeps.
+const maxRecent = 6;
+
+// addRecent puts an item first among the recently opened, once, keeping a few.
+export function addRecent(list: SearchItem[], item: SearchItem): SearchItem[] {
+  return [item, ...list.filter((i) => i.to !== item.to)].slice(0, maxRecent);
+}
+
+// recentFromPath is the application a page belongs to, opened at its Overview,
+// for a visit to any of its pages.
+export function recentFromPath(path: string): SearchItem | undefined {
+  const m = /^\/applications\/([^/]+)\//.exec(path);
+  return m ? { group: 'Applications', label: decodeURIComponent(m[1]), to: `/applications/${m[1]}/config` } : undefined;
+}

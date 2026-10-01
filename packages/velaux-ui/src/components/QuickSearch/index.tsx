@@ -12,8 +12,11 @@ import i18n from '../../i18n';
 import { locationService } from '../../services/LocationService';
 import { menuService } from '../../services/MenuService';
 import type { SearchItem } from './search';
-import { isQuickSearchKey, matchItems } from './search';
+import { addRecent, isQuickSearchKey, matchItems, recentFromPath } from './search';
 import './index.less';
+
+// recentGroup heads what was opened recently, shown before anything is typed.
+const recentGroup = 'Recent';
 
 const groups = ['Pages', 'Applications', 'Projects', 'Environments', 'Targets', 'Definitions', 'Configs'];
 const definitionTypes: Array<'component' | 'trait' | 'policy' | 'workflowstep'> = [
@@ -32,27 +35,64 @@ type State = {
   query: string;
   items: SearchItem[];
   active: number;
+  recent: SearchItem[];
 };
 
+// recentKey keeps what this browser opened recently, a convenience for its user
+// alone; reading or writing it may fail, and the search works without it.
+const recentKey = 'velaux-quick-search-recent';
+
+function loadRecent(): SearchItem[] {
+  try {
+    const raw = window.localStorage.getItem(recentKey);
+    return raw ? (JSON.parse(raw) as SearchItem[]) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveRecent(list: SearchItem[]) {
+  try {
+    window.localStorage.setItem(recentKey, JSON.stringify(list));
+  } catch (e) {
+    // Storage may be full or blocked; the list lasts the session.
+  }
+}
+
 // QuickSearch is the search bar across the top of the page and the palette it
-// opens, also on
-// Cmd+K or Ctrl+K: pages, applications, projects, environments, targets,
-// definitions and config templates, read once when it first opens.
+// opens, also on Cmd+K or Ctrl+K: pages, applications, projects, environments,
+// targets, definitions and config templates, read once when it first opens.
+// With nothing typed it offers what was opened recently first.
 class QuickSearch extends React.Component<Props, State> {
   loaded = false;
   input = React.createRef<HTMLInputElement>();
 
   constructor(props: Props) {
     super(props);
-    this.state = { open: false, query: '', items: [], active: 0 };
+    this.state = { open: false, query: '', items: [], active: 0, recent: loadRecent() };
   }
+
+  unlisten?: () => void;
+
+  remember = (item?: SearchItem) => {
+    if (!item) {
+      return;
+    }
+    const recent = addRecent(this.state.recent, item);
+    saveRecent(recent);
+    this.setState({ recent });
+  };
 
   componentDidMount() {
     window.addEventListener('keydown', this.onGlobalKey);
+    const history = locationService.getHistory();
+    this.remember(recentFromPath(history.location.pathname));
+    this.unlisten = history.listen((location) => this.remember(recentFromPath(location.pathname)));
   }
 
   componentWillUnmount() {
     window.removeEventListener('keydown', this.onGlobalKey);
+    this.unlisten?.();
   }
 
   onGlobalKey = (e: KeyboardEvent) => {
@@ -156,6 +196,8 @@ class QuickSearch extends React.Component<Props, State> {
 
   go = (item?: SearchItem) => {
     if (item) {
+      // A recent item is shown under Recent; it is kept under the group it came from.
+      this.remember(item.group === recentGroup ? this.state.recent.find((r) => r.to === item.to) : item);
       locationService.push(item.to);
       this.close();
     }
@@ -183,7 +225,9 @@ class QuickSearch extends React.Component<Props, State> {
 
   renderPalette() {
     const { query, items, active } = this.state;
-    const results = matchItems(items, query, groups, query ? 5 : 3);
+    const results = query
+      ? matchItems(items, query, groups, 5)
+      : [...this.state.recent.map((item) => ({ ...item, group: recentGroup })), ...matchItems(items, '', groups, 3)];
     let lastGroup = '';
     return (
       <div className="quick-search-mask" onMouseDown={this.close}>

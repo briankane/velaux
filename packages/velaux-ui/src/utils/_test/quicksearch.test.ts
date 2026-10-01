@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 
 import type { SearchItem } from '../../components/QuickSearch/search';
-import { isQuickSearchKey, matchItems } from '../../components/QuickSearch/search';
+import { addRecent, isQuickSearchKey, matchItems, recentFromPath } from '../../components/QuickSearch/search';
 
 const items: SearchItem[] = [
   { group: 'Applications', label: 'checkout', detail: 'default', to: '/applications/checkout/config' },
@@ -35,5 +35,27 @@ describe('quick search', () => {
     expect(isQuickSearchKey({ key: 'k', metaKey: true, ctrlKey: false })).to.equal(true);
     expect(isQuickSearchKey({ key: 'K', metaKey: false, ctrlKey: true })).to.equal(true);
     expect(isQuickSearchKey({ key: 'k', metaKey: false, ctrlKey: false })).to.equal(false);
+  });
+});
+
+describe('recently opened', () => {
+  const item = (label: string): SearchItem => ({ group: 'Applications', label, to: `/applications/${label}/config` });
+
+  it('puts the latest first, once, and keeps a few', () => {
+    let list: SearchItem[] = [];
+    for (const name of ['a', 'b', 'c', 'b', 'd', 'e', 'f', 'g']) {
+      list = addRecent(list, item(name));
+    }
+    expect(list.map((i) => i.label)).to.deep.equal(['g', 'f', 'e', 'd', 'b', 'c']);
+  });
+
+  it('reads an application page visit as that application', () => {
+    expect(recentFromPath('/applications/orders/envbinding/system/status')).to.deep.equal({
+      group: 'Applications',
+      label: 'orders',
+      to: '/applications/orders/config',
+    });
+    expect(recentFromPath('/applications')).to.equal(undefined);
+    expect(recentFromPath('/definitions/component')).to.equal(undefined);
   });
 });
