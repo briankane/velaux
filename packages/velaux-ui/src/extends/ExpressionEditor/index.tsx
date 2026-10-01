@@ -1,12 +1,12 @@
-import { Balloon } from '@alifd/next';
+import { Balloon, Button } from '@alifd/next';
 import * as monaco from 'monaco-editor';
 import React from 'react';
 import { AiFillCheckCircle, AiFillCloseCircle, AiFillWarning } from 'react-icons/ai';
 import { v4 as uuid } from 'uuid';
 
 import { checkDraftExpression, checkExpression } from '../../api/application';
-import type { ExpressionEnv } from './completion';
-import { expressionSpans, hoverAt, suggest } from './completion';
+import type { ExpressionEnv, ExpressionFix } from './completion';
+import { expressionSpans, fixesFor, hoverAt, suggest } from './completion';
 import './index.less';
 
 export type { ExpressionEnv, ExpressionVariable } from './completion';
@@ -16,6 +16,13 @@ const language = 'vela-cel';
 // envs are the variables each open editor may read, by model URI, since a
 // Monaco completion provider is registered once for every editor.
 const envs = new Map<string, ExpressionEnv | undefined>();
+
+// fixes are the replacements the check last offered for each open editor, by
+// model URI, for the one code action provider to find.
+const fixes = new Map<string, ExpressionFix[]>();
+
+// fixRange is where a fix applies in the editor's single line.
+const fixRange = (fix: ExpressionFix) => new monaco.Range(1, fix.start + 1, 1, fix.end + 1);
 
 let registered = false;
 
@@ -57,8 +64,28 @@ function register() {
       };
     },
   });
+  monaco.languages.registerCodeActionProvider(language, {
+    provideCodeActions: (model, _range, context) => ({
+      actions: fixesFor(context.markers, fixes.get(model.uri.toString()) || []).map((fix) => ({
+        title: `Write ${fix.text}`,
+        kind: 'quickfix',
+        isPreferred: true,
+        diagnostics: context.markers.filter((m) => m.message === fix.message),
+        edit: {
+          edits: [
+            {
+              resource: model.uri,
+              modelVersionId: model.getVersionId(),
+              edit: { range: fixRange(fix), text: fix.text },
+            },
+          ],
+        },
+      })),
+      dispose: () => undefined,
+    }),
+  });
   monaco.languages.registerCompletionItemProvider(language, {
-    triggerCharacters: ['.', '('],
+    triggerCharacters: ['.', '(', '$'],
     provideCompletionItems: (model, position) => {
       const before = model.getValueInRange({
         startLineNumber: position.lineNumber,
@@ -117,7 +144,7 @@ type Props = {
 };
 
 type State = {
-  status?: { text: string; kind: 'ok' | 'error' | 'warning' };
+  status?: { text: string; kind: 'ok' | 'error' | 'warning'; fix?: ExpressionFix };
 };
 
 // markWidth is the room at the right of the input kept for the status mark.
@@ -215,6 +242,7 @@ class ExpressionEditor extends React.Component<Props, State> {
     }
     if (this.model) {
       envs.delete(this.model.uri.toString());
+      fixes.delete(this.model.uri.toString());
     }
     this.resize?.disconnect();
     this.editor?.dispose();
@@ -264,7 +292,12 @@ class ExpressionEditor extends React.Component<Props, State> {
     if (!this.model || this.model.getValue() !== value) {
       return;
     }
-    const issues: Array<{ message: string; start: number; end: number; warning?: boolean }> = res?.issues || [];
+    const issues: Array<{ message: string; start: number; end: number; warning?: boolean; fix?: string }> =
+      res?.issues || [];
+    const offered: ExpressionFix[] = issues
+      .filter((i) => i.fix)
+      .map((i) => ({ start: i.start, end: i.end, text: i.fix as string, message: i.message }));
+    fixes.set(this.model.uri.toString(), offered);
     monaco.editor.setModelMarkers(
       this.model,
       language,
@@ -279,12 +312,19 @@ class ExpressionEditor extends React.Component<Props, State> {
     );
     const first = issues.find((i) => !i.warning) || issues[0];
     if (first) {
-      this.setState({ status: { text: first.message, kind: first.warning ? 'warning' : 'error' } });
+      const fix = offered.find((f) => f.start === first.start && f.message === first.message);
+      this.setState({ status: { text: first.message, kind: first.warning ? 'warning' : 'error', fix } });
     } else if (res?.type) {
       this.setState({ status: { text: `Evaluates to ${res.type}`, kind: 'ok' } });
     } else {
       this.setState({ status: undefined });
     }
+  };
+
+  // applyFix makes the replacement a check offered, as one undoable edit.
+  applyFix = (fix: ExpressionFix) => {
+    this.editor?.executeEdits('expression-fix', [{ range: fixRange(fix), text: fix.text }]);
+    this.editor?.focus();
   };
 
   render() {
@@ -294,12 +334,25 @@ class ExpressionEditor extends React.Component<Props, State> {
       <div className="expression-editor" id={this.props.id}>
         <div className={`expression-editor-input${this.props.disabled ? ' disabled' : ''}`} ref={this.container} />
         {status && (
-          <Balloon.Tooltip
+          <Balloon
             trigger={<span className={`expression-editor-mark ${status.kind}`}>{icons[status.kind]}</span>}
             align="t"
+            closable={false}
+            triggerType="hover"
           >
-            {status.text}
-          </Balloon.Tooltip>
+            <div>{status.text}</div>
+            {status.fix && (
+              <Button
+                className="expression-editor-fix"
+                size="small"
+                type="primary"
+                text
+                onClick={() => status.fix && this.applyFix(status.fix)}
+              >
+                {`Write ${status.fix.text}`}
+              </Button>
+            )}
+          </Balloon>
         )}
       </div>
     );

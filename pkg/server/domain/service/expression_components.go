@@ -265,6 +265,7 @@ func (e *expressionServiceImpl) componentIssues(ctx context.Context, app *model.
 		return []*apisv1.ExpressionIssue{{
 			Message: fmt.Sprintf("write component[%q]: a component whose name has a hyphen is read by index", name),
 			Start:   start + m[0], End: start + m[1],
+			Fix: fmt.Sprintf("component[%q]", name),
 		}}
 	}
 	refs, err := celexpr.PropertyReferences(expr)

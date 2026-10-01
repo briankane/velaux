@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 
 import type { ExpressionEnv } from '../../extends/ExpressionEditor/completion';
-import { expressionSpans, hoverAt, openExpression, suggest } from '../../extends/ExpressionEditor/completion';
+import { expressionSpans, fixesFor, hoverAt, openExpression, suggest } from '../../extends/ExpressionEditor/completion';
 
 const env: ExpressionEnv = {
   enabled: true,
@@ -28,9 +28,15 @@ const env: ExpressionEnv = {
 const labels = (before: string) => suggest(before, env).items.map((i) => i.label);
 
 describe('expression suggestions', () => {
-  it('offers to start an expression outside one', () => {
-    expect(labels('http://')).to.deep.equal(['$( )']);
-    expect(labels('$(context.appName) done')).to.deep.equal(['$( )']);
+  it('offers to start an expression only once a $ is typed, replacing it', () => {
+    expect(labels('http://')).to.deep.equal([]);
+    expect(labels('$(context.appName) done')).to.deep.equal([]);
+    expect(labels('http://$')).to.deep.equal(['$( )']);
+    expect(suggest('http://$', env).replace).to.equal(1);
+    expect(labels('$(context.appName) and $')).to.deep.equal(['$( )']);
+  });
+  it('offers nothing after $$, which writes a literal $(', () => {
+    expect(labels('cost $$')).to.deep.equal([]);
   });
   it('offers the roots and functions at the start of an expression', () => {
     expect(labels('$(')).to.include.members(['context', 'source', 'has', 'int']);
@@ -189,5 +195,18 @@ describe('hyphenated component names', () => {
       'data',
       'host',
     ]);
+  });
+});
+
+describe('quick fixes', () => {
+  it('finds the fix for a marker by where it starts and what it says', () => {
+    const fixes = [
+      { start: 2, end: 17, text: 'component["my-db"]', message: 'write component["my-db"]: ...' },
+      { start: 30, end: 40, text: 'other', message: 'other issue' },
+    ];
+    expect(
+      fixesFor([{ startColumn: 3, message: 'write component["my-db"]: ...' }], fixes).map((f) => f.text)
+    ).to.deep.equal(['component["my-db"]']);
+    expect(fixesFor([{ startColumn: 3, message: 'different' }], fixes)).to.deep.equal([]);
   });
 });
