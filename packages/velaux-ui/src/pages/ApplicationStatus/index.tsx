@@ -32,6 +32,7 @@ import Header from '../ApplicationInstanceList/components/Header';
 
 import './index.less';
 import ApplicationGraph from './components/ApplicationGraph';
+import SourceStatusList from './components/SourceStatusList';
 import { AiOutlineQuestionCircle } from 'react-icons/ai';
 
 type Props = {
@@ -426,6 +427,14 @@ class ApplicationStatusPage extends React.Component<Props, State> {
                         />
                       </Table>
                     </div>
+                  </section>
+                </If>
+                <If condition={applicationStatus?.sources?.length}>
+                  <section className="status-section">
+                    <div className="status-section-title">
+                      <Translation>Sources</Translation>
+                    </div>
+                    <SourceStatusList sources={applicationStatus?.sources || []} />
                   </section>
                 </If>
                 <section className="status-section">
