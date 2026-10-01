@@ -83,3 +83,34 @@ export function componentDependsOn(written: string[] | undefined, items: Depende
     });
   return result;
 }
+
+// DependsOnOption is a component offered for another's dependsOn.
+export interface DependsOnOption {
+  label: string;
+  value: string;
+  // inferred is set where the component is read already, through an expression.
+  inferred?: string;
+}
+
+// dependsOnOptions are the components one may depend on: all others except
+// those that already depend on it, written or inferred, which would close a
+// cycle. One it already reads is marked, as writing it only makes the order
+// explicit.
+export function dependsOnOptions(
+  components: Array<{ name: string; alias?: string; dependsOn?: string[] }>,
+  componentName: string | undefined,
+  items: DependencyItem[]
+): DependsOnOption[] {
+  const inbound = new Set(items.filter((d) => d.direction === 'inbound').map((d) => d.name));
+  const reads = items.filter((d) => d.direction === 'outbound' && d.inferred && !d.where);
+  return components
+    .filter(
+      (c) =>
+        !componentName || (c.name !== componentName && !c.dependsOn?.includes(componentName) && !inbound.has(c.name))
+    )
+    .map((c) => {
+      const option: DependsOnOption = { label: c.alias ? `${c.alias}(${c.name})` : c.name, value: c.name };
+      const read = reads.find((d) => d.name === c.name);
+      return read ? { ...option, inferred: read.inferred } : option;
+    });
+}

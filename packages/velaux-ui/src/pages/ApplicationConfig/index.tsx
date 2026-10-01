@@ -49,6 +49,7 @@ import EditAppDialog from '../ApplicationList/components/EditAppDialog';
 
 import ComponentDialog from './components/ComponentDialog';
 import ComponentList from './components/ComponentList';
+import { dependencyItems } from '../../utils/dependencies';
 import PolicyDialog from './components/PolicyDialog';
 import PolicyList from './components/PolicyList';
 import SourceDialog from './components/SourceDialog';
@@ -864,6 +865,10 @@ class ApplicationConfig extends Component<Props, State> {
             appName={appName}
             componentName={componentName}
             components={components || []}
+            dependencies={dependencyItems(
+              componentName,
+              (this.props.applicationAllStatus || []).flatMap((s) => s.status?.dependencies || [])
+            )}
             isEditComponent={isEditComponent}
             temporaryTraitList={temporaryTraitList}
             componentDefinitions={componentDefinitions}

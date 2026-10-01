@@ -3,6 +3,7 @@ import { expect } from 'chai';
 import {
   componentDependsOn,
   componentHealth,
+  dependsOnOptions,
   flattenProperties,
 } from '../../pages/ApplicationConfig/components/ComponentList/model';
 
@@ -77,6 +78,23 @@ describe('component list', () => {
     expect(deps.map((d) => [d.name, d.where])).to.deep.equal([
       ['db', undefined],
       ['db', 'east'],
+    ]);
+  });
+
+  it('offers no component that already depends on this one, written or inferred', () => {
+    const components = [{ name: 'db' }, { name: 'api' }, { name: 'worker', dependsOn: ['db'] }, { name: 'cache' }];
+    const items = [{ name: 'api', direction: 'inbound' as const, inferred: 'api reads db' }];
+    expect(dependsOnOptions(components, 'db', items).map((o) => o.value)).to.deep.equal(['cache']);
+  });
+
+  it('marks a component this one reads already', () => {
+    const options = dependsOnOptions([{ name: 'db' }, { name: 'api' }, { name: 'cache', alias: 'Cache' }], 'api', [
+      { name: 'db', direction: 'outbound', inferred: 'api reads db' },
+      { name: 'cache', direction: 'outbound', inferred: 'reads in east', where: 'east' },
+    ]);
+    expect(options).to.deep.equal([
+      { label: 'db', value: 'db', inferred: 'api reads db' },
+      { label: 'Cache(cache)', value: 'cache' },
     ]);
   });
 });
