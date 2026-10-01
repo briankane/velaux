@@ -7,6 +7,7 @@ import ApplicationEnvRoute from '../../pages/ApplicationEnvRoute';
 import ApplicationInstanceList from '../../pages/ApplicationInstanceList';
 import Application from '../../pages/ApplicationList';
 import ApplicationLog from '../../pages/ApplicationLog';
+import ApplicationYaml from '../../pages/ApplicationYaml';
 import ApplicationOrbits from '../../pages/ApplicationOrbits';
 import ApplicationRevisionList from '../../pages/ApplicationRevisionList';
 import ApplicationStatus from '../../pages/ApplicationStatus';
@@ -210,6 +211,17 @@ export default function Router() {
           return (
             <ApplicationLayout {...props}>
               <ApplicationLog {...props} />
+            </ApplicationLayout>
+          );
+        }}
+      />
+      <Route
+        exact
+        path="/applications/:appName/envbinding/:envName/yaml"
+        render={(props: any) => {
+          return (
+            <ApplicationLayout {...props}>
+              <ApplicationYaml {...props} />
             </ApplicationLayout>
           );
         }}

@@ -89,6 +89,7 @@ const OrbitBarView = (props: {
     { key: 'instances', label: 'Instances' },
     { key: 'logs', label: 'Logs' },
     { key: 'workflow', label: 'Workflow' },
+    { key: 'yaml', label: 'YAML' },
   ];
   return (
     <div className="orbit-bar">

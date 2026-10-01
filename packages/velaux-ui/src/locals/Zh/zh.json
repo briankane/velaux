@@ -783,5 +783,19 @@
   "Search by name or description": "按名称或描述搜索",
   "Labels": "标签",
   "Card": "卡片",
-  "Table": "表格"
+  "Table": "表格",
+  "Recent": "最近",
+  "Running": "运行中",
+  "Next deploy": "下次部署",
+  "The Application running in the cluster for this environment.": "此环境在集群中运行的 Application。",
+  "The Application a deploy from here would apply.": "从此处部署时将应用的 Application。",
+  "Not deployed to this environment yet": "尚未部署到此环境",
+  "Nothing to deploy": "没有可部署的内容",
+  "Copied": "已复制",
+  "Copy": "复制",
+  "YAML": "YAML",
+  "Updated": "更新于",
+  "just now": "刚刚",
+  "ago": "前",
+  "The status reloads every 15 seconds while this page is open": "此页面打开时，状态每 15 秒刷新一次"
 }
