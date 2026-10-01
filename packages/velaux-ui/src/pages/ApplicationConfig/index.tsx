@@ -21,7 +21,7 @@ import { If } from '../../components/If';
 import Permission from '../../components/Permission';
 import { Title } from '../../components/Title';
 import type { OrbitStatus } from '../ApplicationList/components/AppStatus/health';
-import { OrbitCards } from '../ApplicationOrbits';
+import { OrbitList } from '../ApplicationOrbits';
 import { Translation } from '../../components/Translation';
 import { routerRedux, Link } from 'dva/router';
 import i18n from '../../i18n';
@@ -642,7 +642,7 @@ class ApplicationConfig extends Component<Props, State> {
             <div className="app-overview-section">
               <Translation>Environments</Translation>
             </div>
-            <OrbitCards
+            <OrbitList
               appName={appName}
               envbinding={envbinding || []}
               applicationAllStatus={(this.props.applicationAllStatus || []) as OrbitStatus[]}
