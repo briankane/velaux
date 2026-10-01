@@ -222,7 +222,13 @@ class TriggerList extends Component<Props, State> {
                           onClick={() => this.showWebhook(item)}
                         />
                       )}
-                      <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => this.props.onEditTrigger(item)} />
+                      {!applicationDetail?.readOnly && (
+                        <RowAction
+                          icon={<AiOutlineEdit />}
+                          label="Edit"
+                          onClick={() => this.props.onEditTrigger(item)}
+                        />
+                      )}
                       {!applicationDetail?.readOnly && (
                         <Permission
                           request={{

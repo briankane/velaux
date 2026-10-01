@@ -124,7 +124,9 @@ const PolicyList = (props: Props) => {
               <span className="row-list-actions">
                 {row.policy && (
                   <React.Fragment>
-                    <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => props.onShowPolicy(row.name)} />
+                    {!applicationDetail?.readOnly && (
+                      <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => props.onShowPolicy(row.name)} />
+                    )}
                     {!applicationDetail?.readOnly && (
                       <Permission
                         request={{

@@ -74,7 +74,9 @@ const SourceList = ({ sources, applicationDetail, onDeleteSource, onShowSource }
                 <code className="row-list-code">{`$(source.${item.name})`}</code>
               </span>
               <span className="row-list-actions">
-                <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => onShowSource(item)} />
+                {!applicationDetail?.readOnly && (
+                  <RowAction icon={<AiOutlineEdit />} label="Edit" onClick={() => onShowSource(item)} />
+                )}
                 {!applicationDetail?.readOnly && (
                   <Permission
                     request={{

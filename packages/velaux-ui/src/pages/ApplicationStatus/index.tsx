@@ -345,6 +345,7 @@ class ApplicationStatusPage extends React.Component<Props, State> {
                       projectName={applicationDetail?.project?.name}
                       status={applicationStatus}
                       onChanged={this.loadApplicationStatus}
+                      readOnly={applicationDetail?.readOnly}
                     />
                   </section>
                 )}

@@ -568,14 +568,16 @@ class ApplicationConfig extends Component<Props, State> {
                   <Translation>About</Translation>
                 </span>
                 <div className="app-overview-actions">
-                  <Permission
-                    request={{ resource: `project:${projectName}/application/:${appName}`, action: 'update' }}
-                    project={projectName}
-                  >
-                    <Button onClick={this.editAppPlan}>
-                      <Translation>Edit</Translation>
-                    </Button>
-                  </Permission>
+                  {!applicationDetail?.readOnly && (
+                    <Permission
+                      request={{ resource: `project:${projectName}/application/:${appName}`, action: 'update' }}
+                      project={projectName}
+                    >
+                      <Button onClick={this.editAppPlan}>
+                        <Translation>Edit</Translation>
+                      </Button>
+                    </Permission>
+                  )}
                   {!applicationDetail?.readOnly && (
                     <Permission
                       request={{ resource: `project:${projectName}/application/:${appName}`, action: 'delete' }}
