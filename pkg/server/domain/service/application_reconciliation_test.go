@@ -22,6 +22,7 @@ import (
 
 	"github.com/kubevela/pkg/controller/reconciler"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
+	"github.com/oam-dev/kubevela/pkg/oam"
 	common2 "github.com/oam-dev/kubevela/pkg/utils/common"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -72,4 +73,65 @@ func TestSetApplicationPausedNotDeployed(t *testing.T) {
 	cli := fake.NewClientBuilder().WithScheme(common2.Scheme).Build()
 	err := setApplicationPaused(context.Background(), cli, types.NamespacedName{Namespace: "prod", Name: "shop"}, true)
 	require.ErrorIs(t, err, bcode.ErrApplicationNotDeployed)
+}
+
+// The status carries the reconciliation settings set on the Application.
+func TestApplicationStatusFromReportsReconciliation(t *testing.T) {
+	status, err := applicationStatusFrom(application(t, `{
+		"apiVersion": "core.oam.dev/v1beta1", "kind": "Application",
+		"metadata": {"name": "shop", "annotations": {
+			"app.oam.dev/reconcile-interval": "5m",
+			"app.oam.dev/restart-workflow": "1h",
+			"app.oam.dev/autoUpdate": "true"}},
+		"status": {"status": "running", "workflowRestartScheduledAt": "2026-10-01T20:00:00Z"}}`))
+	require.NoError(t, err)
+	require.Equal(t, "5m", status.ReconcileInterval)
+	require.Equal(t, "1h", status.RestartWorkflow)
+	require.True(t, status.AutoUpdate)
+	require.NotNil(t, status.WorkflowRestartScheduledAt)
+}
+
+func TestValidReconcileInterval(t *testing.T) {
+	for _, ok := range []string{"", "10s", "5m", "1h30m"} {
+		require.NoError(t, validReconcileInterval(ok), ok)
+	}
+	for _, bad := range []string{"5", "9s", "-1m", "soon"} {
+		require.ErrorIs(t, validReconcileInterval(bad), bcode.ErrInvalidReconcileInterval, bad)
+	}
+}
+
+func TestRestartSchedule(t *testing.T) {
+	for in, want := range map[string]string{
+		"":                     "true",
+		"2026-10-01T20:00:00Z": "2026-10-01T20:00:00Z",
+		"1h":                   "1h",
+	} {
+		got, err := restartSchedule(in)
+		require.NoError(t, err, in)
+		require.Equal(t, want, got, in)
+	}
+	for _, bad := range []string{"tomorrow", "0s", "-5m", "2026-10-01 20:00"} {
+		_, err := restartSchedule(bad)
+		require.ErrorIs(t, err, bcode.ErrInvalidRestartSchedule, bad)
+	}
+}
+
+// Setting an annotation leaves the others alone, and clearing it removes it.
+func TestPatchApplicationAnnotation(t *testing.T) {
+	ctx := context.Background()
+	app := &v1beta1.Application{ObjectMeta: metav1.ObjectMeta{
+		Name: "shop", Namespace: "prod", Annotations: map[string]string{"owner": "orders"},
+	}}
+	cli := fake.NewClientBuilder().WithScheme(common2.Scheme).WithObjects(app).Build()
+	key := types.NamespacedName{Namespace: "prod", Name: "shop"}
+
+	interval := "5m"
+	require.NoError(t, patchApplicationMetadata(ctx, cli, key, "annotations", oam.AnnotationReconcileInterval, &interval))
+	got := &v1beta1.Application{}
+	require.NoError(t, cli.Get(ctx, key, got))
+	require.Equal(t, map[string]string{"owner": "orders", oam.AnnotationReconcileInterval: "5m"}, got.Annotations)
+
+	require.NoError(t, patchApplicationMetadata(ctx, cli, key, "annotations", oam.AnnotationReconcileInterval, nil))
+	require.NoError(t, cli.Get(ctx, key, got))
+	require.Equal(t, map[string]string{"owner": "orders"}, got.Annotations)
 }

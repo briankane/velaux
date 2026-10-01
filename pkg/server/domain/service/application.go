@@ -19,7 +19,6 @@ package service
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -76,6 +75,9 @@ type ApplicationService interface {
 	GetApplication(ctx context.Context, appName string) (*model.Application, error)
 	GetApplicationStatus(ctx context.Context, app *model.Application, envName string) (*apisv1.ApplicationStatus, error)
 	SetApplicationPaused(ctx context.Context, app *model.Application, envName string, paused bool) error
+	SetReconcileInterval(ctx context.Context, app *model.Application, envName string, interval string) error
+	RestartWorkflow(ctx context.Context, app *model.Application, envName string, schedule string) error
+	CancelWorkflowRestart(ctx context.Context, app *model.Application, envName string) error
 	GetApplicationStatusFromAllEnvs(ctx context.Context, app *model.Application) ([]*apisv1.ApplicationStatusResponse, error)
 	DetailApplication(ctx context.Context, app *model.Application) (*apisv1.DetailApplicationResponse, error)
 	PublishApplicationTemplate(ctx context.Context, app *model.Application) (*apisv1.ApplicationTemplateBase, error)
@@ -324,47 +326,6 @@ func (c *applicationServiceImpl) GetApplicationStatus(ctx context.Context, appmo
 	return status, err
 }
 
-// SetApplicationPaused pauses or resumes the controller's reconciliation of the
-// Application deployed to an environment.
-func (c *applicationServiceImpl) SetApplicationPaused(ctx context.Context, appmodel *model.Application, envName string, paused bool) error {
-	env, err := c.EnvService.GetEnv(ctx, envName)
-	if err != nil {
-		return err
-	}
-	envBinding, err := c.EnvBindingService.GetEnvBinding(ctx, appmodel, envName)
-	if err != nil {
-		return err
-	}
-	return setApplicationPaused(ctx, c.KubeClient, types.NamespacedName{Namespace: env.Namespace, Name: envBinding.AppDeployName}, paused)
-}
-
-// setApplicationPaused sets or removes the controller's pause label on an
-// Application. It patches the label alone: VelaUX never writes it on deploy, so
-// a deploy leaves a pause in place.
-func setApplicationPaused(ctx context.Context, cli client.Client, key types.NamespacedName, paused bool) error {
-	var value interface{}
-	if paused {
-		value = reconciler.ValueTrue
-	}
-	patch, err := json.Marshal(map[string]interface{}{
-		"metadata": map[string]interface{}{"labels": map[string]interface{}{reconciler.LabelPause: value}},
-	})
-	if err != nil {
-		return err
-	}
-	obj := &unstructured.Unstructured{}
-	obj.SetGroupVersionKind(v1beta1.ApplicationKindVersionKind)
-	obj.SetNamespace(key.Namespace)
-	obj.SetName(key.Name)
-	if err := cli.Patch(ctx, obj, client.RawPatch(types.MergePatchType, patch)); err != nil {
-		if apierrors.IsNotFound(err) {
-			return bcode.ErrApplicationNotDeployed
-		}
-		return err
-	}
-	return nil
-}
-
 // applicationStatus reads an Application's status from the cluster.
 func (c *applicationServiceImpl) applicationStatus(ctx context.Context, namespace, name string) (*apisv1.ApplicationStatus, error) {
 	obj := &unstructured.Unstructured{}
@@ -388,6 +349,10 @@ func applicationStatusFrom(obj *unstructured.Unstructured) (*apisv1.ApplicationS
 	}
 	status.Dependencies = dependenciesOf(obj, raw)
 	status.Paused = reconciler.IsPaused(obj)
+	annotations := obj.GetAnnotations()
+	status.ReconcileInterval = annotations[oam.AnnotationReconcileInterval]
+	status.RestartWorkflow = annotations[oam.AnnotationWorkflowRestart]
+	status.AutoUpdate = annotations[oam.AnnotationAutoUpdate] == "true"
 	if obj.GetGeneration() > status.ObservedGeneration {
 		status.Phase = common.ApplicationStarting
 	}

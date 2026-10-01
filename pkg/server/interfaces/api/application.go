@@ -525,6 +525,44 @@ func (c *application) GetWebServiceRoute() *restful.WebService {
 		Returns(400, "Bad Request", bcode.Bcode{}).
 		Writes(apis.EmptyResponse{}))
 
+	ws.Route(ws.PUT("/{appName}/envs/{envName}/reconcile-interval").To(c.setReconcileInterval).
+		Doc("set how often the controller resyncs the application in an env").
+		Metadata(restfulspec.KeyOpenAPITags, tags).
+		Filter(c.RbacService.CheckPerm("envBinding", "update")).
+		Filter(c.appCheckFilter).
+		Filter(c.envCheckFilter).
+		Param(ws.PathParameter("appName", "identifier of the application ").DataType("string").Required(true)).
+		Param(ws.PathParameter("envName", "identifier of the application envbinding").DataType("string").Required(true)).
+		Reads(apis.ReconcileIntervalRequest{}).
+		Returns(200, "OK", apis.EmptyResponse{}).
+		Returns(400, "Bad Request", bcode.Bcode{}).
+		Writes(apis.EmptyResponse{}))
+
+	ws.Route(ws.POST("/{appName}/envs/{envName}/restart-workflow").To(c.restartWorkflow).
+		Doc("restart the application's workflow in an env, now, at a time or recurring").
+		Metadata(restfulspec.KeyOpenAPITags, tags).
+		Filter(c.RbacService.CheckPerm("envBinding", "restart")).
+		Filter(c.appCheckFilter).
+		Filter(c.envCheckFilter).
+		Param(ws.PathParameter("appName", "identifier of the application ").DataType("string").Required(true)).
+		Param(ws.PathParameter("envName", "identifier of the application envbinding").DataType("string").Required(true)).
+		Reads(apis.RestartWorkflowRequest{}).
+		Returns(200, "OK", apis.EmptyResponse{}).
+		Returns(400, "Bad Request", bcode.Bcode{}).
+		Writes(apis.EmptyResponse{}))
+
+	ws.Route(ws.DELETE("/{appName}/envs/{envName}/restart-workflow").To(c.cancelWorkflowRestart).
+		Doc("cancel a scheduled or recurring workflow restart in an env").
+		Metadata(restfulspec.KeyOpenAPITags, tags).
+		Filter(c.RbacService.CheckPerm("envBinding", "restart")).
+		Filter(c.appCheckFilter).
+		Filter(c.envCheckFilter).
+		Param(ws.PathParameter("appName", "identifier of the application ").DataType("string").Required(true)).
+		Param(ws.PathParameter("envName", "identifier of the application envbinding").DataType("string").Required(true)).
+		Returns(200, "OK", apis.EmptyResponse{}).
+		Returns(400, "Bad Request", bcode.Bcode{}).
+		Writes(apis.EmptyResponse{}))
+
 	ws.Route(ws.GET("/{appName}/envs/{envName}/records").To(c.WorkflowAPI.listWorkflowRecordsFromEnv).
 		Doc("query application workflow execution record of one environment").
 		Param(ws.PathParameter("appName", "identifier of the application.").DataType("string").Required(true)).
@@ -1544,9 +1582,42 @@ func (c *application) resumeApplicationEnv(req *restful.Request, res *restful.Re
 }
 
 func (c *application) setApplicationEnvPaused(req *restful.Request, res *restful.Response, paused bool) {
+	c.applyEnvSetting(req, res, func(ctx context.Context, app *model.Application, envName string) error {
+		return c.ApplicationService.SetApplicationPaused(ctx, app, envName, paused)
+	})
+}
+
+func (c *application) setReconcileInterval(req *restful.Request, res *restful.Response) {
+	var body apis.ReconcileIntervalRequest
+	if err := req.ReadEntity(&body); err != nil {
+		bcode.ReturnError(req, res, err)
+		return
+	}
+	c.applyEnvSetting(req, res, func(ctx context.Context, app *model.Application, envName string) error {
+		return c.ApplicationService.SetReconcileInterval(ctx, app, envName, body.Interval)
+	})
+}
+
+func (c *application) restartWorkflow(req *restful.Request, res *restful.Response) {
+	var body apis.RestartWorkflowRequest
+	if err := req.ReadEntity(&body); err != nil {
+		bcode.ReturnError(req, res, err)
+		return
+	}
+	c.applyEnvSetting(req, res, func(ctx context.Context, app *model.Application, envName string) error {
+		return c.ApplicationService.RestartWorkflow(ctx, app, envName, body.Schedule)
+	})
+}
+
+func (c *application) cancelWorkflowRestart(req *restful.Request, res *restful.Response) {
+	c.applyEnvSetting(req, res, c.ApplicationService.CancelWorkflowRestart)
+}
+
+// applyEnvSetting runs a change to the Application deployed to the request's env.
+func (c *application) applyEnvSetting(req *restful.Request, res *restful.Response, apply func(ctx context.Context, app *model.Application, envName string) error) {
 	app := req.Request.Context().Value(&apis.CtxKeyApplication).(*model.Application)
 	env := req.Request.Context().Value(&apis.CtxKeyApplicationEnvBinding).(*model.EnvBinding)
-	if err := c.ApplicationService.SetApplicationPaused(req.Request.Context(), app, env.Name, paused); err != nil {
+	if err := apply(req.Request.Context(), app, env.Name); err != nil {
 		bcode.ReturnError(req, res, err)
 		return
 	}
