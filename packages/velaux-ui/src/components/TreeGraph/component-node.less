@@ -51,53 +51,19 @@
   }
 }
 
-// The traits past the chips, listed under the node when opened.
+// The traits past the chips, as the same chips, under the node when opened.
 .trait-panel {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
   z-index: 1000;
-  min-width: 220px;
-  padding: 4px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  max-width: 300px;
+  padding: 8px;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-}
-
-.trait-panel-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 8px;
-  align-items: center;
-  padding: 4px 12px;
-  font-size: 12px;
-  &:hover {
-    background: #f8fafc;
-  }
-}
-
-.trait-panel-type {
-  color: #0f172a;
-}
-
-.trait-panel-state {
-  color: #64748b;
-}
-
-// The name, with its health at the right.
-.component-node-title {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-  min-width: 0;
-}
-
-.component-node-name {
-  overflow: hidden;
-  color: #0f172a;
-  font-weight: 500;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }

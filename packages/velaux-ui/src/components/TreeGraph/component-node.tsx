@@ -2,8 +2,6 @@ import { Balloon } from '@alifd/next';
 import classNames from 'classnames';
 import React, { useState } from 'react';
 
-import { Translation } from '../Translation';
-
 import type { GraphNode } from './interface';
 import { componentSections, componentSummary, ResourceIcon } from './utils';
 import { layoutTraits, maxTraitRows, traitArea } from './traits';
@@ -35,8 +33,6 @@ const TraitChip = (props: { trait: TraitStatus }) => (
     <StatusTooltip {...traitTooltip(props.trait)} />
   </Balloon>
 );
-
-const traitStateLabel: Record<string, string> = { healthy: 'Healthy', pending: 'Pending', unhealthy: 'UnHealthy' };
 
 export const ComponentNode = (props: ComponentNodeProps) => {
   const { node } = props;
@@ -117,28 +113,9 @@ export const ComponentNode = (props: ComponentNodeProps) => {
       </div>
       {hidden.length > 0 && showTrait && (
         <div className="trait-panel">
-          {hidden.map((type) => {
-            const trait = byType(type);
-            const state = traitState(trait);
-            return (
-              <Balloon
-                key={type}
-                trigger={
-                  <div className="trait-panel-row">
-                    <span className={classNames('circle', traitStateCircle[state])} />
-                    <span className="trait-panel-type">{type}</span>
-                    <span className="trait-panel-state">
-                      <Translation>{traitStateLabel[state]}</Translation>
-                    </span>
-                  </div>
-                }
-                closable={false}
-                popupClassName={statusTooltipPopupClass}
-              >
-                <StatusTooltip {...traitTooltip(trait)} />
-              </Balloon>
-            );
-          })}
+          {hidden.map((type) => (
+            <TraitChip key={type} trait={byType(type)} />
+          ))}
         </div>
       )}
     </div>
