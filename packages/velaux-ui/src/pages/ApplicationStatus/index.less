@@ -24,3 +24,35 @@
     text-align: center;
   }
 }
+
+// The view switch reads as the segmented control in the orbit bar above it.
+.application-status-wrapper > .next-tabs-capsule {
+  > .next-tabs-bar {
+    display: inline-block;
+    margin-bottom: 16px;
+    padding: 3px;
+    background: #e8edf3;
+    border-radius: 6px;
+  }
+  > .next-tabs-bar .next-tabs-tab {
+    margin-right: 4px;
+    color: #475569;
+    font-size: 13px;
+    background: transparent;
+    border: none !important;
+    border-radius: 4px !important;
+    .next-tabs-tab-inner {
+      padding: 4px 12px;
+    }
+    &:hover {
+      color: #0f172a;
+      background: transparent;
+    }
+    &.active {
+      color: #0f172a;
+      font-weight: 500;
+      background: #fff;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+  }
+}
