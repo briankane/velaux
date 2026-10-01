@@ -739,9 +739,7 @@ class ApplicationConfig extends Component<Props, State> {
                   <Title
                     title={
                       <span className="app-section-hint">
-                        <Translation>
-                          Rules across the application: where it deploys and what it overrides there.
-                        </Translation>
+                        <Translation>Where the application deploys, and what it overrides there.</Translation>
                       </span>
                     }
                     actions={[
