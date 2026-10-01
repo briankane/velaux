@@ -201,7 +201,12 @@ class SourceDialog extends React.Component<Props, State> {
           </Card>
           <Loading visible={loading} style={{ width: '100%' }}>
             <Card contentHeight="auto" style={{ marginTop: '8px' }} title={i18n.t('Source Properties').toString()}>
-              <If condition={definition}>
+              <If condition={definition && (definition.uiSchema || []).length === 0}>
+                <Message type="notice">
+                  <Translation>This source takes no parameters.</Translation>
+                </Message>
+              </If>
+              <If condition={definition && (definition.uiSchema || []).length > 0}>
                 <Form.Item required={true}>
                   <UISchema
                     key={definition?.name}
