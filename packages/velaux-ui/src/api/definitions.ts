@@ -8,7 +8,7 @@ const baseURLOject = getDomain();
 const base = baseURLOject.APIBASE;
 
 export function getDefinitionsList(params: {
-  definitionType: 'component' | 'trait' | 'workflowstep' | 'policy';
+  definitionType: 'component' | 'trait' | 'workflowstep' | 'policy' | 'source';
   queryAll: boolean;
 }) {
   const url = base + definition;
