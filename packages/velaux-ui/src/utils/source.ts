@@ -1,3 +1,16 @@
+// sourceNamePattern is a CEL identifier: a source is read as $(source.<name>),
+// where cluster-info would parse as a subtraction.
+export const sourceNamePattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+// sourceBindingName suggests a binding for a source of the given type:
+// cluster-info becomes clusterInfo.
+export function sourceBindingName(type: string): string {
+  const name = type
+    .replace(/[^a-zA-Z0-9]+([a-zA-Z0-9])/g, (_, c: string) => c.toUpperCase())
+    .replace(/[^a-zA-Z0-9]/g, '');
+  return /^[0-9]/.test(name) ? `source${name}` : name;
+}
+
 // SourceField is a path an application reads from a source, such as
 // source.db.endpoint.host, with the type its schema declares.
 export type SourceField = {

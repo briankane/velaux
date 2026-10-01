@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { sourceFields } from '../source';
+import { sourceBindingName, sourceFields, sourceNamePattern } from '../source';
 
 describe('sourceFields', () => {
   const schema = {
@@ -30,5 +30,21 @@ describe('sourceFields', () => {
 
   it('is empty for a source without a schema', () => {
     expect(sourceFields('db', undefined)).to.deep.equal([]);
+  });
+});
+
+describe('sourceBindingName', () => {
+  it('names the binding after the type, as an identifier', () => {
+    expect(sourceBindingName('cluster-info')).to.equal('clusterInfo');
+    expect(sourceBindingName('service-catalog-demo')).to.equal('serviceCatalogDemo');
+    expect(sourceBindingName('vela.config')).to.equal('velaConfig');
+    expect(sourceBindingName('2fa-keys')).to.equal('source2faKeys');
+  });
+
+  it('produces names the source name rule accepts', () => {
+    ['cluster-info', 'service-catalog-demo', 'vela.config', '2fa-keys'].forEach((t) =>
+      expect(sourceNamePattern.test(sourceBindingName(t))).to.equal(true)
+    );
+    expect(sourceNamePattern.test('cluster-info')).to.equal(false);
   });
 });
