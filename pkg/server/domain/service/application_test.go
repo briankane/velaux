@@ -151,6 +151,42 @@ var _ = Describe("Test application service function", Ordered, func() {
 		Expect(err).Should(BeNil())
 	})
 
+	It("Test application sources", func() {
+		ctx := context.TODO()
+		appModel, err := appService.GetApplication(ctx, testApp)
+		Expect(err).Should(BeNil())
+
+		source, err := appService.CreateSource(ctx, appModel, v1.CreateSourceRequest{Name: "db", Type: "db-lookup", Properties: `{"secret":"db-creds"}`})
+		Expect(err).Should(BeNil())
+		Expect(source.Properties.Properties()).Should(Equal(map[string]interface{}{"secret": "db-creds"}))
+		_, err = appService.CreateSource(ctx, appModel, v1.CreateSourceRequest{Name: "db", Type: "db-lookup"})
+		Expect(err).Should(Equal(bcode.ErrApplicationSourceExist))
+		_, err = appService.CreateSource(ctx, appModel, v1.CreateSourceRequest{Name: "bad", Type: "db-lookup", Properties: `[1]`})
+		Expect(err).Should(Equal(bcode.ErrInvalidProperties))
+
+		By("a source is stored with the application")
+		appModel, err = appService.GetApplication(ctx, testApp)
+		Expect(err).Should(BeNil())
+		Expect(appService.ListSources(ctx, appModel)).Should(HaveLen(1))
+
+		_, err = appService.UpdateSource(ctx, appModel, "db", v1.UpdateSourceRequest{Type: "db-lookup", Properties: `{"secret":"other"}`})
+		Expect(err).Should(BeNil())
+		_, err = appService.UpdateSource(ctx, appModel, "missing", v1.UpdateSourceRequest{Type: "db-lookup"})
+		Expect(err).Should(Equal(bcode.ErrApplicationSourceNotExist))
+
+		By("the rendered Application carries the sources")
+		oamApp, err := appService.renderOAMApplication(ctx, appModel, "", "app-dev", "")
+		Expect(err).Should(BeNil())
+		Expect(oamApp.Spec.Sources).Should(HaveLen(1))
+		Expect(string(oamApp.Spec.Sources[0].Properties.Raw)).Should(MatchJSON(`{"secret":"other"}`))
+
+		Expect(appService.DeleteSource(ctx, appModel, "db")).Should(BeNil())
+		Expect(appService.DeleteSource(ctx, appModel, "db")).Should(Equal(bcode.ErrApplicationSourceNotExist))
+		appModel, err = appService.GetApplication(ctx, testApp)
+		Expect(err).Should(BeNil())
+		Expect(appModel.Sources).Should(BeEmpty())
+	})
+
 	It("Test ListApplications function", func() {
 		_, err := appService.ListApplications(context.WithValue(context.TODO(), &v1.CtxKeyUser, FakeAdminName), v1.ListApplicationOptions{})
 		Expect(err).Should(BeNil())

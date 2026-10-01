@@ -97,6 +97,22 @@ export function deletePolicy(params: { appName: string; policyName: string; forc
   return rdelete(gURL, {}, true).then((res) => res);
 }
 
+export function getSources(appName: string) {
+  return get(`${url}/${appName}/sources`, {}).then((res) => res);
+}
+
+export function createSource(appName: string, params: { name: string; type: string; properties: string }) {
+  return post(`${url}/${appName}/sources`, params).then((res) => res);
+}
+
+export function updateSource(appName: string, sourceName: string, params: { type: string; properties: string }) {
+  return put(`${url}/${appName}/sources/${sourceName}`, params).then((res) => res);
+}
+
+export function deleteSource(appName: string, sourceName: string) {
+  return rdelete(`${url}/${appName}/sources/${sourceName}`, {}, true).then((res) => res);
+}
+
 export function createApplicationTemplate(params: any) {
   return post(`${url}/${params.name}/template`, params).then((res) => res);
 }
@@ -242,4 +258,21 @@ export function compareApplication(appName: string, params: ApplicationCompareRe
 
 export function dryRunApplication(appName: string, params: ApplicationDryRunRequest) {
   return post(`${url}/${appName}/dry-run`, params, true).then((res) => res);
+}
+
+// getExpressionEnv lists what a $( ) expression in the application can read on
+// a surface: component, trait or workflowstep.
+export function getExpressionEnv(appName: string, surface: string) {
+  return get(`${url}/${appName}/expressions/env`, { params: { surface }, customError: true }).then((res) => res);
+}
+
+// checkExpression checks the $( ) expressions of a property value.
+export function checkExpression(appName: string, params: { surface: string; value: string; kind?: string }) {
+  return post(`${url}/${appName}/expressions/check`, params, true).then((res) => res);
+}
+
+// setExpressionOptIn turns the application's reading of $( ) expressions on
+// or off, from its next deploy.
+export function setExpressionOptIn(appName: string, enabled: boolean) {
+  return put(`${url}/${appName}/expressions`, { enabled }).then((res) => res);
 }

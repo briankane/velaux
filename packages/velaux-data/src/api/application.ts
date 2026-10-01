@@ -45,6 +45,8 @@ export interface DefinitionDetail {
   uiSchema: UIParam[];
   labels: Record<string, string>;
   status: string;
+  // outputSchema is a source definition's schema: the value $(source.<name>) reads.
+  outputSchema?: any;
 }
 
 export interface UIParam {
@@ -55,6 +57,14 @@ export interface UIParam {
   uiType: string;
   style?: {
     colSpan: number;
+    format?: 'table';
+    rowKey?: string;
+    itemLabel?: string;
+    placeholder?: string;
+    advanced?: boolean;
+    section?: string;
+    optionsFrom?: string;
+    expression?: 'never';
   };
   disable?: boolean;
   conditions?: ParamCondition[];
@@ -87,6 +97,7 @@ export interface UIParamValidate {
   defaultValue?: any;
   options?: Array<{ label: string; value: string }>;
   immutable?: boolean;
+  message?: string;
 }
 
 export interface ApplicationDeployRequest {
@@ -461,6 +472,14 @@ export interface ApplicationPolicyBase {
   type: string;
   updateTime: string;
   envName?: string;
+}
+
+// ApplicationSource is an external value the application's properties read
+// with $(source.<name>).
+export interface ApplicationSource {
+  name: string;
+  type: string;
+  properties?: Record<string, any>;
 }
 
 export interface ApplicationPolicyDetail extends ApplicationPolicyBase {

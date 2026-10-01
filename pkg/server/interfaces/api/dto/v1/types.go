@@ -255,6 +255,9 @@ type ConfigTemplateDetail struct {
 	ConfigTemplate
 	APISchema *openapi3.Schema `json:"schema"`
 	UISchema  schema.UISchema  `json:"uiSchema"`
+	// OutputSchema is a source definition's `schema`: the value an
+	// Application reads with $(source.<name>).
+	OutputSchema *openapi3.Schema `json:"outputSchema,omitempty"`
 }
 
 // Config define the metadata of a config
@@ -947,6 +950,9 @@ type DetailDefinitionResponse struct {
 	DefinitionBase
 	APISchema *openapi3.Schema `json:"schema"`
 	UISchema  schema.UISchema  `json:"uiSchema"`
+	// OutputSchema is a source definition's `schema`: the value an
+	// Application reads with $(source.<name>).
+	OutputSchema *openapi3.Schema `json:"outputSchema,omitempty"`
 }
 
 // UpdateUISchemaRequest the request body struct about updated ui schema
@@ -996,6 +1002,7 @@ type DefinitionBase struct {
 	// KubeVela itself; Workload, rendered with the Application's components; or
 	// Application, applied to the Application as a whole before it renders.
 	PolicyScope string `json:"policyScope,omitempty"`
+	Source       *v1beta1.SourceDefinitionSpec       `json:"source,omitempty"`
 }
 
 // DefinitionUsageResponse is how much each namespace uses a definition, against
@@ -1042,6 +1049,35 @@ type CreatePolicyRequest struct {
 
 	// Bind this policy to workflow
 	WorkflowPolicyBindings []WorkflowPolicyBinding `json:"workflowPolicyBind"`
+}
+
+// SourceBase is a source of an application: an external value its
+// properties read with $(source.<name>).
+type SourceBase struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+	// Properties is the source's parameter, as a JSON object.
+	Properties *model.JSONStruct `json:"properties,omitempty"`
+}
+
+// ListApplicationSourceResponse lists the sources of an application
+type ListApplicationSourceResponse struct {
+	Sources []*SourceBase `json:"sources"`
+}
+
+// CreateSourceRequest adds a source to an application
+type CreateSourceRequest struct {
+	Name string `json:"name" validate:"checkname"`
+	Type string `json:"type" validate:"checkname"`
+	// Properties json data
+	Properties string `json:"properties"`
+}
+
+// UpdateSourceRequest changes the type or parameter of an application source
+type UpdateSourceRequest struct {
+	Type string `json:"type" validate:"checkname"`
+	// Properties json data
+	Properties string `json:"properties"`
 }
 
 // WorkflowPolicyBinding define the relation binding relationShip between policy and workflowStep
@@ -2020,4 +2056,61 @@ type InstallPluginRequest struct {
 	URL     string                 `json:"url"`
 	Disable bool                   `json:"disable,omitempty"`
 	Options *velacommon.HTTPOption `json:"options,omitempty"`
+}
+
+// ExpressionEnvResponse is what a form needs to edit $( ) expressions for one
+// surface of an application.
+type ExpressionEnvResponse struct {
+	// Enabled says this server offers expression editing at all.
+	Enabled bool `json:"enabled"`
+	// OptedIn says the application reads expressions: it carries the
+	// app.oam.dev/cel-expressions annotation.
+	OptedIn bool   `json:"optedIn"`
+	Surface string `json:"surface"`
+	// Variables are the roots an expression may read, with their fields.
+	Variables []*ExpressionVariable `json:"variables"`
+}
+
+// ExpressionVariable is a value an expression can read, and its fields.
+type ExpressionVariable struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Description string `json:"description,omitempty"`
+	// Schema is the value's type as its CUE schema declares it.
+	Schema   string                `json:"schema,omitempty"`
+	Children []*ExpressionVariable `json:"children,omitempty"`
+}
+
+// ExpressionOptInRequest turns an application's reading of $( ) expressions
+// on or off.
+type ExpressionOptInRequest struct {
+	Enabled bool `json:"enabled"`
+}
+
+// ExpressionCheckRequest asks whether a property value's expressions compile
+// and what its value's type is.
+type ExpressionCheckRequest struct {
+	Surface string `json:"surface" validate:"required"`
+	// Value is the property value as written, $( ) and all.
+	Value string `json:"value"`
+	// Kind is the type the parameter expects: string, integer, number,
+	// boolean, or empty for any.
+	Kind string `json:"kind,omitempty"`
+}
+
+// ExpressionCheckResponse reports on a property value's expressions.
+type ExpressionCheckResponse struct {
+	// Type is the value's type once its expressions are evaluated.
+	Type   string             `json:"type,omitempty"`
+	Issues []*ExpressionIssue `json:"issues,omitempty"`
+}
+
+// ExpressionIssue is a problem in a property value, at a position in it.
+type ExpressionIssue struct {
+	Message string `json:"message"`
+	// Start and End are character offsets into the value.
+	Start int `json:"start"`
+	End   int `json:"end"`
+	// Warning is set for an issue that does not stop the value being used.
+	Warning bool `json:"warning,omitempty"`
 }

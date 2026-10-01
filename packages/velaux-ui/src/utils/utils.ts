@@ -122,6 +122,9 @@ export function getLink(endpointObj: Endpoint) {
 }
 
 export function getValue(key: string, value: any): any {
+  if (!value) {
+    return null;
+  }
   if (key.indexOf('.') > -1) {
     const currentKey: string = key.substring(0, key.indexOf('.'));
     const nextKey: string = key.substring(key.indexOf('.') + 1);

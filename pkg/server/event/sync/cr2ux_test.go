@@ -27,6 +27,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/common"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
@@ -128,8 +129,13 @@ var _ = Describe("Test CR convert to ux", func() {
 		Expect(common2.ReadYamlToObject("testdata/test-app1.yaml", app1)).Should(BeNil())
 		app1.Namespace = appNS1
 		envName := model.AutoGenEnvNamePrefix + app1.Namespace
+		app1.Spec.Sources = []v1beta1.ApplicationSource{{Name: "db", Type: "db-lookup", Properties: &runtime.RawExtension{Raw: []byte(`{"secret":"db-creds"}`)}}}
 
 		Expect(cr2ux.AddOrUpdate(context.Background(), app1)).Should(BeNil())
+		synced := model.Application{Name: apName1}
+		Expect(ds.Get(ctx, &synced)).Should(BeNil())
+		Expect(synced.Sources).Should(HaveLen(1))
+		Expect(string(synced.Sources[0].Properties.Raw)).Should(MatchJSON(`{"secret":"db-creds"}`))
 		comp1 := model.ApplicationComponent{AppPrimaryKey: apName1, Name: "nginx"}
 		Expect(ds.Get(context.Background(), &comp1)).Should(BeNil())
 		Expect(comp1.Properties).Should(BeEquivalentTo(&model.JSONStruct{"image": "nginx"}))
@@ -161,6 +167,9 @@ var _ = Describe("Test CR convert to ux", func() {
 		Expect(ds.Get(ctx, &comp2)).Should(BeEquivalentTo(datastore.ErrRecordNotExist))
 		Expect(ds.Get(ctx, &appPlc1)).Should(BeEquivalentTo(datastore.ErrRecordNotExist), fmt.Sprintf("plc name %s, creator %s", appPlc1.Name, appPlc1.Creator))
 		Expect(ds.Get(ctx, &appPlc2)).Should(BeEquivalentTo(datastore.ErrRecordNotExist), fmt.Sprintf("plc name %s, creator %s", appPlc2.Name, appPlc2.Creator))
+		resynced := model.Application{Name: apName1}
+		Expect(ds.Get(ctx, &resynced)).Should(BeNil())
+		Expect(resynced.Sources).Should(BeEmpty(), "a source removed from the CR is removed from VelaUX")
 		appwf2 := &model.Workflow{AppPrimaryKey: apName1, Name: appwf1.Name}
 		Expect(ds.Get(ctx, appwf2)).Should(BeNil())
 		Expect(len(appwf2.Steps)).Should(BeEquivalentTo(0))

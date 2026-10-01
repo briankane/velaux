@@ -96,6 +96,7 @@ const (
 	kindTraitDefinition        = "TraitDefinition"
 	kindWorkflowStepDefinition = "WorkflowStepDefinition"
 	kindPolicyDefinition       = "PolicyDefinition"
+	kindSourceDefinition       = "SourceDefinition"
 
 	// LabelDefinitionScope is the label key for definition scope, with this key, we know if the definition is for Application or WorkflowRun
 	LabelDefinitionScope = "custom.definition.oam.dev/scope"
@@ -237,6 +238,9 @@ func getKindAndVersion(defType string) (apiVersion, kind string, err error) {
 	case "policy":
 		return definitionAPIVersion, kindPolicyDefinition, nil
 
+	case "source":
+		return definitionAPIVersion, kindSourceDefinition, nil
+
 	default:
 		return "", "", bcode.ErrDefinitionTypeNotSupport
 	}
@@ -302,6 +306,13 @@ func convertDefinitionBase(def unstructured.Unstructured, kind string) (*apisv1.
 		definition.Policy = &policyDef.Spec
 		definition.PolicyScope = policyScope(def.GetName(), policyDef.Spec.Scope)
 	}
+	if kind == kindSourceDefinition {
+		sourceDef := &v1beta1.SourceDefinition{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(def.Object, sourceDef); err != nil {
+			return nil, errors.Wrap(err, "invalid source definition")
+		}
+		definition.Source = &sourceDef.Spec
+	}
 	return definition, nil
 }
 
@@ -342,13 +353,37 @@ func (d *definitionServiceImpl) DetailDefinition(ctx context.Context, name, defT
 			return nil, err
 		}
 		definition.APISchema = schema
-		// render default ui schema
-		defaultUISchema := renderDefaultUISchema(schema)
+		defaultUISchema := generatedUISchema(cm)
+		if defaultUISchema == nil {
+			defaultUISchema = renderDefaultUISchema(schema)
+		}
 		// patch from custom ui schema
 		definition.UISchema = renderCustomUISchema(ctx, d.KubeClient, name, defType, defaultUISchema)
 	}
+	if data, ok := cm.Data[types.SourceOutputSchema]; ok {
+		output := &openapi3.Schema{}
+		if err := output.UnmarshalJSON([]byte(data)); err != nil {
+			return nil, err
+		}
+		definition.OutputSchema = output
+	}
 
 	return definition, nil
+}
+
+// generatedUISchema is the form the controller generated from the
+// definition's parameter, or nil where the controller predates it.
+func generatedUISchema(cm v1.ConfigMap) []*schema.UIParameter {
+	data, ok := cm.Data[types.DefaultUISchema]
+	if !ok {
+		return nil
+	}
+	var ui []*schema.UIParameter
+	if err := json.Unmarshal([]byte(data), &ui); err != nil {
+		klog.Warningf("ignoring the generated ui schema in %s/%s: %s", cm.Namespace, cm.Name, err.Error())
+		return nil
+	}
+	return ui
 }
 
 func renderCustomUISchema(ctx context.Context, cli client.Client, name, defType string, defaultSchema []*schema.UIParameter) []*schema.UIParameter {

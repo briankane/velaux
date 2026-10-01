@@ -63,6 +63,7 @@ func (c *CR2UX) ConvertApp2DatastoreApp(ctx context.Context, targetApp *v1beta1.
 			model.LabelSyncRevision:     getRevision(*targetApp),
 			apitypes.LabelSourceOfTruth: sourceOfTruth,
 		},
+		Sources: targetApp.Spec.Sources,
 	}
 	appMeta.CreateTime = targetApp.CreationTimestamp.Time
 	appMeta.UpdateTime = time.Now()

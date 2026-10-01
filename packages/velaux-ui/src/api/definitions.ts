@@ -69,6 +69,16 @@ export function detailPolicyDefinition(params: { name: string }) {
   return get(_url, { params: { type: 'policy' } }).then((res) => res);
 }
 
+export function getSourceDefinitions() {
+  const _url = base + definition;
+  return get(_url, { params: { type: 'source' } }).then((res) => res);
+}
+
+export function detailSourceDefinition(params: { name: string }) {
+  const _url = `${base + definition}/${params.name}`;
+  return get(_url, { params: { type: 'source' } }).then((res) => res);
+}
+
 export function getTraitDefinitions(params: { appliedWorkload: string; namespaces?: string[] }) {
   const _url = base + definition;
   return get(_url, {

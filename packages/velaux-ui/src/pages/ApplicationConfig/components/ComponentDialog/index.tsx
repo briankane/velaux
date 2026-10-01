@@ -9,7 +9,11 @@ import {
   createApplicationComponent,
   updateComponentProperties,
   getApplicationComponent,
+  getExpressionEnv,
+  setExpressionOptIn,
 } from '../../../../api/application';
+import type { ExpressionContext } from '../../../../components/UISchema';
+import type { ExpressionEnv } from '../../../../extends/ExpressionEditor';
 import { detailComponentDefinition } from '../../../../api/definitions';
 import DrawerWithFooter from '../../../../components/Drawer';
 import { Translation } from '../../../../components/Translation';
@@ -49,6 +53,7 @@ type Props = {
 };
 
 type State = {
+  expressionEnv?: ExpressionEnv;
   definitionDetail?: DefinitionDetail;
   isCreateComponentLoading: boolean;
   isUpdateComponentLoading: boolean;
@@ -73,7 +78,49 @@ class ComponentDialog extends React.Component<Props, State> {
     this.uiSchemaRef = React.createRef();
   }
 
+
+  loadExpressionEnv = async () => {
+    const { appName } = this.props;
+    if (!appName) {
+      return;
+    }
+    try {
+      const env: ExpressionEnv = await getExpressionEnv(appName, 'component');
+      this.setState({ expressionEnv: env });
+    } catch (e) {
+      this.setState({ expressionEnv: undefined });
+    }
+  };
+
+  setExpressionOptIn = async (on: boolean): Promise<boolean> => {
+    const { appName } = this.props;
+    if (!appName) {
+      return false;
+    }
+    try {
+      await setExpressionOptIn(appName, on);
+    } catch (e) {
+      return false;
+    }
+    await this.loadExpressionEnv();
+    return true;
+  };
+
+  expressionContext = (): ExpressionContext | undefined => {
+    const { appName } = this.props;
+    if (!appName) {
+      return undefined;
+    }
+    return {
+      appName,
+      surface: 'component',
+      env: this.state.expressionEnv,
+      onOptIn: this.setExpressionOptIn,
+    };
+  };
+
   componentDidMount() {
+    this.loadExpressionEnv();
     const { isEditComponent, dispatch, appName, project } = this.props;
     if (isEditComponent) {
       this.onGetEditComponentInfo(() => {
@@ -500,6 +547,7 @@ class ComponentDialog extends React.Component<Props, State> {
                   ref={this.uiSchemaRef}
                   mode={isEditComponent ? 'edit' : 'new'}
                   deployed={this.props.deployed}
+                  expressions={this.expressionContext()}
                 />
               </If>
             </Row>

@@ -4,7 +4,7 @@ import { Translation } from '../Translation';
 import type { ParamCondition, UIParam, UIParamValidate , Definition } from '@velaux/data';
 
 import type { Rule } from '@alifd/field';
-import { Balloon, Form, Input, Select, Field, Switch, Grid, Divider } from '@alifd/next';
+import { Balloon, Form, Input, Select, Field, Switch, Grid, Divider, Collapse } from '@alifd/next';
 import { AiOutlineLock } from 'react-icons/ai';
 
 import './index.less';
@@ -32,6 +32,10 @@ import SecretSelect from '../../extends/SecretSelect';
 import Strings from '../../extends/Strings';
 import Numbers from '../../extends/Numbers';
 import Structs from '../../extends/Structs';
+import StructMap from '../../extends/StructMap';
+import ExpressionEditor from '../../extends/ExpressionEditor';
+import type { ExpressionEnv } from '../../extends/ExpressionEditor';
+import OptionsFromSelect, { isOptionsSource } from '../../extends/OptionsFromSelect';
 import { checkImageName, replaceUrl } from '../../utils/common';
 import { locale } from '../../utils/locale';
 import { getValue } from '../../utils/utils';
@@ -40,6 +44,27 @@ import DefinitionCode from '../DefinitionCode';
 import { If } from '../If';
 
 const { Col, Row } = Grid;
+
+// ExpressionContext says where a form's values are written, so its fields can
+// take $( ) expressions: the application, and the surface (component, trait or
+// workflowstep) that decides what an expression can read.
+export type ExpressionContext = {
+  appName: string;
+  surface: string;
+  env?: ExpressionEnv;
+  // onOptIn turns the application's reading of expressions on or off,
+  // resolving true once it has.
+  onOptIn: (on: boolean) => Promise<boolean>;
+};
+
+// expressibleTypes are the widgets whose value an expression may replace.
+const expressibleTypes = ['Input', 'Number', 'Switch', 'Select', 'Suggest'];
+
+// Scope is an enclosing form, which a condition reaches with `../`.
+export type Scope = {
+  getValues: () => any;
+  parent?: Scope;
+};
 
 type Props = {
   inline?: boolean;
@@ -58,7 +83,48 @@ type Props = {
   // lets any parameter change, so none is locked; left unset, the form assumes
   // it has.
   deployed?: boolean;
+  parentScope?: Scope;
+  expressions?: ExpressionContext;
 };
+
+// toJSRegExp compiles a CUE (RE2) pattern for the browser. A leading inline
+// flag group such as (?i) becomes a JavaScript flag; a pattern JavaScript
+// still cannot compile is not checked here, since the controller checks every
+// value against the definition anyway.
+export function toJSRegExp(pattern: string): RegExp | undefined {
+  let source = pattern;
+  let flags = '';
+  const inline = /^\(\?([ims]+)\)/.exec(source);
+  if (inline) {
+    flags = Array.from(new Set(inline[1].split(''))).join('');
+    source = source.substring(inline[0].length);
+  }
+  // RE2 spellings with a JavaScript equivalent: \A and \z anchor the whole
+  // text (JavaScript would read them as the letters), (?P<name> names a group.
+  source = source
+    .replace(/(^|[^\\])\\A/g, '$1^')
+    .replace(/(^|[^\\])\\z/g, '$1$$')
+    .replace(/\(\?P</g, '(?<');
+  try {
+    return new RegExp(source, flags);
+  } catch (e) {
+    return undefined;
+  }
+}
+
+// expressionKind is the type a param's value must have, for checking an
+// expression written in its place.
+function expressionKind(param: UIParam): string {
+  switch (param.uiType) {
+    case 'Number':
+      return 'number';
+    case 'Switch':
+      return 'boolean';
+    case 'Select':
+      return typeof param.validate?.options?.[0]?.value === 'number' ? 'number' : 'string';
+  }
+  return 'string';
+}
 
 function convertRule(validate?: UIParamValidate) {
   const rules: Rule[] = [];
@@ -74,31 +140,32 @@ function convertRule(validate?: UIParamValidate) {
   if (validate.min != undefined) {
     rules.push({
       min: validate.min,
-      message: 'Enter a number greater than ' + validate.min,
+      message: validate.message || 'Enter a number greater than ' + validate.min,
     });
   }
   if (validate.max != undefined) {
     rules.push({
       max: validate.max,
-      message: 'Enter a number less than ' + validate.max,
+      message: validate.message || 'Enter a number less than ' + validate.max,
     });
   }
   if (validate.minLength != undefined) {
     rules.push({
       minLength: validate.minLength,
-      message: `Enter a minimum of ${validate.minLength} characters.`,
+      message: validate.message || `Enter a minimum of ${validate.minLength} characters.`,
     });
   }
   if (validate.maxLength != undefined) {
     rules.push({
       maxLength: validate.maxLength,
-      message: `Enter a maximum of ${validate.maxLength} characters.`,
+      message: validate.message || `Enter a maximum of ${validate.maxLength} characters.`,
     });
   }
-  if (validate.pattern) {
+  const pattern = validate.pattern && toJSRegExp(validate.pattern);
+  if (pattern) {
     rules.push({
-      pattern: new RegExp(validate.pattern),
-      message: `Please enter a value that conforms to the specification. ` + validate.pattern,
+      pattern: pattern,
+      message: validate.message || `Please enter a value that conforms to the specification. ` + validate.pattern,
     });
   }
   return rules;
@@ -108,6 +175,9 @@ type State = {
   secretKeys?: string[];
   advanced: boolean;
   codeError?: string;
+  // expressionKeys records the params switched to or from an expression;
+  // others start in expression mode when their value holds one.
+  expressionKeys: Record<string, boolean>;
 };
 
 class UISchema extends Component<Props, State> {
@@ -148,6 +218,7 @@ class UISchema extends Component<Props, State> {
     this.state = {
       secretKeys: [],
       advanced: props.advanced || false,
+      expressionKeys: {},
     };
   }
 
@@ -187,6 +258,129 @@ class UISchema extends Component<Props, State> {
     });
   };
 
+  // expressible reports whether a param offers the ƒx toggle: a scalar widget,
+  // in an application reading expressions, that the definition does not keep
+  // literal.
+  expressible = (param: UIParam) =>
+    !!this.props.expressions?.env?.enabled &&
+    !!this.props.expressions?.env?.optedIn &&
+    param.style?.expression !== 'never' &&
+    expressibleTypes.includes(param.uiType);
+
+  // openedAsExpression records the params that opened holding an expression.
+  // They stay in expression mode while it is edited, since the value passes
+  // through text with no $( in it, until the toggle switches them back.
+  openedAsExpression: Record<string, boolean> = {};
+
+  inExpressionMode = (param: UIParam, initValue: any): boolean => {
+    const chosen = this.state.expressionKeys[param.jsonKey];
+    if (chosen !== undefined) {
+      return chosen;
+    }
+    if (this.openedAsExpression[param.jsonKey]) {
+      return true;
+    }
+    const current = this.form.getValue(param.jsonKey);
+    const v = current === undefined ? initValue : current;
+    const held = typeof v === 'string' && v.indexOf('$(') > -1 && param.style?.expression !== 'never';
+    if (held) {
+      this.openedAsExpression[param.jsonKey] = true;
+    }
+    return held;
+  };
+
+  setExpressionMode = (param: UIParam, on: boolean) => {
+    const v = this.form.getValue(param.jsonKey);
+    if (on && v !== undefined && v !== null && v !== '' && typeof v !== 'string') {
+      // A number or bool keeps its type as a whole expression.
+      this.form.setValue(param.jsonKey, `$(${JSON.stringify(v)})`);
+    }
+    if (!on && typeof v === 'string' && v.indexOf('$(') > -1) {
+      this.form.setValue(param.jsonKey, undefined);
+    }
+    this.setState({ expressionKeys: { ...this.state.expressionKeys, [param.jsonKey]: on } }, () => {
+      if (this.props.onChange) {
+        this.props.onChange(this.form.getValues());
+      }
+    });
+  };
+
+  toggleExpression = (param: UIParam, active: boolean) => {
+    this.setExpressionMode(param, !active);
+  };
+
+  // expressionsToggle is the switch that lets the application read $( )
+  // expressions, shown once, at the top of the outermost form.
+  expressionsToggle = () => {
+    const { expressions, parentScope } = this.props;
+    if (!expressions?.env?.enabled || parentScope) {
+      return null;
+    }
+    const on = !!expressions.env.optedIn;
+    const held = !on && JSON.stringify(this.form.getValues() || {}).indexOf('$(') > -1;
+    return (
+      <div className="ui-schema-expressions-toggle">
+        <span title="Let this application read $( ) CEL expressions in its properties, from its next deploy">
+          Expressions
+        </span>
+        <Switch size="small" checked={on} onChange={(checked: boolean) => expressions.onOptIn(checked)} />
+        {held && <div className="ui-schema-expressions-note">Expressions here will be read as plain text.</div>}
+      </div>
+    );
+  };
+
+  // conditionValue reads the field a condition names: in this form, in a
+  // child object (`storage.kind`), or in an enclosing form (`../mode`).
+  conditionValue = (jsonKey: string) => {
+    let key = jsonKey;
+    let scope: Scope | undefined = this.scope();
+    while (key.startsWith('../')) {
+      key = key.substring(3);
+      scope = scope?.parent;
+    }
+    return scope ? getValue(key, scope.getValues()) : undefined;
+  };
+
+  scope = (): Scope => ({ getValues: () => this.form.getValues(), parent: this.props.parentScope });
+
+  // inSections gathers the rendered params of each named section into one
+  // collapsible panel, placed where the section's first param is.
+  inSections = (uiSchema: UIParam[], items: Array<React.ReactElement | undefined>) => {
+    const sections: Record<string, React.ReactElement[]> = {};
+    uiSchema.forEach((param, i) => {
+      const section = param.style?.section;
+      if (section && items[i]) {
+        (sections[section] = sections[section] || []).push(items[i] as React.ReactElement);
+      }
+    });
+    const out: React.ReactNode[] = [];
+    const placed = new Set<string>();
+    uiSchema.forEach((param, i) => {
+      const section = param.style?.section;
+      if (!items[i]) {
+        return;
+      }
+      if (!section) {
+        out.push(items[i]);
+        return;
+      }
+      if (placed.has(section)) {
+        return;
+      }
+      placed.add(section);
+      out.push(
+        <Col key={`section-${section}`} span={24} style={{ padding: '0 4px', marginBottom: '16px' }}>
+          <Collapse defaultExpandedKeys={[section]}>
+            <Collapse.Panel key={section} title={section}>
+              <Row wrap={true}>{sections[section]}</Row>
+            </Collapse.Panel>
+          </Collapse>
+        </Col>
+      );
+    });
+    return out;
+  };
+
   conditionAllowRender = (conditions?: ParamCondition[]) => {
     if (!conditions || conditions.length == 0) {
       return true;
@@ -197,8 +391,7 @@ class UISchema extends Component<Props, State> {
     };
     let enableConditionCount = 0;
     conditions.map((condition) => {
-      const values = this.form.getValues();
-      const value = getValue(condition.jsonKey, values);
+      const value = this.conditionValue(condition.jsonKey);
       // the enable conditions count
       if (condition.action == 'enable' || !condition.action) {
         enableConditionCount += 1;
@@ -315,6 +508,8 @@ class UISchema extends Component<Props, State> {
     if (couldShowParamCount > 5) {
       onlyShowRequired = true;
     }
+    // A schema that marks its advanced params hides exactly those.
+    const explicitAdvanced = uiSchema.some((param) => param.style?.advanced);
 
     let couldBeDisabledParamCount = 0;
     let requiredParamCount = 0;
@@ -335,7 +530,7 @@ class UISchema extends Component<Props, State> {
         requiredParamCount += 1;
       }
 
-      if (onlyShowRequired && !required && !advanced) {
+      if (explicitAdvanced ? param.style?.advanced && !advanced : onlyShowRequired && !required && !advanced) {
         return;
       }
 
@@ -404,6 +599,27 @@ class UISchema extends Component<Props, State> {
       };
 
       const item = () => {
+        if (isOptionsSource(param.style?.optionsFrom)) {
+          return (
+            <Form.Item
+              required={required}
+              labelAlign={inline ? 'inset' : 'left'}
+              label={label}
+              key={param.jsonKey}
+              extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+            >
+              <OptionsFromSelect
+                source={param.style?.optionsFrom || ''}
+                disabled={disableEdit}
+                placeholder={param.style?.placeholder}
+                {...init(param.jsonKey, {
+                  initValue: initValue,
+                  rules: convertRule(param.validate),
+                })}
+              />
+            </Form.Item>
+          );
+        }
         switch (param.uiType) {
           case 'Switch':
             const getDefaultSwitchValue = (validate: any) => {
@@ -422,7 +638,7 @@ class UISchema extends Component<Props, State> {
                 required={required}
                 key={param.jsonKey}
                 label={<span title={description}>{fieldLabel}</span>}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
                 <Switch
                   disabled={disableEdit}
@@ -440,11 +656,35 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 label={fieldLabel}
                 key={param.jsonKey}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
                 <Input
                   disabled={disableEdit}
                   autoComplete="off"
+                  placeholder={param.style?.placeholder}
+                  {...init(param.jsonKey, {
+                    initValue: initValue,
+                    rules: convertRule(param.validate),
+                  })}
+                />
+              </Form.Item>
+            );
+          case 'Suggest':
+            return (
+              <Form.Item
+                required={required}
+                labelAlign={inline ? 'inset' : 'left'}
+                label={label}
+                key={param.jsonKey}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+              >
+                <Select.AutoComplete
+                  disabled={disableEdit}
+                  hasClear
+                  style={{ width: '100%' }}
+                  locale={locale().Select}
+                  placeholder={param.style?.placeholder}
+                  dataSource={(param.validate?.options || []).map((o) => ({ label: o.label, value: o.value }))}
                   {...init(param.jsonKey, {
                     initValue: initValue,
                     rules: convertRule(param.validate),
@@ -459,7 +699,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 label={fieldLabel}
                 key={param.jsonKey}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
                 <Input
                   disabled={disableEdit}
@@ -479,7 +719,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 label={fieldLabel}
                 key={param.jsonKey}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
                 <Select
                   disabled={disableEdit}
@@ -499,7 +739,7 @@ class UISchema extends Component<Props, State> {
                 required={required}
                 label={fieldLabel}
                 key={param.jsonKey}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
               >
                 <Input
                   disabled={disableEdit}
@@ -543,7 +783,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 key={param.jsonKey}
               >
                 <HelmChartSelect
@@ -567,7 +807,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 key={param.jsonKey}
               >
                 <HelmChartVersionSelect
@@ -591,7 +831,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 key={param.jsonKey}
               >
                 <HelmRepoSelect
@@ -669,7 +909,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -691,7 +931,7 @@ class UISchema extends Component<Props, State> {
                 required={required}
                 labelAlign={inline ? 'inset' : 'left'}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -710,7 +950,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -734,7 +974,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -758,7 +998,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -787,6 +1027,7 @@ class UISchema extends Component<Props, State> {
                   title={label}
                   closed={true}
                   required={required}
+                  emptyValue={{}}
                   field={this.form}
                   jsonKey={param.jsonKey || ''}
                   propertyValue={this.props.value}
@@ -809,6 +1050,8 @@ class UISchema extends Component<Props, State> {
                       this.onRegisterForm(param.jsonKey, form);
                     }}
                     uiSchema={param.subParameters}
+                    parentScope={this.scope()}
+                    expressions={this.props.expressions}
                     mode={this.props.mode}
                     deployed={this.props.deployed}
                   />
@@ -824,6 +1067,38 @@ class UISchema extends Component<Props, State> {
                   label={label}
                   param={param.subParameters}
                   parameterGroupOption={param.subParameterGroupOption}
+                  parentScope={this.scope()}
+                  expressions={this.props.expressions}
+                  format={param.style?.format}
+                  rowKey={param.style?.rowKey}
+                  itemLabel={param.style?.itemLabel}
+                  registerForm={(form: Field) => {
+                    this.onRegisterForm(param.jsonKey, form);
+                  }}
+                  mode={this.props.mode}
+                  {...init(param.jsonKey, {
+                    initValue: initValue,
+                    rules: [
+                      {
+                        validator: validator,
+                        message: `Please check ${label} config`,
+                      },
+                    ],
+                  })}
+                />
+              );
+            }
+            return <div />;
+          case 'StructMap':
+            if (param.subParameters && param.subParameters.length > 0) {
+              return getGroup(
+                <StructMap
+                  key={param.jsonKey}
+                  label={label}
+                  param={param.subParameters}
+                  parentScope={this.scope()}
+                  expressions={this.props.expressions}
+                  format={param.style?.format}
                   registerForm={(form: Field) => {
                     this.onRegisterForm(param.jsonKey, form);
                   }}
@@ -852,6 +1127,8 @@ class UISchema extends Component<Props, State> {
                   }}
                   inline={inline}
                   maxColSpan={24 / itemCount}
+                  parentScope={this.scope()}
+                  expressions={this.props.expressions}
                   {...init(param.jsonKey, {
                     initValue: initValue,
                     rules: [
@@ -871,7 +1148,7 @@ class UISchema extends Component<Props, State> {
               <Form.Item
                 required={required}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -894,7 +1171,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -913,7 +1190,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -932,7 +1209,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -958,7 +1235,7 @@ class UISchema extends Component<Props, State> {
                 labelAlign={inline ? 'inset' : 'left'}
                 required={required}
                 label={fieldLabel}
-                help={<div dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+                extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
                 disabled={disableEdit}
                 key={param.jsonKey}
               >
@@ -982,9 +1259,46 @@ class UISchema extends Component<Props, State> {
       if (param.style?.colSpan) {
         colSpan = param.style?.colSpan;
       }
+      const expressible = this.expressible(param);
+      const inExpression = this.inExpressionMode(param, initValue);
+      const expressionItem = () => (
+        <Form.Item
+          required={required}
+          labelAlign={inline ? 'inset' : 'left'}
+          label={label}
+          key={param.jsonKey}
+          extra={<div className="ui-schema-description" dangerouslySetInnerHTML={{ __html: replaceUrl(description || '') }} />}
+        >
+          <ExpressionEditor
+            appName={this.props.expressions?.appName || ''}
+            surface={this.props.expressions?.surface || ''}
+            env={this.props.expressions?.env}
+            kind={expressionKind(param)}
+            disabled={disableEdit}
+            {...init(param.jsonKey, {
+              initValue: initValue,
+              rules: required ? [{ required: true, message: 'This field is required.' }] : [],
+            })}
+          />
+        </Form.Item>
+      );
       return (
-        <Col key={param.jsonKey} span={colSpan} style={{ padding: '0 4px' }}>
-          {item()}
+        <Col
+          key={param.jsonKey}
+          span={colSpan}
+          style={{ padding: '0 4px' }}
+          className={expressible ? 'ui-schema-expressible' : undefined}
+        >
+          {expressible && (
+            <span
+              className={`ui-schema-fx${inExpression ? ' active' : ''}`}
+              title={inExpression ? 'Write a value instead' : 'Write a $( ) expression'}
+              onClick={() => this.toggleExpression(param, inExpression)}
+            >
+              ƒx
+            </span>
+          )}
+          {inExpression ? expressionItem() : item()}
         </Col>
       );
     });
@@ -997,13 +1311,15 @@ class UISchema extends Component<Props, State> {
       },
     };
 
-    const showAdvancedButton = couldBeDisabledParamCount != couldShowParamCount || requiredParamCount === 0;
+    const showAdvancedButton =
+      explicitAdvanced || couldBeDisabledParamCount != couldShowParamCount || requiredParamCount === 0;
     return ( 
       <Form field={this.form} className="ui-schema-container">
         <If condition={disableRenderRow}>{items}</If>
         <If condition={!disableRenderRow}>
-          <Row wrap={true}>{items}</Row>
-          <If condition={onlyShowRequired}>
+          {this.expressionsToggle()}
+          <Row wrap={true}>{this.inSections(uiSchema, items)}</Row>
+          <If condition={onlyShowRequired || explicitAdvanced}>
             <Divider />
             <If condition={showAdvancedButton}>
               <Form {...formItemLayout} style={{ width: '100%' }} fullWidth={true}>
