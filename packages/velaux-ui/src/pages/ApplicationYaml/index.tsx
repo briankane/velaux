@@ -9,6 +9,7 @@ import Empty from '../../components/Empty';
 import { RowAction } from '../../components/RowAction';
 import { Translation } from '../../components/Translation';
 import i18n from '../../i18n';
+import { asManifest } from '../../utils/manifest';
 import './index.less';
 
 type Props = {
@@ -27,7 +28,7 @@ const ApplicationYaml = (props: Props) => {
   useEffect(() => {
     setLoading(true);
     compareApplication(appName, { compareLatestWithRunning: { env: envName } })
-      .then((res: any) => setYaml({ running: res?.baseAppYAML, next: res?.targetAppYAML }))
+      .then((res: any) => setYaml({ running: asManifest(res?.baseAppYAML), next: asManifest(res?.targetAppYAML) }))
       .finally(() => setLoading(false));
   }, [appName, envName]);
   const value = mode === 'running' ? yaml.running : yaml.next;
