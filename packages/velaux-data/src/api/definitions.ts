@@ -30,6 +30,11 @@ export interface DefinitionBase {
   // unusableIn are the namespaces asked about whose Applications the
   // restrictions keep from using the definition.
   unusableIn?: string[];
+  // abstract marks a definition that may only be extended, never used by an
+  // Application directly.
+  abstract?: boolean;
+  // extends names the definition this one is built on.
+  extends?: string;
 }
 
 export interface LabelSelectorRequirement {

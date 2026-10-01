@@ -13210,6 +13210,12 @@
 				},
 				"workloadType": {
 					"type": "string"
+				},
+				"abstract": {
+					"type": "boolean"
+				},
+				"extends": {
+					"type": "string"
 				}
 			}
 		},

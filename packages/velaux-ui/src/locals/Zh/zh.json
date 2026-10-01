@@ -672,5 +672,7 @@
   "Over limit": "超出上限",
   "Exempt": "豁免",
   "No quota": "无配额",
-  "Cannot be changed once deployed": "部署后不可更改"
+  "Cannot be changed once deployed": "部署后不可更改",
+  "Abstract": "抽象",
+  "extends": "继承自"
 }

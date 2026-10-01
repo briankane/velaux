@@ -978,6 +978,11 @@ type DefinitionBase struct {
 	// UnusableIn are the namespaces asked about whose Applications the
 	// restrictions keep from using the definition.
 	UnusableIn []string `json:"unusableIn,omitempty"`
+	// Abstract marks a definition that may only be extended, never used by an
+	// Application directly.
+	Abstract bool `json:"abstract,omitempty"`
+	// Extends names the definition this one is built on.
+	Extends string `json:"extends,omitempty"`
 }
 
 // DefinitionUsageResponse is how much each namespace uses a definition, against
