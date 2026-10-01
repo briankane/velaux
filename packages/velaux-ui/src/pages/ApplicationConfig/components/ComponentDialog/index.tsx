@@ -33,6 +33,7 @@ import { transComponentDefinitions } from '../../../../utils/utils';
 import './index.less';
 import '../ComponentList/index.less';
 import { AiOutlineLink } from 'react-icons/ai';
+import type { ComponentDependency } from '@velaux/data';
 import type { DependencyItem } from '../../../../utils/dependencies';
 
 import { dependsOnOptions } from '../ComponentList/model';
@@ -58,6 +59,8 @@ type Props = {
   // dependencies are the component's, both ways, as the deployed Application
   // reports them.
   dependencies?: DependencyItem[];
+  // dependencyEdges are every component's dependencies the Application reports.
+  dependencyEdges?: ComponentDependency[];
 };
 
 type State = {
@@ -345,8 +348,8 @@ class ComponentDialog extends React.Component<Props, State> {
   };
 
   getDependsOptions = () => {
-    const { components, componentName, dependencies = [] } = this.props;
-    return dependsOnOptions(components || [], componentName, dependencies);
+    const { components, componentName, dependencies = [], dependencyEdges = [] } = this.props;
+    return dependsOnOptions(components || [], componentName, dependencies, dependencyEdges);
   };
 
   render() {

@@ -97,4 +97,11 @@ describe('component list', () => {
       { label: 'Cache(cache)', value: 'cache' },
     ]);
   });
+
+  it('offers no component that depends on this one through others', () => {
+    // worker depends on api (written), api reads db (inferred): db may not depend on worker.
+    const components = [{ name: 'db' }, { name: 'api' }, { name: 'worker', dependsOn: ['api'] }, { name: 'cache' }];
+    const edges = [{ component: 'api', dependsOn: 'db', source: 'expression' as const }];
+    expect(dependsOnOptions(components, 'db', [], edges).map((o) => o.value)).to.deep.equal(['cache']);
+  });
 });
