@@ -3,13 +3,15 @@ import type { Rule } from '@alifd/next/lib/field';
 import React from 'react';
 import { connect } from 'dva';
 
-import { createSource, updateSource } from '../../../../api/application';
+import { createSource, getExpressionEnv, setExpressionOptIn, updateSource } from '../../../../api/application';
 import { detailSourceDefinition, getSourceDefinitions } from '../../../../api/definitions';
 import DrawerWithFooter from '../../../../components/Drawer';
 import { If } from '../../../../components/If';
 import Permission from '../../../../components/Permission';
 import { Translation } from '../../../../components/Translation';
 import UISchema from '../../../../components/UISchema';
+import type { ExpressionContext } from '../../../../components/UISchema';
+import type { ExpressionEnv } from '../../../../extends/ExpressionEditor';
 import i18n from '../../../../i18n';
 import type { ApplicationSource, DefinitionBase, DefinitionDetail } from '@velaux/data';
 import { checkName } from '../../../../utils/common';
@@ -32,6 +34,7 @@ type State = {
   definition?: DefinitionDetail;
   loading: boolean;
   saving: boolean;
+  expressionEnv?: ExpressionEnv;
 };
 
 @connect()
@@ -59,6 +62,7 @@ class SourceDialog extends React.Component<Props, State> {
       dispatch({ type: 'uischema/setAppName', payload: appName });
       dispatch({ type: 'uischema/setProject', payload: project });
     }
+    this.loadExpressionEnv();
     getSourceDefinitions().then((res) => {
       if (res) {
         this.setState({ definitions: res.definitions || [] });
@@ -69,6 +73,36 @@ class SourceDialog extends React.Component<Props, State> {
       this.loadDefinition(source.type);
     }
   }
+
+  // loadExpressionEnv reads what this source's properties may read: the context
+  // and the sources declared before it, or every source when it is new.
+  loadExpressionEnv = async () => {
+    const { appName, source } = this.props;
+    try {
+      const env: ExpressionEnv = await getExpressionEnv(appName, 'source', source?.name);
+      this.setState({ expressionEnv: env });
+    } catch (e) {
+      this.setState({ expressionEnv: undefined });
+    }
+  };
+
+  setExpressionOptIn = async (on: boolean): Promise<boolean> => {
+    try {
+      await setExpressionOptIn(this.props.appName, on);
+    } catch (e) {
+      return false;
+    }
+    await this.loadExpressionEnv();
+    return true;
+  };
+
+  expressionContext = (): ExpressionContext => ({
+    appName: this.props.appName,
+    surface: 'source',
+    source: this.props.source?.name,
+    env: this.state.expressionEnv,
+    onOptIn: this.setExpressionOptIn,
+  });
 
   loadDefinition = (type: string) => {
     if (!type) {
@@ -182,6 +216,7 @@ class SourceDialog extends React.Component<Props, State> {
                     }}
                     ref={this.uiSchemaRef}
                     mode={source ? 'edit' : 'new'}
+                    expressions={this.expressionContext()}
                   />
                 </Form.Item>
               </If>

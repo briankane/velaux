@@ -75,7 +75,7 @@ func TestExpressionCheck(t *testing.T) {
 
 func TestExpressionEnv(t *testing.T) {
 	app := &model.Application{Name: "demo", Annotations: map[string]string{"app.oam.dev/cel-expressions": "true"}}
-	env, err := (&expressionServiceImpl{enabled: true}).Env(context.Background(), app, "trait")
+	env, err := (&expressionServiceImpl{enabled: true}).Env(context.Background(), app, "trait", "")
 	require.NoError(t, err)
 	assert.True(t, env.OptedIn)
 	require.Len(t, env.Variables, 2)
@@ -94,12 +94,12 @@ func TestExpressionEnv(t *testing.T) {
 	require.Contains(t, fields, "clusterVersion")
 	assert.NotEmpty(t, fields["clusterVersion"].Children)
 
-	off, err := (&expressionServiceImpl{}).Env(context.Background(), app, "component")
+	off, err := (&expressionServiceImpl{}).Env(context.Background(), app, "component", "")
 	require.NoError(t, err)
 	assert.False(t, off.Enabled)
 	assert.Empty(t, off.Variables)
 
-	_, err = (&expressionServiceImpl{enabled: true}).Env(context.Background(), app, "nowhere")
+	_, err = (&expressionServiceImpl{enabled: true}).Env(context.Background(), app, "nowhere", "")
 	assert.Error(t, err)
 }
 
@@ -122,7 +122,7 @@ output: host: "db"
 		Sources:     []v1beta1.ApplicationSource{{Name: "db", Type: "db-lookup"}},
 	}
 
-	env, err := svc.Env(context.Background(), app, "component")
+	env, err := svc.Env(context.Background(), app, "component", "")
 	require.NoError(t, err)
 	require.Len(t, env.Variables, 2)
 	sources := env.Variables[1]
@@ -139,4 +139,45 @@ output: host: "db"
 	require.NoError(t, err)
 	assert.Empty(t, got.Issues)
 	assert.Equal(t, "int", got.Type)
+}
+
+func TestExpressionEnvChainsSources(t *testing.T) {
+	def := &v1beta1.SourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: "lookup", Namespace: types.DefaultKubeVelaNS},
+		Spec: v1beta1.SourceDefinitionSpec{Schematic: &common.Schematic{CUE: &common.CUE{Template: `
+parameter: key: string
+schema: value: string
+output: value: parameter.key
+`}}},
+	}
+	svc := &expressionServiceImpl{enabled: true, KubeClient: fake.NewClientBuilder().WithScheme(common2.Scheme).WithObjects(def).Build()}
+	app := &model.Application{
+		Name:        "demo",
+		Annotations: map[string]string{"app.oam.dev/cel-expressions": "true"},
+		Sources:     []v1beta1.ApplicationSource{{Name: "first", Type: "lookup"}, {Name: "second", Type: "lookup"}, {Name: "third", Type: "lookup"}},
+	}
+	readable := func(source string) []string {
+		env, err := svc.Env(context.Background(), app, "source", source)
+		require.NoError(t, err)
+		require.Len(t, env.Variables, 2)
+		var names []string
+		for _, b := range env.Variables[1].Children {
+			names = append(names, b.Name)
+		}
+		return names
+	}
+	assert.Equal(t, []string{"first"}, readable("second"), "a source reads only those declared before it")
+	assert.Empty(t, readable("first"))
+	assert.Equal(t, []string{"first", "second", "third"}, readable("new"), "a new source is declared last")
+
+	env, err := svc.Env(context.Background(), app, "source", "second")
+	require.NoError(t, err)
+	assert.Equal(t, "context", env.Variables[0].Name, "a source reads the context a component does")
+
+	got, err := svc.Check(context.Background(), app, apisv1.ExpressionCheckRequest{Surface: "source", Source: "second", Value: "$(source.first.value)", Kind: "string"})
+	require.NoError(t, err)
+	assert.Empty(t, got.Issues)
+	got, err = svc.Check(context.Background(), app, apisv1.ExpressionCheckRequest{Surface: "source", Source: "second", Value: "$(source.third.value)", Kind: "string"})
+	require.NoError(t, err)
+	assert.NotEmpty(t, got.Issues, "a later source is not readable")
 }

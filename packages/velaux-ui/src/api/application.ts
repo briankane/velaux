@@ -261,13 +261,19 @@ export function dryRunApplication(appName: string, params: ApplicationDryRunRequ
 }
 
 // getExpressionEnv lists what a $( ) expression in the application can read on
-// a surface: component, trait or workflowstep.
-export function getExpressionEnv(appName: string, surface: string) {
-  return get(`${url}/${appName}/expressions/env`, { params: { surface }, customError: true }).then((res) => res);
+// a surface: component, trait, workflowstep or source. On the source surface,
+// source names the one being edited, which reads only those declared before it.
+export function getExpressionEnv(appName: string, surface: string, source?: string) {
+  return get(`${url}/${appName}/expressions/env`, { params: { surface, source }, customError: true }).then(
+    (res) => res
+  );
 }
 
 // checkExpression checks the $( ) expressions of a property value.
-export function checkExpression(appName: string, params: { surface: string; value: string; kind?: string }) {
+export function checkExpression(
+  appName: string,
+  params: { surface: string; value: string; kind?: string; source?: string }
+) {
   return post(`${url}/${appName}/expressions/check`, params, true).then((res) => res);
 }
 
