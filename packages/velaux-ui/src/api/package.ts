@@ -1,7 +1,8 @@
 import { getDomain } from '../utils/common';
+import { packages } from './productionLink';
 import { get } from './request';
 
-const base = getDomain().APIBASE + '/packages';
+const base = getDomain().APIBASE + packages;
 
 // listPackages lists the Package resources in the cluster, then the packages
 // built into KubeVela.

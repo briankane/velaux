@@ -49,7 +49,7 @@ const Packages = () => {
               aria-pressed={source === s}
               onClick={() => setSource(s)}
             >
-              <Translation>{s === 'all' ? 'All' : s === 'cluster' ? 'In the cluster' : 'Built-in'}</Translation>
+              <Translation>{s === 'all' ? 'All' : s === 'cluster' ? 'Custom' : 'Built-in'}</Translation>
             </button>
           ))}
         </div>
