@@ -101,11 +101,18 @@ export function getSources(appName: string) {
   return get(`${url}/${appName}/sources`, {}).then((res) => res);
 }
 
-export function createSource(appName: string, params: { name: string; type: string; properties: string }) {
+export function createSource(
+  appName: string,
+  params: { name: string; type: string; properties: string; autoUpdate?: boolean }
+) {
   return post(`${url}/${appName}/sources`, params).then((res) => res);
 }
 
-export function updateSource(appName: string, sourceName: string, params: { type: string; properties: string }) {
+export function updateSource(
+  appName: string,
+  sourceName: string,
+  params: { type: string; properties: string; autoUpdate?: boolean }
+) {
   return put(`${url}/${appName}/sources/${sourceName}`, params).then((res) => res);
 }
 

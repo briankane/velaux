@@ -40,22 +40,30 @@ const SourceList = ({ sources, applicationDetail, onDeleteSource, onShowSource }
                   <div className="policy-list-title">
                     <a onClick={() => onShowSource(item)}>{item.name}</a>
                   </div>
-                  <Permission
-                    request={{
-                      resource: `project:${projectName}/application:${applicationDetail?.name}/source:${item.name}`,
-                      action: 'delete',
-                    }}
-                    project={projectName}
-                  >
-                    <AiOutlineDelete
-                      size={14}
-                      className="margin-right-0 cursor-pointer danger-icon"
-                      onClick={() => confirmDelete(item.name)}
-                    />
-                  </Permission>
+                  <div className="trigger-list-operation">
+                    <Permission
+                      request={{
+                        resource: `project:${projectName}/application:${applicationDetail?.name}/source:${item.name}`,
+                        action: 'delete',
+                      }}
+                      project={projectName}
+                    >
+                      <AiOutlineDelete
+                        size={14}
+                        className="margin-right-0 cursor-pointer danger-icon"
+                        onClick={() => confirmDelete(item.name)}
+                      />
+                    </Permission>
+                  </div>
                 </div>
                 <div className="policy-list-content">
                   <Item marginBottom="8px" labelWidth={160} label={<Translation>Type</Translation>} value={item.type} />
+                  <Item
+                    marginBottom="8px"
+                    labelWidth={160}
+                    label={<Translation>Auto Update</Translation>}
+                    value={item.autoUpdate === undefined ? 'Default' : item.autoUpdate ? 'On' : 'Off'}
+                  />
                   <Item
                     marginBottom="8px"
                     labelWidth={160}

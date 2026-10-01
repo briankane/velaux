@@ -48,7 +48,7 @@ func (c *applicationServiceImpl) CreateSource(ctx context.Context, app *model.Ap
 	if err != nil {
 		return nil, err
 	}
-	source := v1beta1.ApplicationSource{Name: req.Name, Type: req.Type, Properties: properties}
+	source := v1beta1.ApplicationSource{Name: req.Name, Type: req.Type, Properties: properties, AutoUpdate: req.AutoUpdate}
 	app.Sources = append(app.Sources, source)
 	if err := c.Store.Put(ctx, app); err != nil {
 		return nil, err
@@ -56,8 +56,8 @@ func (c *applicationServiceImpl) CreateSource(ctx context.Context, app *model.Ap
 	return sourceBase(source), nil
 }
 
-// UpdateSource replaces the type and parameter of a source, keeping the fields
-// VelaUX does not edit.
+// UpdateSource replaces the type, parameter and auto-update of a source, keeping
+// the fields VelaUX does not edit.
 func (c *applicationServiceImpl) UpdateSource(ctx context.Context, app *model.Application, name string, req apisv1.UpdateSourceRequest) (*apisv1.SourceBase, error) {
 	i := sourceIndex(app, name)
 	if i < 0 {
@@ -67,7 +67,7 @@ func (c *applicationServiceImpl) UpdateSource(ctx context.Context, app *model.Ap
 	if err != nil {
 		return nil, err
 	}
-	app.Sources[i].Type, app.Sources[i].Properties = req.Type, properties
+	app.Sources[i].Type, app.Sources[i].Properties, app.Sources[i].AutoUpdate = req.Type, properties, req.AutoUpdate
 	if err := c.Store.Put(ctx, app); err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func sourceProperties(properties string) (*runtime.RawExtension, error) {
 }
 
 func sourceBase(s v1beta1.ApplicationSource) *apisv1.SourceBase {
-	base := &apisv1.SourceBase{Name: s.Name, Type: s.Type}
+	base := &apisv1.SourceBase{Name: s.Name, Type: s.Type, AutoUpdate: s.AutoUpdate}
 	properties, err := model.NewJSONStruct(s.Properties)
 	if err != nil {
 		klog.Warningf("ignoring the properties of source %s: %s", s.Name, err.Error())
