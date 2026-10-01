@@ -734,5 +734,13 @@
   "Stale": "过时",
   "Unused": "未使用",
   "On": "开启",
-  "Off": "关闭"
+  "Off": "关闭",
+  "Paused": "已暂停",
+  "Pause": "暂停",
+  "Resume": "恢复",
+  "Reconciliation paused": "已暂停调谐",
+  "Reconciliation resumed": "已恢复调谐",
+  "Reconciliation paused in": "已暂停调谐的环境",
+  "Pause reconciliation here? The controller stops applying changes, correcting drift and running the workflow in this environment until you resume.": "确定在此环境暂停调谐吗？在恢复之前，控制器将不再应用变更、修正漂移或运行工作流。",
+  "Reconciliation is paused in this environment: the deploy is written but does not roll out until you resume.": "此环境已暂停调谐：部署会被写入，但在恢复之前不会生效。"
 }

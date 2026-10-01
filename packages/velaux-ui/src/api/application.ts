@@ -144,6 +144,14 @@ export function recycleApplicationEnvbinding(params: { appName: string; envName:
   return post(`${url}/${params.appName}/envs/${params.envName}/recycle`, {}).then((res) => res);
 }
 
+export function pauseApplicationEnvbinding(params: { appName: string; envName: string }) {
+  return post(`${url}/${params.appName}/envs/${params.envName}/pause`, {}).then((res) => res);
+}
+
+export function resumeApplicationEnvbinding(params: { appName: string; envName: string }) {
+  return post(`${url}/${params.appName}/envs/${params.envName}/resume`, {}).then((res) => res);
+}
+
 export function getApplicationComponent(appName: string, componentName: string) {
   return get(`${url}/${appName}/components/${componentName}`, {}).then((res) => res);
 }

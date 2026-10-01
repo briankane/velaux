@@ -170,6 +170,8 @@ export interface ApplicationStatus {
   dependencies?: ComponentDependency[];
   appliedApplicationPolicies?: AppliedApplicationPolicy[];
   sources?: ApplicationSourceStatus[];
+  // paused is whether the controller is skipping the Application.
+  paused?: boolean;
 }
 
 // ApplicationSourceStatus is how one spec.sources binding resolved.
