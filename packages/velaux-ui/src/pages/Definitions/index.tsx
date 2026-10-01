@@ -1,4 +1,5 @@
-import { Table, Button, Message, Tag } from '@alifd/next';
+import { Table, Button, Message, Tag, Balloon } from '@alifd/next';
+import i18n from 'i18next';
 import { connect } from 'dva';
 import { Link } from 'dva/router';
 import _ from 'lodash';
@@ -17,6 +18,7 @@ import { getMatchParamObj } from '../../utils/utils';
 
 import SelectSearch from './components/SelectSearch';
 import { UsageDialog } from './components/UsageDialog';
+import { PolicyScopeTag } from '../../components/PolicyScopeTag';
 
 import './index.less';
 import { checkPermission } from '../../utils/permission';
@@ -183,6 +185,21 @@ class Definitions extends Component<Props, State> {
                 <span className="definition-extends">
                   <Translation>extends</Translation> {record.extends}
                 </span>
+              )}
+              {record.policyScope && <PolicyScopeTag scope={record.policyScope} />}
+              {record.policy?.global && (
+                // A global policy applies to every Application in its namespace, in priority order.
+                <Balloon.Tooltip
+                  align="t"
+                  trigger={
+                    <Tag size="small" className="definition-tag-help">
+                      <Translation>Global</Translation>
+                    </Tag>
+                  }
+                >
+                  {i18n.t('Applied to every Application in its namespace')} ({i18n.t('priority')}{' '}
+                  {record.policy.priority || 0})
+                </Balloon.Tooltip>
               )}
             </span>
           );

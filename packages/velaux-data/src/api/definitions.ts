@@ -35,6 +35,9 @@ export interface DefinitionBase {
   abstract?: boolean;
   // extends names the definition this one is built on.
   extends?: string;
+  // policyScope is how KubeVela applies a policy: Builtin, consumed by KubeVela
+  // itself; Workload, rendered with the components; or Application.
+  policyScope?: 'Builtin' | 'Workload' | 'Application';
 }
 
 export interface LabelSelectorRequirement {

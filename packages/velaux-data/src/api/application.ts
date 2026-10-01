@@ -134,6 +134,7 @@ export interface ApplicationStatus {
   services?: ComponentStatus[];
   appliedResources: Resource[];
   dependencies?: ComponentDependency[];
+  appliedApplicationPolicies?: AppliedApplicationPolicy[];
 }
 
 // One component another depends on, as the Application's status reports it:
@@ -145,6 +146,19 @@ export interface ComponentDependency {
   source: 'dependsOn' | 'inputs' | 'expression';
   cluster?: string;
   namespace?: string;
+}
+
+// AppliedApplicationPolicy is how one application-scoped policy fared on the
+// Application's last render: named in spec.policies (explicit), or applied to
+// every Application in its namespace (global).
+export interface AppliedApplicationPolicy {
+  name: string;
+  type?: string;
+  namespace?: string;
+  source?: 'global' | 'explicit';
+  applied: boolean;
+  error?: boolean;
+  message?: string;
 }
 
 export interface ComponentStatus {

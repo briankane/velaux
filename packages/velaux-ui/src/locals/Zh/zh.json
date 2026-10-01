@@ -676,5 +676,20 @@
   "Abstract": "抽象",
   "extends": "继承自",
   "Pending": "等待中",
-  "Pending: waits for the workload to be healthy": "等待中：等待工作负载健康后生效"
+  "Pending: waits for the workload to be healthy": "等待中：等待工作负载健康后生效",
+  "Application Policies": "应用策略",
+  "Source": "来源",
+  "Global": "全局",
+  "Explicit": "显式",
+  "Applied": "已应用",
+  "Skipped": "已跳过",
+  "Failed": "失败",
+  "priority": "优先级",
+  "Builtin": "内置",
+  "Workload": "工作负载",
+  "Application": "应用",
+  "Consumed by KubeVela directly": "由 KubeVela 直接处理",
+  "Rendered with the Application's components": "随应用的组件一起渲染",
+  "Applied to the Application as a whole, before it renders": "在渲染前作用于整个应用",
+  "Applied to every Application in its namespace": "作用于其命名空间内的所有应用"
 }

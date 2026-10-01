@@ -13,7 +13,7 @@ import {
   getPolicyDetail,
   getApplicationStatistics,
 } from '../../api/application';
-import { getComponentDefinitions } from '../../api/definitions';
+import { getComponentDefinitions, getPolicyDefinitions } from '../../api/definitions';
 import { deployNamespaces } from '../../utils/restrictions';
 import { If } from '../../components/If';
 import Item from '../../components/Item';
@@ -35,6 +35,8 @@ import type {
   ApplicationBase,
   ApplicationComponentBase,
   ApplicationPolicyBase,
+  ApplicationEnvStatus,
+  DefinitionBase,
 } from '@velaux/data';
 import { beautifyTime, momentDate, showAlias } from '../../utils/common';
 import type { APIError } from '../../utils/errors';
@@ -53,6 +55,7 @@ import TriggerList from './components/TriggerList';
 const { Row, Col } = Grid;
 
 type Props = {
+  applicationAllStatus?: ApplicationEnvStatus[];
   match: {
     params: {
       appName: string;
@@ -71,6 +74,7 @@ type Props = {
 };
 
 type State = {
+  policyScopes?: Record<string, string>;
   appName: string;
   componentName: string;
   visibleTrait: boolean;
@@ -120,6 +124,7 @@ class ApplicationConfig extends Component<Props, State> {
   componentDidMount() {
     this.onGetApplicationTrigger();
     this.onGetComponentDefinitions();
+    this.onGetPolicyScopes();
     this.loadAppStatistics();
   }
 
@@ -253,7 +258,15 @@ class ApplicationConfig extends Component<Props, State> {
 
   editAppPlan = () => {
     const { applicationDetail } = this.props;
-    const { alias = '', description = '', name = '', createTime = '', icon = '', labels, annotations } = applicationDetail || {};
+    const {
+      alias = '',
+      description = '',
+      name = '',
+      createTime = '',
+      icon = '',
+      labels,
+      annotations,
+    } = applicationDetail || {};
     this.setState({
       editItem: {
         name,
@@ -363,6 +376,20 @@ class ApplicationConfig extends Component<Props, State> {
         this.onLoadApplicationComponents();
       }
     );
+  };
+
+  // onGetPolicyScopes finds how KubeVela applies each policy type, which the
+  // policy list marks.
+  onGetPolicyScopes = () => {
+    getPolicyDefinitions().then((res: { definitions?: DefinitionBase[] }) => {
+      const scopes: Record<string, string> = {};
+      (res?.definitions || []).forEach((def) => {
+        if (def.policyScope) {
+          scopes[def.name] = def.policyScope;
+        }
+      });
+      this.setState({ policyScopes: scopes });
+    });
   };
 
   onGetComponentDefinitions = async () => {
@@ -680,6 +707,8 @@ class ApplicationConfig extends Component<Props, State> {
             </Row>
             <PolicyList
               policies={policies}
+              statuses={this.props.applicationAllStatus}
+              policyScopes={this.state.policyScopes}
               envbinding={envbinding}
               applicationDetail={applicationDetail}
               onDeletePolicy={(name: string) => {

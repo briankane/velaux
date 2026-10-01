@@ -983,6 +983,10 @@ type DefinitionBase struct {
 	Abstract bool `json:"abstract,omitempty"`
 	// Extends names the definition this one is built on.
 	Extends string `json:"extends,omitempty"`
+	// PolicyScope is how KubeVela applies a policy: Builtin, consumed by
+	// KubeVela itself; Workload, rendered with the Application's components; or
+	// Application, applied to the Application as a whole before it renders.
+	PolicyScope string `json:"policyScope,omitempty"`
 }
 
 // DefinitionUsageResponse is how much each namespace uses a definition, against

@@ -13194,6 +13194,9 @@
 					"$ref": "#/definitions/common.DefinitionRestrictions"
 				},
 				"status": {
+				"policyScope": {
+					"type": "string"
+				},
 					"type": "string"
 				},
 				"trait": {
