@@ -71,6 +71,8 @@ const (
 
 // ApplicationService application service
 type ApplicationService interface {
+	// GetApplicationDataFlows is what moves between the sources and components an env deploys.
+	GetApplicationDataFlows(ctx context.Context, app *model.Application, envName string) (*apisv1.ApplicationDataFlowsResponse, error)
 	ListApplications(ctx context.Context, listOptions apisv1.ListApplicationOptions) ([]*apisv1.ApplicationBase, error)
 	GetApplication(ctx context.Context, appName string) (*model.Application, error)
 	GetApplicationStatus(ctx context.Context, app *model.Application, envName string) (*apisv1.ApplicationStatus, error)
