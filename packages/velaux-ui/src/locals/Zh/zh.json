@@ -947,5 +947,8 @@
   "Cluster Blueprints": "集群蓝图",
   "Fleets": "机群",
   "Modules": "模块",
-  "DefKit": "DefKit"
+  "DefKit": "DefKit",
+  "New Config": "新建配置",
+  "Search by name, alias, template or description": "按名称、别名、模板或描述搜索",
+  "Template": "模板"
 }
