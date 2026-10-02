@@ -346,6 +346,10 @@ class UISchema extends Component<Props, State> {
       this.checkExpressions().then((errors) => {
         this.exprErrors = {};
         Object.keys(errors).forEach((key) => (this.exprErrors[key] = true));
+        // An error folded under Advanced is shown, since the buttons wait on it.
+        if (Object.keys(errors).length > 0 && !this.state.advanced) {
+          this.setState({ advanced: true });
+        }
         this.reportValidity();
       });
     }, 400);
