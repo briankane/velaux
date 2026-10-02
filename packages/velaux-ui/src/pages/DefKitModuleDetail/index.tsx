@@ -105,7 +105,8 @@ const ItemRow = (props: { item: DefKitPreviewItem; checked?: boolean; onCheck?: 
 };
 
 // ModuleApplication is the Application a module is: its workflow's steps as
-// far as they have run, and everything it tracks, render Jobs included.
+// far as they have run, and everything it tracks, render Jobs included. Its
+// labels avoid "Application", which a deployment's terminology may rename.
 const ModuleApplication = (props: { application: DefKitApplication }) => {
   const { application } = props;
   return (
@@ -113,7 +114,7 @@ const ModuleApplication = (props: { application: DefKitApplication }) => {
       <div className="package-facts">
         <div>
           <span>
-            <Translation>Application</Translation>
+            <Translation>Name</Translation>
           </span>
           <code>
             {application.namespace}/{application.name}
@@ -473,7 +474,7 @@ const DefKitModuleDetail = (props: {
             className={tab === t ? 'active' : ''}
             onClick={() => setTab(t)}
           >
-            <Translation>{t === 'definitions' ? 'Definitions' : t === 'review' ? 'Review' : 'Application'}</Translation>{' '}
+            <Translation>{t === 'definitions' ? 'Definitions' : t === 'review' ? 'Review' : 'Status'}</Translation>{' '}
             <span className="package-tab-count">
               {t === 'definitions' ? detail.definitions.length : t === 'review' && preview?.phase === 'review' ? '•' : ''}
             </span>
