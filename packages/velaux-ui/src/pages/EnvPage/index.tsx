@@ -17,6 +17,7 @@ import './index.less';
 type Props = {
   envTotal?: number;
   envs: Env[];
+  tenant?: { current: string; resolved: boolean };
   dispatch: ({}) => void;
   userInfo?: LoginUserInfo;
 };
@@ -32,7 +33,7 @@ type State = {
 };
 
 @connect((store: any) => {
-  return { ...store.target, ...store.application, ...store.env, ...store.user };
+  return { ...store.target, ...store.application, ...store.env, ...store.user, tenant: store.tenant };
 })
 class EnvList extends React.Component<Props, State> {
   constructor(props: Props) {
@@ -51,13 +52,24 @@ class EnvList extends React.Component<Props, State> {
     this.getEnvList();
   }
 
+  componentDidUpdate(prev: Props) {
+    if (prev.tenant?.current !== this.props.tenant?.current) {
+      this.getEnvList();
+    }
+  }
+
+  // getEnvList lists the picked tenant's, or every tenant's for all of them.
   getEnvList = async () => {
+    if (!this.props.tenant?.resolved) {
+      return;
+    }
     const { page, pageSize } = this.state;
     this.props.dispatch({
       type: 'env/listEnvs',
       payload: {
         page,
         pageSize,
+        project: this.props.tenant.current,
       },
     });
   };

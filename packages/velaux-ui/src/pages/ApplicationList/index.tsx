@@ -6,12 +6,13 @@ import { byHealth, healthCounts } from './components/AppStatus/health';
 import { HealthChips } from './components/HealthChips';
 import { visibleLabels } from '../../utils/appMeta';
 
+import { inTenant } from '../../utils/tenant';
 import { deleteApplication } from '../../api/application';
 import { If } from '../../components/If';
 import { ListTitle } from '../../components/ListTitle';
 import Permission from '../../components/Permission';
 import { Translation } from '../../components/Translation';
-import type { ApplicationBase, LoginUserInfo } from '@velaux/data';
+import type { ApplicationBase, Env, LoginUserInfo } from '@velaux/data';
 
 import { NewServiceDialog } from './components/NewServiceDialog';
 import CardContend from './components/CardContent';
@@ -25,6 +26,7 @@ type Props = {
   envs?: [];
   history: any;
   userInfo?: LoginUserInfo;
+  tenant?: { current: string; resolved: boolean };
 };
 
 export type ShowMode = 'table' | 'card' | string | null;
@@ -40,7 +42,14 @@ type State = {
 };
 
 @connect((store: any) => {
-  return { ...store.application, ...store.target, ...store.clusters, ...store.env, ...store.user };
+  return {
+    ...store.application,
+    ...store.target,
+    ...store.clusters,
+    ...store.env,
+    ...store.user,
+    tenant: store.tenant,
+  };
 })
 class Application extends Component<Props, State> {
   constructor(props: Props) {
@@ -64,12 +73,23 @@ class Application extends Component<Props, State> {
     this.getEnvs();
   }
 
+  componentDidUpdate(prev: Props) {
+    if (prev.tenant?.current !== this.props.tenant?.current) {
+      this.getApplications({});
+    }
+  }
+
+  // getApplications lists the picked tenant's applications, or every tenant's
+  // for all of them, and not before the tenant is known.
   getApplications = async (params: any) => {
+    if (!this.props.tenant?.resolved) {
+      return;
+    }
     this.setState({ isLoading: true });
     this.props.dispatch({
       type: 'application/getApplicationList',
       // An addon's applications are listed on the Addons page instead.
-      payload: { ...params, withStatus: true, addons: 'exclude' },
+      payload: { ...params, project: this.props.tenant.current, withStatus: true, addons: 'exclude' },
       callback: () => {
         this.setState({
           isLoading: false,
@@ -99,7 +119,6 @@ class Application extends Component<Props, State> {
       }
     });
   };
-
 
   closeAddApplication = () => {
     this.setState({
@@ -176,12 +195,11 @@ class Application extends Component<Props, State> {
         />
 
         <SelectSearch
-          projects={userInfo?.projects}
           appLabels={appLabels}
           dispatch={dispatch}
           setLabelValue={this.setLabelValue}
           labelValue={labelValue}
-          envs={envs}
+          envs={(envs || []).filter((env: Env) => inTenant(this.props.tenant?.current || '', env.project?.name))}
           showMode={showMode}
           setMode={(mode: ShowMode) => {
             this.setState({ showMode: mode });
@@ -215,6 +233,7 @@ class Application extends Component<Props, State> {
         <If condition={showAddApplication}>
           <NewServiceDialog
             projects={userInfo?.projects}
+            project={this.props.tenant?.current || undefined}
             onClose={this.closeAddApplication}
             onCreated={(name: string) => {
               this.props.history.push(`/applications/${name}/config`);

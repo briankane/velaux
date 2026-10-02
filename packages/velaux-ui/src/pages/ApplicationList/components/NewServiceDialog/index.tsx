@@ -113,7 +113,10 @@ export const NewServiceDialog = (props: Props) => {
               }}
             />
           </Form.Item>
-          <Form.Item label={<Translation>Environment</Translation>} help={<Translation>Where it deploys; more can be added later</Translation>}>
+          <Form.Item
+            label={<Translation>Environment</Translation>}
+            help={<Translation>Where it deploys; more can be added later</Translation>}
+          >
             <Select
               {...init('envs')}
               mode="multiple"
@@ -155,7 +158,10 @@ export const NewServiceDialog = (props: Props) => {
             <Input
               {...init('resyncInterval', {
                 rules: [
-                  { pattern: /^\s*(([0-9]+(\.[0-9]+)?(h|m|s))+)?\s*$/, message: i18n.t('A duration such as 10m or 1h').toString() },
+                  {
+                    pattern: /^\s*(([0-9]+(\.[0-9]+)?(h|m|s))+)?\s*$/,
+                    message: i18n.t('A duration such as 10m or 1h').toString(),
+                  },
                 ],
               })}
               placeholder="5m"

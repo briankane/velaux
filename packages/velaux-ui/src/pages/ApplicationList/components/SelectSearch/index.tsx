@@ -3,7 +3,7 @@ import React from 'react';
 
 import './index.less';
 import type { ShowMode } from '../..';
-import type { Env, UserProject } from '@velaux/data';
+import type { Env } from '@velaux/data';
 import { locale } from '../../../../utils/locale';
 import i18n from '../../../../i18n';
 import { AiOutlineReload, AiOutlineSearch } from 'react-icons/ai';
@@ -13,7 +13,6 @@ import { Translation } from '../../../../components/Translation';
 
 type Props = {
   dispatch: ({}) => {};
-  projects?: UserProject[];
   envs?: Env[];
   appLabels?: string[];
   labelValue?: string[];
@@ -24,7 +23,6 @@ type Props = {
 };
 
 type State = {
-  projectValue: string;
   targetValue: string;
   inputValue: string;
   envValue: string;
@@ -35,27 +33,14 @@ class SelectSearch extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {
-      projectValue: '',
       targetValue: '',
       envValue: '',
       inputValue: '',
       labelValue: [],
     };
-    this.onChangeProject = this.onChangeProject.bind(this);
     this.onChangeTarget = this.onChangeTarget.bind(this);
     this.handleChangName = this.handleChangName.bind(this);
     this.handleChangeLabel = this.handleChangeLabel.bind(this);
-  }
-
-  onChangeProject(e: string) {
-    this.setState(
-      {
-        projectValue: e,
-      },
-      () => {
-        this.getApplications();
-      }
-    );
   }
 
   onChangeTarget(e: string) {
@@ -105,10 +90,9 @@ class SelectSearch extends React.Component<Props, State> {
   };
 
   getApplications = async () => {
-    const { projectValue, inputValue, envValue, labelValue } = this.state;
+    const { inputValue, envValue, labelValue } = this.state;
     const labelSelector = labelValue.join(',');
     const params = {
-      project: projectValue,
       query: inputValue,
       env: envValue,
       labels: labelSelector,
@@ -117,16 +101,10 @@ class SelectSearch extends React.Component<Props, State> {
   };
 
   render() {
-    const { projects, appLabels, envs, showMode, labelValue } = this.props;
-    const { projectValue, inputValue, envValue } = this.state;
+    const { appLabels, envs, showMode, labelValue } = this.props;
+    const { inputValue, envValue } = this.state;
 
     const appPlaceholder = i18n.t('Search by name or description').toString();
-    const projectSource = projects?.map((item) => {
-      return {
-        label: item.alias || item.name,
-        value: item.name,
-      };
-    });
     const labelSource = appLabels?.map((item) => {
       return {
         label: item,
@@ -150,17 +128,6 @@ class SelectSearch extends React.Component<Props, State> {
           onPressEnter={this.handleClickSearch}
           value={inputValue}
           className="app-filter-bar-search"
-        />
-        <Select
-          locale={locale().Select}
-          mode="single"
-          label={i18n.t('Project').toString()}
-          placeholder={i18n.t('All').toString()}
-          onChange={this.onChangeProject}
-          dataSource={projectSource}
-          className="app-filter-bar-select"
-          hasClear
-          value={projectValue}
         />
         <Select
           locale={locale().Select}

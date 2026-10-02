@@ -10,7 +10,7 @@ import ModalWithFooter from '../../../../components/ModalWithFooter';
 import { If } from '../../../../components/If';
 import { Translation } from '../../../../components/Translation';
 import i18n from '../../../../i18n';
-import type { PipelineBase, PipelineDetail, PipelineListItem , LoginUserInfo } from '@velaux/data';
+import type { PipelineBase, PipelineDetail, PipelineListItem, LoginUserInfo } from '@velaux/data';
 import { checkName } from '../../../../utils/common';
 import { locale } from '../../../../utils/locale';
 import { checkPermission } from '../../../../utils/permission';
@@ -25,6 +25,8 @@ export interface PipelineProps {
   onSuccess?: (pipeline: PipelineBase) => void;
   userInfo?: LoginUserInfo;
   pipeline?: PipelineListItem;
+  // project is the tenant a new pipeline starts in, the one picked globally.
+  project?: string;
 }
 
 type State = {
@@ -185,7 +187,7 @@ class CreatePipeline extends React.Component<PipelineProps, State> {
       if (
         checkPermission({ resource: `project:${project.name}/pipeline:*`, action: 'create' }, project.name, userInfo)
       ) {
-        if (project.name === 'default') {
+        if (project.name === (this.props.project || 'default')) {
           defaultProject = project.name;
         }
         projectOptions.push({

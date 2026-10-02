@@ -40,6 +40,7 @@ type Props = {
   userInfo?: LoginUserInfo;
   dispatch: Dispatch<any>;
   enabledAddons?: AddonBaseStatus[];
+  tenant?: { current: string; resolved: boolean };
 };
 
 export type ShowMode = 'table' | 'card' | string | null;
@@ -57,7 +58,7 @@ type State = {
 };
 
 @connect((store: any) => {
-  return { ...store.user, ...store.addons };
+  return { ...store.user, ...store.addons, tenant: store.tenant };
 })
 class PipelineListPage extends Component<Props, State> {
   constructor(props: Props) {
@@ -72,9 +73,19 @@ class PipelineListPage extends Component<Props, State> {
     this.getPipelines({});
   }
 
-  getPipelines = async (params: { projectName?: string; query?: string }) => {
+  componentDidUpdate(prev: Props) {
+    if (prev.tenant?.current !== this.props.tenant?.current) {
+      this.getPipelines({});
+    }
+  }
+
+  // getPipelines lists the picked tenant's pipelines, or every tenant's for all of them.
+  getPipelines = async (params: { query?: string }) => {
+    if (!this.props.tenant?.resolved) {
+      return;
+    }
     this.setState({ isLoading: true });
-    listPipelines(params)
+    listPipelines({ query: params.query, projectName: this.props.tenant.current })
       .then((res) => {
         this.setState({
           pipelines: res && Array.isArray(res.pipelines) ? res.pipelines : [],
@@ -333,7 +344,6 @@ class PipelineListPage extends Component<Props, State> {
   };
 
   render() {
-    const { userInfo } = this.props;
     const { showMode, isLoading, showRunPipeline, pipeline, showRuns, showNewPipeline, showClonePipeline } = this.state;
     const { enabledAddons } = this.props;
     const addonEnabled = enabledAddons?.filter((addon) => addon.name == 'vela-workflow').length;
@@ -359,7 +369,7 @@ class PipelineListPage extends Component<Props, State> {
         />
 
         <SelectSearch
-          projects={userInfo?.projects}
+          disableProject
           showMode={showMode}
           setMode={(mode: ShowMode) => {
             this.setState({ showMode: mode });
@@ -412,6 +422,7 @@ class PipelineListPage extends Component<Props, State> {
         </If>
         <If condition={showNewPipeline}>
           <CreatePipeline
+            project={this.props.tenant?.current || undefined}
             onClose={() => {
               this.setState({ showNewPipeline: false, pipeline: undefined });
             }}

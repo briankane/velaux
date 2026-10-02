@@ -1,4 +1,5 @@
 import { Loading } from '@alifd/next';
+import { allTenants } from '../../utils/tenant';
 import { connect } from 'dva';
 import React, { Component } from 'react';
 import { AppTabs, OrbitBar } from './components/AppTabs';
@@ -13,9 +14,10 @@ interface Props {
   dispatch: Dispatch;
   location: any;
   applicationDetail?: ApplicationDetail;
+  tenant?: { current: string; resolved: boolean };
 }
 @connect((store: any) => {
-  return { ...store.application };
+  return { ...store.application, tenant: store.tenant };
 })
 class ApplicationLayout extends Component<Props, any> {
   constructor(props: any) {
@@ -40,6 +42,16 @@ class ApplicationLayout extends Component<Props, any> {
     );
   }
 
+  // followTenant moves the picked tenant to the application's own, so a link
+  // into another tenant's application lands in that tenant.
+  followTenant = () => {
+    const { tenant, applicationDetail, dispatch } = this.props;
+    const project = applicationDetail?.project?.name;
+    if (tenant?.resolved && tenant.current !== allTenants && project && project !== tenant.current) {
+      dispatch({ type: 'tenant/setTenant', payload: project });
+    }
+  };
+
   onGetApplicationDetails = async () => {
     const {
       params: { appName },
@@ -49,6 +61,7 @@ class ApplicationLayout extends Component<Props, any> {
       type: 'application/getApplicationDetail',
       payload: { appName: appName },
       callback: () => {
+        this.followTenant();
         this.setState({ loading: false }, () => {
           this.loadApplicationComponents();
           this.loadApplicationEnvbinding();

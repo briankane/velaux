@@ -950,5 +950,7 @@
   "DefKit": "DefKit",
   "New Config": "新建配置",
   "Search by name, alias, template or description": "按名称、别名、模板或描述搜索",
-  "Template": "模板"
+  "Template": "模板",
+  "All tenants": "所有租户",
+  "Tenant": "租户"
 }

@@ -17,6 +17,7 @@ import './index.less';
 type Props = {
   targets?: [];
   total?: number;
+  tenant?: { current: string; resolved: boolean };
   clusterList?: Cluster[];
   dispatch: ({}) => void;
   userInfo?: LoginUserInfo;
@@ -34,7 +35,7 @@ type State = {
 };
 
 @connect((store: any) => {
-  return { ...store.target, ...store.clusters, ...store.user };
+  return { ...store.target, ...store.clusters, ...store.user, tenant: store.tenant };
 })
 class TargetList extends React.Component<Props, State> {
   constructor(props: Props) {
@@ -55,7 +56,17 @@ class TargetList extends React.Component<Props, State> {
     this.getClusterList();
   }
 
+  componentDidUpdate(prev: Props) {
+    if (prev.tenant?.current !== this.props.tenant?.current) {
+      this.getTargetList();
+    }
+  }
+
+  // getTargetList lists the picked tenant's, or every tenant's for all of them.
   getTargetList = async () => {
+    if (!this.props.tenant?.resolved) {
+      return;
+    }
     const { page, pageSize, query } = this.state;
     this.props.dispatch({
       type: 'target/listTargets',
@@ -63,6 +74,7 @@ class TargetList extends React.Component<Props, State> {
         query,
         page,
         pageSize,
+        project: this.props.tenant.current,
       },
     });
   };
