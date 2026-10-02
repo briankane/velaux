@@ -60,11 +60,59 @@ func (d *definitionServiceImpl) DefinitionDoc(ctx context.Context, name, defType
 	if lang == "zh" {
 		ref.I18N = &docgen.Zh
 	}
-	doc, err := ref.GenerateMarkdownForCap(ctx, *capability, false)
+	// docgen's Markdown takes no sources: a source is written as a policy,
+	// which adds nothing of its own to the description and parameters, and its
+	// outputs, cache and surfaces follow.
+	written := *capability
+	if written.Type == types.TypeSource {
+		written.Type = types.TypePolicy
+	}
+	doc, err := ref.GenerateMarkdownForCap(ctx, written, false)
 	if err != nil {
 		return nil, bcode.ErrDefinitionDocUnavailable.SetMessage(err.Error())
 	}
-	return &apisv1.DefinitionDocResponse{Markdown: withoutFrontMatter(doc)}, nil
+	doc = withoutFrontMatter(doc)
+	if capability.Type == types.TypeSource {
+		doc = strings.TrimRight(doc, "\n") + "\n\n" + sourceSections(*capability, ref.I18N)
+	}
+	return &apisv1.DefinitionDocResponse{Markdown: doc}, nil
+}
+
+// sourceSections documents what a source adds to a definition: the values it
+// returns, how it caches them, and where an Application may read it, as
+// vela def show prints them.
+func sourceSections(c types.Capability, lang *docgen.I18n) string {
+	var b strings.Builder
+	if len(c.SourceOutputs) > 0 {
+		fmt.Fprintf(&b, "## %s\n\n| %s | %s | %s |\n| --- | --- | --- |\n", lang.Get("Outputs"), lang.Get("Name"), lang.Get("Description"), lang.Get("Type"))
+		for _, o := range c.SourceOutputs {
+			fmt.Fprintf(&b, "| %s | %s | %s |\n", o.Name, markdownCell(o.Usage), o.Type.String())
+		}
+		b.WriteString("\n")
+	}
+	if len(c.SourceStorage) > 0 {
+		fmt.Fprintf(&b, "## %s\n\n| %s | %s |\n| --- | --- |\n", lang.Get("Cache"), lang.Get("Name"), lang.Get("Value"))
+		for _, f := range c.SourceStorage {
+			fmt.Fprintf(&b, "| %s | `%s` |\n", f.Name, f.Value)
+		}
+		b.WriteString("\n")
+	}
+	if len(c.SourceSurfaces) > 0 {
+		fmt.Fprintf(&b, "## %s\n\n| %s | %s | %s |\n| --- | --- | --- |\n", lang.Get("Consumable from"), lang.Get("Surface"), lang.Get("Consumable"), lang.Get("Reason"))
+		for _, sfc := range c.SourceSurfaces {
+			mark := "✘"
+			if sfc.Consumable {
+				mark = "✔"
+			}
+			fmt.Fprintf(&b, "| %s | %s | %s |\n", sfc.Name, mark, markdownCell(sfc.Reason))
+		}
+	}
+	return b.String()
+}
+
+// markdownCell keeps text on one table row: pipes are escaped, newlines joined.
+func markdownCell(s string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(s, "|", "\\|"), "\n", " ")
 }
 
 // withoutFrontMatter drops the Docusaurus front matter docgen writes for
@@ -145,6 +193,11 @@ func (d *definitionServiceImpl) capabilityOf(ctx context.Context, name, defType 
 		def := &v1beta1.PolicyDefinition{}
 		if exampleURL, err = get(def); err == nil {
 			capability, err = docgen.GetCapabilityByPolicyDefinitionObject(*def)
+		}
+	case "source":
+		def := &v1beta1.SourceDefinition{}
+		if exampleURL, err = get(def); err == nil {
+			capability, err = docgen.GetCapabilityBySourceDefinitionObject(*def)
 		}
 	default:
 		return nil, "", bcode.ErrDefinitionDocUnavailable.SetMessage(fmt.Sprintf("no documentation is generated for %s definitions", defType))

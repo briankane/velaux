@@ -78,10 +78,54 @@ func TestDefinitionDoc(t *testing.T) {
 	_, err = svc.DefinitionDoc(ctx, "missing", "trait", "")
 	assert.Equal(t, bcode.ErrDefinitionNotFound, err)
 
-	_, err = svc.DefinitionDoc(ctx, "scaler", "source", "")
+	_, err = svc.DefinitionDoc(ctx, "scaler", "workload", "")
 	var b *bcode.Bcode
 	require.ErrorAs(t, err, &b)
-	assert.Equal(t, int32(70005), b.BusinessCode, "a source has no generated documentation")
+	assert.Equal(t, int32(70005), b.BusinessCode, "a type with no generated documentation")
+}
+
+func TestDefinitionDocSource(t *testing.T) {
+	ctx := context.Background()
+	cli := fake.NewClientBuilder().WithScheme(common2.Scheme).WithRESTMapper(meta.NewDefaultRESTMapper(nil)).WithObjects(&v1beta1.SourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "profile",
+			Namespace:   "vela-system",
+			Annotations: map[string]string{"definition.oam.dev/description": "The environment's profile"},
+		},
+		Spec: v1beta1.SourceDefinitionSpec{Schematic: &common.Schematic{CUE: &common.CUE{Template: `
+$internal: {
+	key: "profile-\(context.namespace)"
+	keyInputs: ["namespace"]
+}
+schema: {
+	// +usage=Environment tier
+	tier: "dev" | "prod"
+	// +usage=Replicas to run
+	replicas: int
+}
+storage: {
+	storageTTL:     "5m"
+	onStaleFailure: "use-stale"
+}
+parameter: {
+	// +usage=Which profile to read
+	name: *"default" | string
+}
+output: {tier: "prod", replicas: 2}
+`}}},
+	}).Build()
+	svc := &definitionServiceImpl{KubeClient: cli}
+
+	doc, err := svc.DefinitionDoc(ctx, "profile", "source", "")
+	require.NoError(t, err)
+	assert.Contains(t, doc.Markdown, "The environment's profile", "the description")
+	assert.Contains(t, doc.Markdown, "Which profile to read", "the parameters")
+	assert.Contains(t, doc.Markdown, "## Outputs", "what the source returns")
+	assert.Contains(t, doc.Markdown, "Replicas to run", "with each output's usage")
+	assert.Contains(t, doc.Markdown, "## Cache", "how it is cached")
+	assert.Contains(t, doc.Markdown, "5m", "its time to live")
+	assert.Contains(t, doc.Markdown, "profile-\\(context.namespace)", "and its key")
+	assert.Contains(t, doc.Markdown, "## Consumable from", "where it may be read")
 }
 
 func TestDefinitionDocExampleURL(t *testing.T) {
