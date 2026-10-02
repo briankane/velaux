@@ -17,6 +17,11 @@ export interface Customisation {
 
 type Listener = (c: Customisation) => void;
 
+// iconLink is the page's tab icon.
+function iconLink(): HTMLLinkElement | null {
+  return document.querySelector('link[rel~="icon"]');
+}
+
 // customisationService holds the branding read from the server: the logo, and
 // the terminology every translated string passes through. It imports no API
 // code, as i18n reads it and the request layer imports i18n.
@@ -25,6 +30,8 @@ class CustomisationService {
   private listeners: Listener[] = [];
   // defaultTitle is the tab's title as the page set it.
   private defaultTitle = typeof document !== 'undefined' ? document.title : '';
+  // defaultIcon is the tab's icon as the page set it.
+  private defaultIcon = typeof document !== 'undefined' ? iconLink()?.getAttribute('href') || '' : '';
 
   get(): Customisation {
     return this.current;
@@ -34,6 +41,13 @@ class CustomisationService {
     this.current = c;
     if (typeof document !== 'undefined') {
       document.title = c.pageTitle || this.defaultTitle;
+      // The tab shows the icon the minimised sidebar does.
+      const link = iconLink();
+      const href = c.iconURL || this.defaultIcon;
+      if (link && href) {
+        link.setAttribute('href', href);
+        link.removeAttribute('type');
+      }
     }
     this.listeners.forEach((l) => l(c));
   }
