@@ -180,7 +180,7 @@ class UiSchema extends Component<Props, State> {
               </Card>
             </If>
             <If condition={!uiSchema || uiSchema.length !== 0}>
-              <section className="margin-top-20" style={{ maxWidth: '1520px', margin: '16px auto' }}>
+              <section className="margin-top-20" style={{ margin: '16px 0' }}>
                 <Message type="notice" style={{ margin: '0 8px 8px 16px' }}>
                   <Translation>
                     Custom the UI schema will preview in right, please refer to the document to get more info
