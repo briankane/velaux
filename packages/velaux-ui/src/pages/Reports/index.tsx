@@ -74,7 +74,7 @@ const ReportsView = (props: { currentProject?: { current: string; resolved: bool
     }
     setLoading(true);
     runReport(project, selected)
-      .then((res: any) => setResult(res || undefined))
+      .then((res: any) => setResult(res ? { ...res, rows: res.rows || [] } : undefined))
       .finally(() => setLoading(false));
   };
   useEffect(run, [project, selected]);

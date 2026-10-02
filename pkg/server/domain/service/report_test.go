@@ -91,3 +91,11 @@ func TestUnknownReport(t *testing.T) {
 	assert.Equal(t, bcode.ErrReportNotFound, err)
 	assert.Len(t, svc.ListReports(), 6)
 }
+
+func TestEmptyReportHasRows(t *testing.T) {
+	svc := reportFixture(t)
+	result, err := svc.RunReport(context.Background(), "shop", "failed-runs")
+	require.NoError(t, err)
+	assert.NotNil(t, result.Rows, "an empty report is an empty table")
+	assert.Empty(t, result.Rows)
+}

@@ -99,6 +99,10 @@ func (r *reportServiceImpl) RunReport(ctx context.Context, project, id string) (
 		if err != nil {
 			return nil, err
 		}
+		// An empty report is an empty table, not a missing one.
+		if result.Rows == nil {
+			result.Rows = []apisv1.ReportRow{}
+		}
 		result.Report = rep.meta
 		result.Project = project
 		result.GeneratedAt = time.Now()
