@@ -81,7 +81,8 @@ const AppTabsView = (props: { appName: string; currentPath: string; readOnly: bo
         <span className="app-tab-group-label">
           <Translation>Configure</Translation>
         </span>
-        {configure.map((t) => (
+        <div className="app-tab-group-tabs">
+          {configure.map((t) => (
           <span key={t.key} className="app-tab-with-add">
             {tab(t)}
             {!props.readOnly && (
@@ -95,7 +96,8 @@ const AppTabsView = (props: { appName: string; currentPath: string; readOnly: bo
               </Link>
             )}
           </span>
-        ))}
+          ))}
+        </div>
       </div>
       {tabs.slice(first + configure.length).map(tab)}
     </div>

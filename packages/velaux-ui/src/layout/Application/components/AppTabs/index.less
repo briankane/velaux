@@ -1,6 +1,7 @@
 .app-tabs {
   display: flex;
   gap: 4px;
+  align-items: flex-end;
   margin-bottom: 20px;
   overflow-x: auto;
   border-bottom: 1px solid #e2e8f0;
@@ -25,42 +26,50 @@
   }
 }
 
-// The tabs that configure the application, together under a label.
+// The tabs that configure the application: a shaded block with its label
+// above its tabs, which share the row's baseline with the rest.
 .app-tabs .app-tab-group {
   display: flex;
   flex: none;
-  gap: 2px;
-  align-items: flex-end;
-  margin: 4px 4px 0;
-  padding: 0 6px;
-  background: #f1f5f9;
+  flex-direction: column;
+  margin: 0 8px;
+  padding: 0 4px;
+  background: #eef2f7;
+  border: 1px solid #e2e8f0;
+  border-bottom: none;
   border-radius: 8px 8px 0 0;
 }
 
 .app-tabs .app-tab-group-label {
-  align-self: center;
-  margin-right: 4px;
-  color: #94a3b8;
+  padding: 5px 12px 0;
+  color: #64748b;
   font-weight: 600;
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.app-tabs .app-tab-group-tabs {
+  display: flex;
+  align-items: flex-end;
 }
 
 .app-tabs .app-tab-with-add {
   display: inline-flex;
   align-items: center;
   .app-tab {
-    padding-right: 4px;
+    padding-right: 2px;
   }
 }
 
 .app-tabs .app-tab-add {
   display: inline-flex;
   align-items: center;
-  margin-right: 8px;
-  padding: 3px;
+  margin: 0 10px 1px 2px;
+  padding: 2px;
   color: #94a3b8;
+  font-size: 12px;
   border-radius: 4px;
   &:hover {
     color: var(--primary-color, #1b58f4);
