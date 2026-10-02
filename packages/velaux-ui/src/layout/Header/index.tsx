@@ -10,7 +10,6 @@ import {
   AiOutlineMenuFold,
   AiOutlineMenuUnfold,
   AiOutlineQuestionCircle,
-  AiOutlineSetting,
 } from 'react-icons/ai';
 
 import logo from '../../assets/kubevela-logo-white.png';
@@ -22,12 +21,11 @@ import { customisationService } from '../../services/CustomisationService';
 import { isLight, sidebarTheme } from '../../utils/theme';
 import { If } from '../../components/If';
 import Permission from '../../components/Permission';
-import { TbLanguage } from 'react-icons/tb';
+import SwitchLanguage from '../../components/SwitchButton/index';
 import { Translation } from '../../components/Translation';
 import i18n from '../../i18n';
 import type { AddonBaseStatus, Config, SystemInfo, LoginUserInfo } from '@velaux/data';
 import { getData, setData } from '../../utils/cache';
-import { getLanguage } from '../../utils/common';
 import { locale } from '../../utils/locale';
 import { getBrowserNameAndVersion } from '../../utils/utils';
 import CloudShell from '../CloudShell';
@@ -215,18 +213,12 @@ class Header extends Component<Props, State> {
     });
   };
 
-  // setLanguage switches the interface's language and remembers it.
-  setLanguage = (lang: string) => {
-    i18n.changeLanguage(lang);
-    localStorage.setItem('lang', lang);
-    this.forceUpdate();
-  };
-
   render() {
-    const { show, userInfo, currentWorkspace, children, onToggleCollapsed } = this.props;
-    // The admin dashboard is linked on its own; its pages join the sidebar
-    // while it is open.
+    const { show, userInfo, children, onToggleCollapsed } = this.props;
     const admin = this.state.workspaces.find((ws) => ws.name === 'admin');
+    // The admin screens open from the user's menu rather than the sidebar.
+    const adminMenus =
+      admin && userInfo ? menuService.loadMenus(admin, userInfo).flatMap((section) => section.menus) : [];
     const collapsed = !!this.props.collapsed;
     const { customisation } = this.state;
     const theme = sidebarTheme(customisation.sidebarColor, customisation.accentColor);
@@ -259,6 +251,38 @@ class Header extends Component<Props, State> {
         <div className="sidebar-menu">{children}</div>
 
         <div className="sidebar-footer">
+          <Permission request={{ resource: 'cloudshell', action: 'create' }}>
+            <div className="sidebar-footer-item" title="Open Cloud Shell" onClick={this.onOpenCloudShell}>
+              <AiOutlineCode size={18} />
+              {!collapsed && (
+                <span>
+                  <Translation>Cloud Shell</Translation>
+                </span>
+              )}
+            </div>
+          </Permission>
+          <a
+            className="sidebar-footer-item"
+            title="KubeVela Documents"
+            href="https://kubevela.io"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <AiOutlineQuestionCircle size={18} />
+            {!collapsed && (
+              <span>
+                <Translation>Documentation</Translation>
+              </span>
+            )}
+          </a>
+          <div className="sidebar-footer-item sidebar-language">
+            <SwitchLanguage />
+            {!collapsed && (
+              <span>
+                <Translation>Language</Translation>
+              </span>
+            )}
+          </div>
           <If condition={userInfo}>
             <Dropdown
               triggerType="hover"
@@ -281,50 +305,21 @@ class Header extends Component<Props, State> {
                     )}
                   </div>
                 </div>
-                <Permission request={{ resource: 'cloudshell', action: 'create' }}>
-                  <div className="user-flyout-item" onClick={this.onOpenCloudShell}>
-                    <AiOutlineCode size={16} />
-                    <Translation>Cloud Shell</Translation>
+                {adminMenus.length > 0 && (
+                  <div className="user-flyout-section">
+                    <Translation>Admin</Translation>
                   </div>
-                </Permission>
-                {admin && (
-                  <Link
-                    to={admin.rootRoute}
-                    className={classNames('user-flyout-item', { active: currentWorkspace?.name === admin.name })}
-                  >
-                    {admin.icon}
-                    <Translation>{admin.label || admin.name}</Translation>
-                  </Link>
                 )}
-                <Permission request={{ resource: 'systemSetting', action: 'update' }}>
-                  <Link to="/settings" className="user-flyout-item">
-                    <AiOutlineSetting size={16} />
-                    <Translation>Settings</Translation>
+                {adminMenus.map((menu) => (
+                  <Link
+                    key={menu.name}
+                    to={menu.to}
+                    className={classNames('user-flyout-item', { active: menu.active })}
+                  >
+                    {menu.icon}
+                    <Translation>{menu.label}</Translation>
                   </Link>
-                </Permission>
-                <a className="user-flyout-item" href="https://kubevela.io" target="_blank" rel="noopener noreferrer">
-                  <AiOutlineQuestionCircle size={16} />
-                  <Translation>Documentation</Translation>
-                </a>
-                <div className="user-flyout-item user-flyout-language">
-                  <TbLanguage size={16} />
-                  <Translation>Language</Translation>
-                  <span className="user-flyout-langs">
-                    {[
-                      { lang: 'en', label: 'EN' },
-                      { lang: 'zh', label: '中文' },
-                    ].map((l) => (
-                      <button
-                        key={l.lang}
-                        type="button"
-                        className={classNames({ active: getLanguage() === l.lang })}
-                        onClick={() => this.setLanguage(l.lang)}
-                      >
-                        {l.label}
-                      </button>
-                    ))}
-                  </span>
-                </div>
+                ))}
                 <div className="user-flyout-divider" />
                 <div className="user-flyout-item user-flyout-logout" onClick={this.onLogout}>
                   <AiOutlineLogout size={16} />

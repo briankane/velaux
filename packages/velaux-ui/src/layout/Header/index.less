@@ -122,11 +122,58 @@
   border-top: 1px solid var(--sb-border);
 }
 
+.sidebar-footer-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 2px 12px;
+  padding: 8px 14px;
+  color: var(--sb-text) !important;
+  font-size: 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+  svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--sb-muted);
+  }
+  &:hover {
+    color: var(--sb-text-strong) !important;
+    background: var(--sb-hover);
+    svg {
+      color: var(--sb-text-strong);
+    }
+  }
+  &.active {
+    color: var(--sb-active-text) !important;
+    background: var(--sb-active);
+    svg {
+      color: var(--sb-accent);
+    }
+  }
+  .collapsed & {
+    justify-content: center;
+    margin: 2px 10px;
+    padding: 9px 0;
+  }
+}
+
+.sidebar-language {
+  // The language switch is its own dropdown; its trigger is the icon.
+  > :first-child {
+    display: flex;
+  }
+}
+
 .sidebar-user {
   display: flex;
   gap: 10px;
   align-items: center;
-  margin: 0 12px;
+  margin: 8px 12px 0;
   padding: 8px 10px;
   color: var(--sb-text-strong);
   border-radius: 8px;
@@ -136,7 +183,7 @@
   }
   .collapsed & {
     justify-content: center;
-    margin: 0 10px;
+    margin: 8px 10px 0;
     padding: 8px 0;
   }
 }
@@ -217,35 +264,13 @@
   }
 }
 
-.user-flyout-language {
-  cursor: default;
-  &:hover {
-    background: none;
-  }
-}
-
-.user-flyout-langs {
-  display: flex;
-  gap: 2px;
-  margin-left: auto;
-  padding: 2px;
-  background: #f1f5f9;
-  border-radius: 6px;
-  button {
-    padding: 2px 8px;
-    color: #475569;
-    font-size: 12px;
-    background: none;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    &.active {
-      color: #0f172a;
-      font-weight: 600;
-      background: #fff;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-    }
-  }
+.user-flyout-section {
+  padding: 6px 10px 4px;
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .user-flyout-divider {

@@ -408,13 +408,12 @@ export class MenuWrapper implements MenuService {
   }
 
   // loadSidebarMenus is every workspace's menus as one list of sections, so the
-  // sidebar needs no workspace switch. The admin workspace is linked on its own
-  // and listed only while it is the one open.
+  // sidebar needs no workspace switch. The admin workspace's screens open from
+  // the user's menu instead.
   loadSidebarMenus(user: LoginUserInfo): LeftMenu[] {
-    const current = this.loadCurrentWorkspace();
     const sections: LeftMenu[] = [];
     this.loadWorkspaces(user)
-      .filter((ws) => ws.name !== 'admin' || current?.name === 'admin')
+      .filter((ws) => ws.name !== 'admin')
       .forEach((ws) => {
         this.loadMenus(ws, user).forEach((section) => {
           const catalog = section.catalog || ws.label || ws.name;
