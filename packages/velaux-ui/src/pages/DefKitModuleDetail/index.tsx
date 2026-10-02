@@ -139,9 +139,11 @@ const ModuleApplication = (props: { application: DefKitApplication }) => {
           {application.steps.map((step) => (
             <div key={step.name} className="row-list-row">
               <div className="row-list-main">
-                <span>
-                  <span className="row-list-title">{step.name}</span>
-                  <span className="row-list-type">{step.type}</span>
+                <span className="row-list-name">
+                  <span>
+                    <span className="row-list-title">{step.name}</span>
+                    <span className="row-list-type">{step.type}</span>
+                  </span>
                 </span>
                 <span>
                   <StatusBadge tone={stepTone(step.phase)} label={step.phase || 'pending'} />
