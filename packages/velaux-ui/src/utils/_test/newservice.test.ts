@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { newServiceRequest } from '../../pages/ApplicationList/components/NewServiceDialog/request';
+import { defaultEnvs, newServiceRequest } from '../../pages/ApplicationList/components/NewServiceDialog/request';
 
 describe('new service', () => {
   it('asks for an application with no component, bound to its orbits', () => {
@@ -36,5 +36,16 @@ describe('new service', () => {
       'app.oam.dev/reconcile-interval': '10m',
     });
     expect(req.workflowMode).to.equal('DAG');
+  });
+});
+
+describe('defaultEnvs', () => {
+  it("binds a new service to a project's only environment", () => {
+    expect(defaultEnvs(['production'], [])).to.deep.equal(['production']);
+  });
+  it('leaves the choice alone with several environments, or once one is chosen', () => {
+    expect(defaultEnvs(['dev', 'prod'], [])).to.deep.equal([]);
+    expect(defaultEnvs([], [])).to.deep.equal([]);
+    expect(defaultEnvs(['production'], ['production'])).to.deep.equal(['production']);
   });
 });

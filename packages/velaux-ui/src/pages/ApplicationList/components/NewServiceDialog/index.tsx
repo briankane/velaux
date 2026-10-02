@@ -9,7 +9,7 @@ import KV from '../../../../extends/KV';
 import i18n from '../../../../i18n';
 import { checkName } from '../../../../utils/common';
 import type { NewServiceValues } from './request';
-import { newServiceRequest } from './request';
+import { defaultEnvs, newServiceRequest } from './request';
 import './index.less';
 
 type Props = {
@@ -44,7 +44,17 @@ export const NewServiceDialog = (props: Props) => {
       setEnvs([]);
       return;
     }
-    getEnvs({ project }).then((res: any) => setEnvs(res?.envs || []));
+    getEnvs({ project }).then((res: any) => {
+      const loaded: Env[] = res?.envs || [];
+      setEnvs(loaded);
+      field.setValue(
+        'envs',
+        defaultEnvs(
+          loaded.map((e) => e.name),
+          (field.getValue('envs') as string[]) || []
+        )
+      );
+    });
   }, [project]);
   const submit = () => {
     field.validate((errors: any, values: any) => {

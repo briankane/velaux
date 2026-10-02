@@ -45,3 +45,13 @@ export function newServiceRequest(v: NewServiceValues) {
     workflowMode: v.workflowMode && v.workflowMode !== 'StepByStep' ? v.workflowMode : undefined,
   };
 }
+
+// defaultEnvs is the environments a new service is bound to before anyone
+// chooses: the project's only one, when it has just one, and what was chosen
+// otherwise.
+export function defaultEnvs(available: string[], chosen: string[]): string[] {
+  if (chosen.length > 0 || available.length !== 1) {
+    return chosen;
+  }
+  return available;
+}
