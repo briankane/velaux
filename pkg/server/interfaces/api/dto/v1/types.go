@@ -2157,6 +2157,11 @@ type ExpressionEnvResponse struct {
 	Variables []*ExpressionVariable `json:"variables"`
 }
 
+// DefinitionCUEResponse is a definition as CUE, as vela def get writes it.
+type DefinitionCUEResponse struct {
+	CUE string `json:"cue"`
+}
+
 // DefinitionDocResponse is a definition's reference documentation, in Markdown.
 type DefinitionDocResponse struct {
 	Markdown string `json:"markdown"`

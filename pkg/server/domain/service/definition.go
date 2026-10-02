@@ -55,6 +55,8 @@ import (
 type DefinitionService interface {
 	// ListDefinitions list definition base info
 	ListDefinitions(ctx context.Context, ops DefinitionQueryOption) ([]*apisv1.DefinitionBase, error)
+	// DefinitionCUE is a definition as CUE, as vela def get writes it.
+	DefinitionCUE(ctx context.Context, name, defType string) (*apisv1.DefinitionCUEResponse, error)
 	// DefinitionDoc is a definition's reference documentation in Markdown.
 	DefinitionDoc(ctx context.Context, name, defType, lang string) (*apisv1.DefinitionDocResponse, error)
 	// DetailDefinition get definition detail

@@ -117,3 +117,17 @@ parameter: {
 	require.NoError(t, err)
 	assert.Contains(t, doc.Markdown, "The image to run")
 }
+
+func TestDefinitionCUE(t *testing.T) {
+	ctx := context.Background()
+	svc := docService(t, docTrait(map[string]string{"definition.oam.dev/description": "Scale the workload"}))
+	got, err := svc.DefinitionCUE(ctx, "scaler", "trait")
+	require.NoError(t, err)
+	assert.Contains(t, got.CUE, "scaler: {", "the definition as vela def get writes it")
+	assert.Contains(t, got.CUE, `type: "trait"`)
+	assert.Contains(t, got.CUE, `description: "Scale the workload"`)
+	assert.Contains(t, got.CUE, "replicas: *1 | int", "with its template")
+
+	_, err = svc.DefinitionCUE(ctx, "missing", "trait")
+	assert.Equal(t, bcode.ErrDefinitionNotFound, err)
+}

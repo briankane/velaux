@@ -44,6 +44,11 @@ class DefinitionDetailsLayout extends Component<Props> {
             },
           ]),
       {
+        id: 'file',
+        name: <Translation>File</Translation>,
+        to: `/definitions/${definitionType}/${definitionName}/file`,
+      },
+      {
         id: 'uiSchema',
         name: <Translation>UI Schema</Translation>,
         to: `/definitions/${definitionType}/${definitionName}/ui-schema`,

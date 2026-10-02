@@ -27,6 +27,7 @@ import (
 
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	"github.com/oam-dev/kubevela/apis/types"
+	pkgdef "github.com/oam-dev/kubevela/pkg/definition"
 	"github.com/oam-dev/kubevela/pkg/workflow/providers"
 	"github.com/oam-dev/kubevela/references/docgen"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -76,6 +77,29 @@ func withoutFrontMatter(doc string) string {
 		return strings.TrimLeft(doc[4+end+5:], "\n")
 	}
 	return doc
+}
+
+// DefinitionCUE is a definition as CUE, as vela def get writes it: the file
+// it is authored as, with its metadata and template.
+func (d *definitionServiceImpl) DefinitionCUE(ctx context.Context, name, defType string) (*apisv1.DefinitionCUEResponse, error) {
+	apiVersion, kind, err := getKindAndVersion(defType)
+	if err != nil {
+		return nil, err
+	}
+	def := pkgdef.Definition{}
+	def.SetAPIVersion(apiVersion)
+	def.SetKind(kind)
+	if err := d.KubeClient.Get(ctx, client.ObjectKey{Namespace: types.DefaultKubeVelaNS, Name: name}, &def.Unstructured); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, bcode.ErrDefinitionNotFound
+		}
+		return nil, err
+	}
+	text, err := def.ToCUEString()
+	if err != nil {
+		return nil, bcode.ErrDefinitionDocUnavailable.SetMessage(err.Error())
+	}
+	return &apisv1.DefinitionCUEResponse{CUE: text}, nil
 }
 
 // capabilityOf reads a definition as docgen's capability, with its
