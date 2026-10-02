@@ -91,6 +91,12 @@ export function getDefinitionUsage(params: { name: string; type: 'component' | '
   return get(_url, { params: { type: params.type } }).then((res) => res);
 }
 
+// getDefinitionCUE is a definition as CUE, as vela def get writes it.
+export function getDefinitionCUE(params: { name: string; type: string }) {
+  const _url = `${base + definition}/${params.name}/cue`;
+  return get(_url, { params: { type: params.type } }).then((res) => res);
+}
+
 // getDefinitionDoc is a definition's reference documentation in Markdown, as
 // vela show generates it, in the UI's language.
 export function getDefinitionDoc(params: { name: string; type: string; lang: string }) {

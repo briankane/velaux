@@ -3,6 +3,7 @@ import React from 'react';
 
 import Addons from '../../pages/Addons/index';
 import DefinitionDoc from '../../pages/DefinitionDoc';
+import DefinitionFile from '../../pages/DefinitionFile';
 import DefKitModuleDetail from '../../pages/DefKitModuleDetail';
 import DefKitModules from '../../pages/DefKitModules';
 import PackageDetail from '../../pages/PackageDetail';
@@ -422,6 +423,18 @@ export default function Router() {
             <DefinitionsLayout {...props}>
               <Definitions {...props} />
             </DefinitionsLayout>
+          );
+        }}
+      />
+      <Route
+        exact
+        path="/definitions/:definitionType/:definitionName/file"
+        render={(props: any) => {
+          const mergeProps = { ...props, ...{ activeId: 'file' } };
+          return (
+            <DefinitionDetails {...mergeProps}>
+              <DefinitionFile {...props} />
+            </DefinitionDetails>
           );
         }}
       />
