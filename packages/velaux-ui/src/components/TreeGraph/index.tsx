@@ -19,7 +19,7 @@ import type { GraphNode, TreeNode, GraphEdge, Line } from './interface';
 import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 import { clusterTooltip, resourceTooltip, sourceTooltip, targetTooltip } from './tooltip';
 import { treeNodeKey, getNodeSize, ResourceIcon } from './utils';
-import { getGraphSize } from './layout';
+import { getGraphSize, shiftIntoView } from './layout';
 
 import { Link } from 'dva/router';
 import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
@@ -299,11 +299,7 @@ function renderFlowNode(id: string, node: GraphNode) {
           { key: 'From', value: flow.from.name },
           { key: 'To', value: flow.to.name },
         ]}
-        message={
-          orderOnly
-            ? i18n.t('Waits for it to be healthy; no data passes').toString()
-            : undefined
-        }
+        message={orderOnly ? i18n.t('Waits for it to be healthy; no data passes').toString() : undefined}
         sections={
           lines.length === 0
             ? []
@@ -377,6 +373,11 @@ export const TreeGraph = (props: TreeGraphProps) => {
   setNode(graph, props.node);
   setLinks(graph, props.node);
   dagre.layout(graph);
+  shiftIntoView(
+    graph.nodes().map((id) => graph.node(id)),
+    graph.edges().map((e) => graph.edge(e).points || []),
+    20
+  );
 
   const edges: Array<{ from: string; to: string; lines: Line[]; link?: boolean }> = [];
   graph.edges().forEach((edgeInfo) => {
