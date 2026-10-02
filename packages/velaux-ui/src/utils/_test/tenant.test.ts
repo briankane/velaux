@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { allTenants, inTenant, resolveTenant } from '../tenant';
+import { allTenants, inTenant, resolveTenant, tenantChanged } from '../tenant';
 
 describe('resolveTenant', () => {
   it('keeps a tenant the user may open', () => {
@@ -21,5 +21,14 @@ describe('inTenant', () => {
     expect(inTenant('shop', 'shop')).to.equal(true);
     expect(inTenant('shop', 'default')).to.equal(false);
     expect(inTenant(allTenants, 'default')).to.equal(true);
+  });
+});
+
+describe('tenantChanged', () => {
+  it('loads again when the tenant becomes known or another is picked', () => {
+    expect(tenantChanged({ current: '', resolved: false }, { current: '', resolved: true })).to.equal(true);
+    expect(tenantChanged({ current: 'shop', resolved: true }, { current: 'default', resolved: true })).to.equal(true);
+    expect(tenantChanged({ current: 'shop', resolved: true }, { current: 'shop', resolved: true })).to.equal(false);
+    expect(tenantChanged({ current: '', resolved: false }, { current: '', resolved: false })).to.equal(false);
   });
 });

@@ -1,4 +1,5 @@
 import { Pagination, Button } from '@alifd/next';
+import { tenantChanged } from '../../utils/tenant';
 import { connect } from 'dva';
 import React from 'react';
 
@@ -53,7 +54,7 @@ class EnvList extends React.Component<Props, State> {
   }
 
   componentDidUpdate(prev: Props) {
-    if (prev.tenant?.current !== this.props.tenant?.current) {
+    if (tenantChanged(prev.tenant, this.props.tenant)) {
       this.getEnvList();
     }
   }

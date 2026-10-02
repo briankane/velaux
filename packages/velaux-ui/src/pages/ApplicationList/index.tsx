@@ -6,7 +6,7 @@ import { byHealth, healthCounts } from './components/AppStatus/health';
 import { HealthChips } from './components/HealthChips';
 import { visibleLabels } from '../../utils/appMeta';
 
-import { inTenant } from '../../utils/tenant';
+import { inTenant, tenantChanged } from '../../utils/tenant';
 import { deleteApplication } from '../../api/application';
 import { If } from '../../components/If';
 import { ListTitle } from '../../components/ListTitle';
@@ -74,7 +74,7 @@ class Application extends Component<Props, State> {
   }
 
   componentDidUpdate(prev: Props) {
-    if (prev.tenant?.current !== this.props.tenant?.current) {
+    if (tenantChanged(prev.tenant, this.props.tenant)) {
       this.getApplications({});
     }
   }

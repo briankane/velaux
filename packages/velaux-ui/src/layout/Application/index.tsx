@@ -1,5 +1,5 @@
 import { Loading } from '@alifd/next';
-import { allTenants } from '../../utils/tenant';
+import { allTenants, askedTenant } from '../../utils/tenant';
 import { connect } from 'dva';
 import React, { Component } from 'react';
 import { AppTabs, OrbitBar } from './components/AppTabs';
@@ -47,7 +47,9 @@ class ApplicationLayout extends Component<Props, any> {
   followTenant = () => {
     const { tenant, applicationDetail, dispatch } = this.props;
     const project = applicationDetail?.project?.name;
-    if (tenant?.resolved && tenant.current !== allTenants && project && project !== tenant.current) {
+    // Before the picker has settled, the tenant is the one it is about to pick.
+    const current = tenant?.resolved ? tenant.current : askedTenant();
+    if (project && current !== allTenants && project !== current) {
       dispatch({ type: 'tenant/setTenant', payload: project });
     }
   };

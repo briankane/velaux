@@ -30,3 +30,26 @@ export function resolveTenant(asked: string | null | undefined, projects: string
 export function inTenant(tenant: string, project?: string): boolean {
   return tenant === allTenants || project === tenant;
 }
+
+// tenantChanged is whether a view scoped to the tenant must load again: the
+// tenant became known, or another was picked.
+export function tenantChanged(
+  prev?: { current: string; resolved: boolean },
+  next?: { current: string; resolved: boolean }
+): boolean {
+  return !!next?.resolved && (!prev?.resolved || prev.current !== next.current);
+}
+
+// askedTenant is the tenant a link names (?tenant=), else the one last picked
+// in this browser, else null.
+export function askedTenant(): string | null {
+  const fromURL = new URLSearchParams(window.location.search).get('tenant');
+  if (fromURL !== null) {
+    return fromURL;
+  }
+  try {
+    return localStorage.getItem(tenantKey);
+  } catch (e) {
+    return null;
+  }
+}

@@ -6,7 +6,7 @@ import { AiOutlineAppstore } from 'react-icons/ai';
 import type { LoginUserInfo } from '@velaux/data';
 import i18n from '../../i18n';
 import { locale } from '../../utils/locale';
-import { allTenants, resolveTenant, seesAllTenants, tenantKey } from '../../utils/tenant';
+import { allTenants, askedTenant, resolveTenant, seesAllTenants } from '../../utils/tenant';
 import './index.less';
 
 type Props = {
@@ -15,19 +15,6 @@ type Props = {
   resolved: boolean;
   dispatch: (action: any) => void;
 };
-
-// asked is the tenant a link names (?tenant=), else the one last picked here.
-function asked(): string | null {
-  const fromURL = new URLSearchParams(window.location.search).get('tenant');
-  if (fromURL !== null) {
-    return fromURL;
-  }
-  try {
-    return localStorage.getItem(tenantKey);
-  } catch (e) {
-    return null;
-  }
-}
 
 // TenantPicker sets the tenant every view is scoped to, from those the user may open.
 const TenantPickerView = (props: Props) => {
@@ -39,7 +26,7 @@ const TenantPickerView = (props: Props) => {
     if (!userInfo?.name) {
       return;
     }
-    const want = resolved ? current : asked();
+    const want = resolved ? current : askedTenant();
     const tenant = resolveTenant(
       want,
       projects.map((p) => p.name),

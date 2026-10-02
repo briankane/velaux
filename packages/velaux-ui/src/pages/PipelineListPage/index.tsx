@@ -1,5 +1,6 @@
 import { ListTitle as Title } from '../../components/ListTitle';
 
+import { tenantChanged } from '../../utils/tenant';
 import { Loading, Button, Table, Dialog, Message, Balloon } from '@alifd/next';
 import { connect } from 'dva';
 import { Link, routerRedux } from 'dva/router';
@@ -74,7 +75,7 @@ class PipelineListPage extends Component<Props, State> {
   }
 
   componentDidUpdate(prev: Props) {
-    if (prev.tenant?.current !== this.props.tenant?.current) {
+    if (tenantChanged(prev.tenant, this.props.tenant)) {
       this.getPipelines({});
     }
   }
