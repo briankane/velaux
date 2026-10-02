@@ -227,6 +227,7 @@ class UISchema extends Component<Props, State> {
           onChange(values);
         }
         this.reportValidity();
+        this.refreshExpressionErrors();
       },
     });
     this.registerForm = {};
@@ -243,6 +244,7 @@ class UISchema extends Component<Props, State> {
   componentDidMount = () => {
     this.setValues();
     this.reportValidity();
+    this.refreshExpressionErrors();
   };
 
   // A new schema, a new type or version, is judged afresh.
@@ -252,6 +254,7 @@ class UISchema extends Component<Props, State> {
       this.childInvalid = {};
       this.lastValid = undefined;
       this.reportValidity();
+      this.refreshExpressionErrors();
     }
   }
 
@@ -298,25 +301,61 @@ class UISchema extends Component<Props, State> {
     }
   };
 
-  // checkExpressionRule fails a param holding an expression the server finds an
-  // error in, such as one evaluating to a string where an integer is expected.
-  checkExpressionRule = (param: UIParam, value: any, callback: (error?: string) => void) => {
+  // checkOne is the error the server finds in a param's expression, if any,
+  // such as one evaluating to a string where an integer is expected.
+  checkOne = (param: UIParam, value: any): Promise<string | undefined> => {
     const ex = this.props.expressions;
     if (!ex || !hasExpression(value)) {
-      callback();
-      return;
+      return Promise.resolve(undefined);
     }
     const kind = expressionKind(param);
     const check = ex.draft
       ? checkDraftExpression({ surface: ex.surface, value, kind })
       : checkExpression(ex.appName, { surface: ex.surface, value, kind, source: ex.source, component: ex.component });
-    check
-      .then((res: any) => {
-        const issue = blockingIssue(res?.issues);
-        callback(issue ? issue.message : undefined);
-      })
-      .catch(() => callback());
+    return check.then((res: any) => blockingIssue(res?.issues)?.message).catch(() => undefined);
   };
+
+  checkExpressionRule = (param: UIParam, value: any, callback: (error?: string) => void) => {
+    this.checkOne(param, value).then((error) => callback(error));
+  };
+
+  // checkExpressions checks every param holding an expression, shown or not: a
+  // param folded under Advanced is not in the form, but its value is saved.
+  checkExpressions = async (): Promise<Record<string, string>> => {
+    const values: Record<string, any> = { ...(this.props.value || {}), ...(this.form.getValues() || {}) };
+    const params = (this.props.uiSchema || []).filter((p) => hasExpression(values[p.jsonKey]));
+    const errors = await Promise.all(params.map((p) => this.checkOne(p, values[p.jsonKey])));
+    const out: Record<string, string> = {};
+    params.forEach((p, i) => {
+      if (errors[i]) {
+        out[p.jsonKey] = errors[i] as string;
+      }
+    });
+    return out;
+  };
+
+  checkTimer?: ReturnType<typeof setTimeout>;
+
+  // refreshExpressionErrors re-checks the expressions shortly after the form
+  // settles, for the validity the dialog's buttons follow.
+  refreshExpressionErrors = () => {
+    if (this.checkTimer) {
+      clearTimeout(this.checkTimer);
+    }
+    this.checkTimer = setTimeout(() => {
+      this.checkExpressions().then((errors) => {
+        this.exprErrors = {};
+        Object.keys(errors).forEach((key) => (this.exprErrors[key] = true));
+        this.reportValidity();
+      });
+    }, 400);
+  };
+
+  componentWillUnmount() {
+    if (this.checkTimer) {
+      clearTimeout(this.checkTimer);
+    }
+  }
 
   validate = (callback: (error?: string) => void) => {
     this.form.validate((errors) => {
@@ -330,7 +369,18 @@ class UISchema extends Component<Props, State> {
         callback('ui schema validate failure');
         return;
       }
-      callback();
+      this.checkExpressions().then((errors) => {
+        const keys = Object.keys(errors);
+        if (keys.length === 0) {
+          callback();
+          return;
+        }
+        // Show the params folded under Advanced, where an error may hide.
+        if (!this.state.advanced) {
+          this.setState({ advanced: true });
+        }
+        callback(errors[keys[0]]);
+      });
     });
   };
 
