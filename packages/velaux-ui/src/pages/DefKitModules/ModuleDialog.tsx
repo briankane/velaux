@@ -76,7 +76,7 @@ export const ModuleDialog = (props: { module?: DefKitModule; onClose: () => void
             <Translation>Cancel</Translation>
           </Button>
           <Button type="primary" loading={saving} onClick={submit}>
-            <Translation>Render and review</Translation>
+            <Translation>{field.getValue('autoUpdate') ? 'Render and apply' : 'Render and review'}</Translation>
           </Button>
         </div>
       }

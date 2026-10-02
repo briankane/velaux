@@ -898,5 +898,6 @@
   "Module": "模块",
   "Policy saved; the module renders and applies again": "策略已保存，模块将重新渲染并应用",
   "Policy saved; the module renders again for review": "策略已保存，模块将重新渲染以供审阅",
-  "Auto update every": "自动更新间隔"
+  "Auto update every": "自动更新间隔",
+  "Render and apply": "渲染并应用"
 }
