@@ -64,6 +64,33 @@ export interface DefKitDefinition {
 
 export interface DefKitModuleDetail extends DefKitModule {
   definitions: DefKitDefinition[];
+  application?: DefKitApplication;
+}
+
+// DefKitApplication is the Application a module is: its workflow as far as it
+// has run, and every resource it tracks.
+export interface DefKitApplication {
+  name: string;
+  namespace: string;
+  phase?: string;
+  steps: DefKitStep[];
+  resources: DefKitResource[];
+}
+
+export interface DefKitStep {
+  name: string;
+  type?: string;
+  phase?: string;
+  message?: string;
+  startTime?: string;
+  endTime?: string;
+}
+
+export interface DefKitResource {
+  apiVersion: string;
+  kind: string;
+  name: string;
+  namespace?: string;
 }
 
 export type DefKitItemStatus = 'new' | 'changed' | 'unchanged' | 'conflict' | 'removed';
@@ -81,4 +108,13 @@ export interface DefKitPreview {
   info?: DefKitModuleInfo;
   errors?: string[];
   items: DefKitPreviewItem[];
+}
+
+// DefKitRepository is a module source the defkit addon offers when adding one.
+export interface DefKitRepository {
+  name: string;
+  git?: string;
+  ref?: string;
+  version?: string;
+  description?: string;
 }

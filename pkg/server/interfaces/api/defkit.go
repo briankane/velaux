@@ -54,6 +54,13 @@ func (d *defkit) GetWebServiceRoute() *restful.WebService {
 		Returns(200, "OK", apis.ListDefKitModulesResponse{}).
 		Writes(apis.ListDefKitModulesResponse{}))
 
+	ws.Route(ws.GET("/repositories").To(d.repositories).
+		Doc("the module sources the defkit addon offers when adding one").
+		Filter(d.RbacService.CheckPerm("definition", "list")).
+		Metadata(restfulspec.KeyOpenAPITags, tags).
+		Returns(200, "OK", apis.ListDefKitRepositoriesResponse{}).
+		Writes(apis.ListDefKitRepositoriesResponse{}))
+
 	ws.Route(ws.POST("/").To(d.create).
 		Doc("install a DefKit module; its render waits for review").
 		Filter(d.RbacService.CheckPerm("definition", "create")).
@@ -116,6 +123,11 @@ func (d *defkit) GetWebServiceRoute() *restful.WebService {
 
 func (d *defkit) list(req *restful.Request, res *restful.Response) {
 	resp, err := d.DefKitService.ListModules(req.Request.Context())
+	write(req, res, resp, err)
+}
+
+func (d *defkit) repositories(req *restful.Request, res *restful.Response) {
+	resp, err := d.DefKitService.ListRepositories(req.Request.Context())
 	write(req, res, resp, err)
 }
 

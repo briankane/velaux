@@ -916,5 +916,8 @@
   "Values": "取值",
   "From": "来自",
   "To": "到",
-  "Waits for it to be healthy; no data passes": "等待其健康，不传递数据"
+  "Waits for it to be healthy; no data passes": "等待其健康，不传递数据",
+  "The workflow has not started": "工作流尚未开始",
+  "Nothing tracked yet": "尚未跟踪任何资源",
+  "Pick a built-in repository, or type any git repository URL or Go module path": "选择内置仓库，或输入任意 Git 仓库地址或 Go 模块路径"
 }

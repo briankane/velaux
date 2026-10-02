@@ -92,10 +92,40 @@ type DefKitDefinition struct {
 	Policy string `json:"policy,omitempty"`
 }
 
-// DefKitModuleDetail is a module and the definitions it has installed.
+// DefKitModuleDetail is a module, the definitions it has installed, and the
+// Application that installs them.
 type DefKitModuleDetail struct {
 	DefKitModule
 	Definitions []*DefKitDefinition `json:"definitions"`
+	Application *DefKitApplication  `json:"application"`
+}
+
+// DefKitApplication is the Application a module is: its workflow as far as it
+// has run, and every resource it tracks.
+type DefKitApplication struct {
+	Name      string            `json:"name"`
+	Namespace string            `json:"namespace"`
+	Phase     string            `json:"phase,omitempty"`
+	Steps     []*DefKitStep     `json:"steps"`
+	Resources []*DefKitResource `json:"resources"`
+}
+
+// DefKitStep is one step of a module's workflow.
+type DefKitStep struct {
+	Name      string     `json:"name"`
+	Type      string     `json:"type,omitempty"`
+	Phase     string     `json:"phase,omitempty"`
+	Message   string     `json:"message,omitempty"`
+	StartTime *time.Time `json:"startTime,omitempty"`
+	EndTime   *time.Time `json:"endTime,omitempty"`
+}
+
+// DefKitResource is a resource a module's Application tracks.
+type DefKitResource struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	Name       string `json:"name"`
+	Namespace  string `json:"namespace,omitempty"`
 }
 
 // DefKitPreviewItem is one definition a render would change, or leave.
@@ -138,4 +168,19 @@ type ApplyDefKitPreviewRequest struct {
 	TakeOver []string `json:"takeOver,omitempty"`
 	// Delete are the removed definitions to delete, as Kind/name; the rest are kept.
 	Delete []string `json:"delete,omitempty"`
+}
+
+// DefKitRepository is a module source offered when adding one, from the
+// defkit addon's settings.
+type DefKitRepository struct {
+	Name        string `json:"name"`
+	Git         string `json:"git,omitempty"`
+	Ref         string `json:"ref,omitempty"`
+	Version     string `json:"version,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// ListDefKitRepositoriesResponse lists the repositories offered.
+type ListDefKitRepositoriesResponse struct {
+	Repositories []*DefKitRepository `json:"repositories"`
 }

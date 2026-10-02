@@ -65,7 +65,9 @@ const (
 	defkitRenderedAt     = "defkit.oam.dev/rendered-at"
 
 	defkitSettingsAnnotation = "defkit.oam.dev/settings"
-	defkitDefaultInterval    = "10m"
+	// defkitSettingsConfigMap is the defkit addon's settings, in its render namespace.
+	defkitSettingsConfigMap = "defkit-settings"
+	defkitDefaultInterval   = "10m"
 	// defkitMinInterval bounds how often a module re-renders: each run is a Job
 	// that downloads and builds the module.
 	defkitMinInterval = 5 * time.Minute
@@ -108,6 +110,7 @@ type DefKitService interface {
 	PreviewModule(ctx context.Context, name string) (*apisv1.DefKitPreview, error)
 	ApplyPreview(ctx context.Context, name string, req apisv1.ApplyDefKitPreviewRequest) error
 	DeleteModule(ctx context.Context, name string) error
+	ListRepositories(ctx context.Context) (*apisv1.ListDefKitRepositoriesResponse, error)
 }
 
 type defkitServiceImpl struct {
@@ -148,7 +151,7 @@ func (s *defkitServiceImpl) DetailModule(ctx context.Context, name string) (*api
 		return nil, err
 	}
 	m, installed := s.module(ctx, app)
-	detail := &apisv1.DefKitModuleDetail{DefKitModule: *m, Definitions: []*apisv1.DefKitDefinition{}}
+	detail := &apisv1.DefKitModuleDetail{DefKitModule: *m, Definitions: []*apisv1.DefKitDefinition{}, Application: s.moduleApplication(ctx, app)}
 	for _, ref := range installed {
 		def := &apisv1.DefKitDefinition{Kind: ref.Kind, Name: ref.Name, Policy: effectivePolicy(m.Settings, ref.Kind, ref.Name)}
 		obj := &unstructured.Unstructured{}
@@ -294,6 +297,25 @@ func (s *defkitServiceImpl) adopt(ctx context.Context, app *v1beta1.Application,
 	return s.KubeClient.Update(ctx, obj)
 }
 
+// ListRepositories are the module sources the defkit addon offers; none
+// without its settings. A module can come from anywhere regardless.
+func (s *defkitServiceImpl) ListRepositories(ctx context.Context) (*apisv1.ListDefKitRepositoriesResponse, error) {
+	resp := &apisv1.ListDefKitRepositoriesResponse{Repositories: []*apisv1.DefKitRepository{}}
+	cm := &corev1.ConfigMap{}
+	if err := s.KubeClient.Get(ctx, client.ObjectKey{Namespace: defkitRenderNamespace, Name: defkitSettingsConfigMap}, cm); err != nil {
+		if apierrors.IsNotFound(err) {
+			return resp, nil
+		}
+		return nil, err
+	}
+	if raw := cm.Data["repositories"]; raw != "" {
+		if err := json.Unmarshal([]byte(raw), &resp.Repositories); err != nil {
+			return nil, fmt.Errorf("read the defkit addon's repositories: %w", err)
+		}
+	}
+	return resp, nil
+}
+
 func (s *defkitServiceImpl) application(ctx context.Context, name string) (*v1beta1.Application, error) {
 	app := &v1beta1.Application{}
 	if err := s.KubeClient.Get(ctx, client.ObjectKey{Namespace: types.DefaultKubeVelaNS, Name: defkitAppPrefix + name}, app); err != nil {
@@ -335,6 +357,12 @@ func (s *defkitServiceImpl) module(ctx context.Context, app *v1beta1.Application
 
 // installed is what the module's ResourceTracker holds of definition kinds.
 func (s *defkitServiceImpl) installed(ctx context.Context, app *v1beta1.Application) []common.ClusterObjectReference {
+	return s.tracked(ctx, app, func(kind string) bool { return definitionKinds[kind] })
+}
+
+// tracked is what the module's ResourceTrackers hold, not deleted, of the kinds
+// keep accepts, each once, sorted by kind and name.
+func (s *defkitServiceImpl) tracked(ctx context.Context, app *v1beta1.Application, keep func(kind string) bool) []common.ClusterObjectReference {
 	root, current, history, _, err := appkeeper.ListApplicationResourceTrackers(ctx, s.KubeClient, app)
 	if err != nil {
 		return nil
@@ -346,8 +374,8 @@ func (s *defkitServiceImpl) installed(ctx context.Context, app *v1beta1.Applicat
 			continue
 		}
 		for _, mr := range rt.Spec.ManagedResources {
-			id := mr.Kind + "/" + mr.Name
-			if mr.Deleted || !definitionKinds[mr.Kind] || seen[id] {
+			id := mr.Kind + "/" + mr.Namespace + "/" + mr.Name
+			if mr.Deleted || !keep(mr.Kind) || seen[id] {
 				continue
 			}
 			seen[id] = true
@@ -360,6 +388,35 @@ func (s *defkitServiceImpl) installed(ctx context.Context, app *v1beta1.Applicat
 		}
 		return out[i].Name < out[j].Name
 	})
+	return out
+}
+
+// moduleApplication is the Application a module is: its workflow's steps as
+// far as they have run, and everything it tracks.
+func (s *defkitServiceImpl) moduleApplication(ctx context.Context, app *v1beta1.Application) *apisv1.DefKitApplication {
+	out := &apisv1.DefKitApplication{
+		Name: app.Name, Namespace: app.Namespace, Phase: string(app.Status.Phase),
+		Steps: []*apisv1.DefKitStep{}, Resources: []*apisv1.DefKitResource{},
+	}
+	if app.Status.Workflow != nil {
+		for _, st := range app.Status.Workflow.Steps {
+			step := &apisv1.DefKitStep{Name: st.Name, Type: st.Type, Phase: string(st.Phase), Message: st.Message}
+			if !st.FirstExecuteTime.IsZero() {
+				t := st.FirstExecuteTime.Time
+				step.StartTime = &t
+			}
+			if !st.LastExecuteTime.IsZero() {
+				t := st.LastExecuteTime.Time
+				step.EndTime = &t
+			}
+			out.Steps = append(out.Steps, step)
+		}
+	}
+	for _, ref := range s.tracked(ctx, app, func(string) bool { return true }) {
+		out.Resources = append(out.Resources, &apisv1.DefKitResource{
+			APIVersion: ref.APIVersion, Kind: ref.Kind, Name: ref.Name, Namespace: ref.Namespace,
+		})
+	}
 	return out
 }
 
