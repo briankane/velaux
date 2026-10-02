@@ -65,7 +65,7 @@ export const NewServiceDialog = (props: Props) => {
       createApplication(newServiceRequest(values as NewServiceValues))
         .then((res: any) => {
           if (res) {
-            Message.success(i18n.t('Service created').toString());
+            Message.success(i18n.t('Application created').toString());
             props.onCreated(values.name);
           }
         })
@@ -78,7 +78,7 @@ export const NewServiceDialog = (props: Props) => {
       v2
       visible
       width={760}
-      title={<Translation>New Service</Translation>}
+      title={<Translation>New Application</Translation>}
       onClose={props.onClose}
       footer={
         <div className="new-service-footer">
@@ -97,7 +97,7 @@ export const NewServiceDialog = (props: Props) => {
             <Input
               {...init('name', {
                 rules: [
-                  { required: true, message: i18n.t('Give the service a name').toString() },
+                  { required: true, message: i18n.t('Give the application a name').toString() },
                   { pattern: checkName, message: i18n.t('Lower case letters, digits and hyphens').toString() },
                 ],
               })}
