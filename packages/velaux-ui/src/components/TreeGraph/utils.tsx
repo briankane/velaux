@@ -36,7 +36,7 @@ import user from '../../assets/resources/user.svg';
 import vol from '../../assets/resources/vol.svg';
 
 import { componentNodeHeight, componentNodeWidth, layoutTraits, maxTraitRows, traitArea } from './traits';
-import type { GraphNode, TreeNode, Node } from './interface';
+import type { GraphNode, TreeNode } from './interface';
 import { maxFlowLines } from '../../pages/ApplicationStatus/components/ApplicationGraph/flows';
 
 // componentSections lists what a component depends on and what depends on it,
@@ -106,16 +106,6 @@ export function nodeKey(node: TreeNode) {
     node.resource.namespace,
     node.resource.name,
   ].join('/');
-}
-
-export function getGraphSize(nodes: Node[]): { width: number; height: number } {
-  let width = 0;
-  let height = 0;
-  nodes.forEach((node) => {
-    width = Math.max(node.x || 0 + node.width, width);
-    height = Math.max(node.y || 0 + node.height, height);
-  });
-  return { width, height };
 }
 
 export function getNodeSize(node: TreeNode): { width: number; height: number } {

@@ -18,7 +18,8 @@ import { ComponentNode } from './component-node';
 import type { GraphNode, TreeNode, GraphEdge, Line } from './interface';
 import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 import { clusterTooltip, resourceTooltip, sourceTooltip, targetTooltip } from './tooltip';
-import { treeNodeKey, getGraphSize, getNodeSize, ResourceIcon } from './utils';
+import { treeNodeKey, getNodeSize, ResourceIcon } from './utils';
+import { getGraphSize } from './layout';
 
 import { Link } from 'dva/router';
 import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
