@@ -380,7 +380,7 @@ const DefKitModuleDetail = (props: {
   return (
     <div className="package-detail defkit-detail">
       <Link className="package-back" to="/defkit">
-        <AiOutlineArrowLeft /> <Translation>DefKit Modules</Translation>
+        <AiOutlineArrowLeft /> <Translation>DefKit</Translation>
       </Link>
       <div className="package-head">
         <BsBoxes className="package-head-icon" />

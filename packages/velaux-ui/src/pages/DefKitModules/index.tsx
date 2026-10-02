@@ -57,7 +57,7 @@ const DefKitModules = (props: { dispatch: (action: any) => void }) => {
   return (
     <div className="packages defkit">
       <ListTitle
-        title="DefKit Modules"
+        title="DefKit"
         subTitle="Definition modules written in Go with DefKit, rendered and reviewed before they install"
         extButtons={[
           <Permission key="add" request={{ resource: 'definition:*', action: 'create' }} project={''}>
