@@ -51,9 +51,11 @@ const ItemRow = (props: { item: DefKitPreviewItem; checked?: boolean; onCheck?: 
             </button>
           )}
         </span>
-        <span>
-          <span className="row-list-title">{item.name}</span>
-          <span className="row-list-type">{i18n.t(kindLabels[item.kind] || item.kind)}</span>
+        <span className="row-list-name">
+          <span>
+            <span className="row-list-title">{item.name}</span>
+            <span className="row-list-type">{i18n.t(kindLabels[item.kind] || item.kind)}</span>
+          </span>
         </span>
         <span className="defkit-description">{item.description}</span>
         <span>

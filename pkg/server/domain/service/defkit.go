@@ -566,8 +566,9 @@ func typedSpec(u *unstructured.Unstructured) interface{} {
 	return back["spec"]
 }
 
-// stampedPrefixes are the label and annotation keys KubeVela and kubectl write.
-var stampedPrefixes = []string{"app.oam.dev/", "owner.oam.dev/", "oam.dev/", "kubectl.kubernetes.io/"}
+// stampedPrefixes are the label and annotation keys KubeVela, kubectl and Helm
+// write on what they apply.
+var stampedPrefixes = []string{"app.oam.dev/", "owner.oam.dev/", "oam.dev/", "kubectl.kubernetes.io/", "meta.helm.sh/", "app.kubernetes.io/managed-by"}
 
 func authoredMeta(m map[string]string) map[string]interface{} {
 	out := map[string]interface{}{}

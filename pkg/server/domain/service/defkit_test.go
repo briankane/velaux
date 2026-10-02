@@ -151,7 +151,7 @@ func reviewFixture(t *testing.T) (*defkitServiceImpl, client.Client) {
 	cli := fake.NewClientBuilder().WithScheme(common2.Scheme).WithObjects(app, render, stale, rt,
 		installedDefinition("TraitDefinition", "edited", "before", owned),
 		installedDefinition("TraitDefinition", "same", "same", owned),
-		installedDefinition("TraitDefinition", "taken", "theirs", nil),
+		installedDefinition("TraitDefinition", "taken", "theirs", map[string]string{"app.kubernetes.io/managed-by": "Helm"}),
 		installedDefinition("TraitDefinition", "gone", "old", owned),
 	).WithStatusSubresource(app).Build()
 	return &defkitServiceImpl{KubeClient: cli}, cli
@@ -177,6 +177,10 @@ func TestDefKitPreview(t *testing.T) {
 			assert.Contains(t, item.Current, "before")
 			assert.Contains(t, item.Next, "after")
 			assert.NotContains(t, item.Current, oam.LabelAppName, "what KubeVela stamps is not part of the diff")
+		}
+		if item.Name == "taken" {
+			assert.NotContains(t, item.Current, "meta.helm.sh", "nor what Helm stamps")
+			assert.NotContains(t, item.Current, "managed-by")
 		}
 	}
 }
