@@ -21,11 +21,7 @@ export function detailDefinition(params: { name: string; type: string }) {
   return get(url, { params: { type: params.type } }).then((res) => res);
 }
 
-export function updateDefinitionStatus(params: {
-  name: string;
-  hiddenInUI: boolean;
-  type: string;
-}) {
+export function updateDefinitionStatus(params: { name: string; hiddenInUI: boolean; type: string }) {
   const url = base + `${definition}/${params.name}/status`;
   const paramsData = {
     hiddenInUI: params.hiddenInUI,
@@ -34,11 +30,7 @@ export function updateDefinitionStatus(params: {
   return put(url, paramsData).then((res) => res);
 }
 
-export function updateUISchema(params: {
-  name: string;
-  definitionType: string;
-  uiSchema: UIParam[] | undefined;
-}) {
+export function updateUISchema(params: { name: string; definitionType: string; uiSchema: UIParam[] | undefined }) {
   const url = base + `${definition}/${params.name}/uischema`;
   const paramsData = {
     type: params.definitionType,
@@ -54,9 +46,9 @@ export function getComponentDefinitions(namespaces?: string[]) {
   return get(_url, { params: { type: 'component', namespaces: namespaces?.join(',') } }).then((res) => res);
 }
 
-export function detailComponentDefinition(params: { name: string }) {
+export function detailComponentDefinition(params: { name: string; revision?: string }) {
   const _url = `${base + definition}/${params.name}`;
-  return get(_url, { params: { type: 'component' } }).then((res) => res);
+  return get(_url, { params: { type: 'component', revision: params.revision } }).then((res) => res);
 }
 
 export function getPolicyDefinitions(namespaces?: string[]) {
@@ -64,9 +56,9 @@ export function getPolicyDefinitions(namespaces?: string[]) {
   return get(_url, { params: { type: 'policy', namespaces: namespaces?.join(',') } }).then((res) => res);
 }
 
-export function detailPolicyDefinition(params: { name: string }) {
+export function detailPolicyDefinition(params: { name: string; revision?: string }) {
   const _url = `${base + definition}/${params.name}`;
-  return get(_url, { params: { type: 'policy' } }).then((res) => res);
+  return get(_url, { params: { type: 'policy', revision: params.revision } }).then((res) => res);
 }
 
 export function getSourceDefinitions(namespaces?: string[]) {
@@ -74,9 +66,9 @@ export function getSourceDefinitions(namespaces?: string[]) {
   return get(_url, { params: { type: 'source', namespaces: namespaces?.join(',') } }).then((res) => res);
 }
 
-export function detailSourceDefinition(params: { name: string }) {
+export function detailSourceDefinition(params: { name: string; revision?: string }) {
   const _url = `${base + definition}/${params.name}`;
-  return get(_url, { params: { type: 'source' } }).then((res) => res);
+  return get(_url, { params: { type: 'source', revision: params.revision } }).then((res) => res);
 }
 
 export function getTraitDefinitions(params: { appliedWorkload: string; namespaces?: string[] }) {
@@ -104,7 +96,13 @@ export function getDefinitionDoc(params: { name: string; type: string; lang: str
   return get(_url, { params: { type: params.type, lang: params.lang } }).then((res) => res);
 }
 
-export function detailTraitDefinition(params: { name: string }) {
+export function detailTraitDefinition(params: { name: string; revision?: string }) {
   const _url = `${base + definition}/${params.name}`;
-  return get(_url, { params: { type: 'trait' } }).then((res) => res);
+  return get(_url, { params: { type: 'trait', revision: params.revision } }).then((res) => res);
+}
+
+// listDefinitionRevisions lists a definition's revisions, newest first.
+export function listDefinitionRevisions(params: { name: string; type: string }) {
+  const _url = `${base + definition}/${params.name}/revisions`;
+  return get(_url, { params: { type: params.type } }).then((res) => res);
 }
