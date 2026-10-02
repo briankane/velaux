@@ -124,7 +124,7 @@ const defaultWorkspaceMenus: Menu[] = [
     type: MenuTypes.Workspace,
     to: '/defkit',
     icon: <BsBoxes />,
-    label: 'DefKit Modules',
+    label: 'DefKit',
     name: 'defkit-list',
     // A module installs definitions, so it is listed to whoever may list them.
     permission: { resource: 'definition:*', action: 'list' },
