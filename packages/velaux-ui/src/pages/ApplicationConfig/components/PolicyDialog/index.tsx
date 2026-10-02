@@ -11,7 +11,7 @@ import {
 
 import { createPolicy, updatePolicy } from '../../../../api/application';
 import { detailPolicyDefinition, getPolicyDefinitions } from '../../../../api/definitions';
-import DrawerWithFooter from '../../../../components/Drawer';
+import ModalWithFooter from '../../../../components/ModalWithFooter';
 import { If } from '../../../../components/If';
 import Permission from '../../../../components/Permission';
 import { Translation } from '../../../../components/Translation';
@@ -467,9 +467,8 @@ class PolicyDialog extends React.Component<Props, State> {
     const showType = (selectedPolicyItem && selectedPolicyItem?.name == 'custom') || policy != undefined;
     const span = showType ? 8 : 12;
     return (
-      <DrawerWithFooter
+      <ModalWithFooter
         title={policy ? i18n.t('Update Policy') : i18n.t('New Policy')}
-        placement="right"
         width={800}
         onClose={onClose}
         extButtons={this.extButtonList()}
@@ -698,7 +697,7 @@ class PolicyDialog extends React.Component<Props, State> {
             </Loading>
           )}
         </Form>
-      </DrawerWithFooter>
+      </ModalWithFooter>
     );
   }
 }

@@ -5,7 +5,7 @@ import { connect } from 'dva';
 
 import { createSource, getExpressionEnv, setExpressionOptIn, updateSource } from '../../../../api/application';
 import { detailSourceDefinition, getSourceDefinitions } from '../../../../api/definitions';
-import DrawerWithFooter from '../../../../components/Drawer';
+import ModalWithFooter from '../../../../components/ModalWithFooter';
 import { If } from '../../../../components/If';
 import Permission from '../../../../components/Permission';
 import { Translation } from '../../../../components/Translation';
@@ -193,9 +193,8 @@ class SourceDialog extends React.Component<Props, State> {
     const name = this.field.getValue<string>('name') || (source && source.name) || '<name>';
     const fields = sourceFields(name, definition?.outputSchema);
     return (
-      <DrawerWithFooter
+      <ModalWithFooter
         title={source ? i18n.t('Update Source') : i18n.t('New Source')}
-        placement="right"
         width={800}
         onClose={onClose}
         extButtons={
@@ -320,7 +319,7 @@ class SourceDialog extends React.Component<Props, State> {
             </If>
           </Loading>
         </Form>
-      </DrawerWithFooter>
+      </ModalWithFooter>
     );
   }
 }

@@ -15,7 +15,7 @@ import {
 import type { ExpressionContext } from '../../../../components/UISchema';
 import type { ExpressionEnv } from '../../../../extends/ExpressionEditor';
 import { detailComponentDefinition } from '../../../../api/definitions';
-import DrawerWithFooter from '../../../../components/Drawer';
+import ModalWithFooter from '../../../../components/ModalWithFooter';
 import { Translation } from '../../../../components/Translation';
 import UISchema from '../../../../components/UISchema';
 import i18n from '../../../../i18n';
@@ -383,9 +383,8 @@ class ComponentDialog extends React.Component<Props, State> {
     };
 
     return (
-      <DrawerWithFooter
+      <ModalWithFooter
         title={this.showComponentTitle()}
-        placement="right"
         width={800}
         onClose={onComponentClose}
         extButtons={this.extButtonList()}
@@ -591,7 +590,7 @@ class ComponentDialog extends React.Component<Props, State> {
             </Row>
           </Card>
         </Form>
-      </DrawerWithFooter>
+      </ModalWithFooter>
     );
   }
 }
