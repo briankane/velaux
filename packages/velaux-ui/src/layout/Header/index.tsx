@@ -332,6 +332,13 @@ class Header extends Component<Props, State> {
         <If condition={show}>
           <CloudShell />
         </If>
+        {(customisation.logoURL || customisation.iconURL) && (
+          <a className="powered-by" href="https://kubevela.io" target="_blank" rel="noopener noreferrer">
+            <Translation>Powered by</Translation>
+            <img src={logoMark} alt="" />
+            KubeVela
+          </a>
+        )}
       </div>
     );
   }

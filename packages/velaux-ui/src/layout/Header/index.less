@@ -289,3 +289,28 @@
     background: #fef2f2;
   }
 }
+
+// A branded console still credits KubeVela, small in the bottom-right corner.
+.powered-by {
+  position: fixed;
+  right: 16px;
+  bottom: 12px;
+  z-index: 10;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 3px 8px;
+  color: #64748b !important;
+  font-size: 11px;
+  line-height: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  img {
+    width: 14px;
+    height: 14px;
+  }
+  &:hover {
+    color: #0f172a !important;
+  }
+}
