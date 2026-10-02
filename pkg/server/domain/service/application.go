@@ -525,6 +525,9 @@ func (c *applicationServiceImpl) PublishApplicationTemplate(_ context.Context, _
 
 // CreateApplication create application
 func (c *applicationServiceImpl) CreateApplication(ctx context.Context, req apisv1.CreateApplicationRequest) (*apisv1.ApplicationBase, error) {
+	if req.WorkflowMode != "" && req.WorkflowMode != "StepByStep" && req.WorkflowMode != "DAG" {
+		return nil, bcode.ErrWorkflowMode
+	}
 	application := model.Application{
 		Name:        req.Name,
 		Alias:       req.Alias,
@@ -560,6 +563,9 @@ func (c *applicationServiceImpl) CreateApplication(ctx context.Context, req apis
 	if len(req.EnvBinding) > 0 {
 		err := c.saveApplicationEnvBinding(ctx, application, req.EnvBinding)
 		if err != nil {
+			return nil, err
+		}
+		if err := c.setEnvWorkflowMode(ctx, &application, req.EnvBinding, req.WorkflowMode); err != nil {
 			return nil, err
 		}
 		// For the custom payload, no need assign the component name
@@ -702,6 +708,25 @@ func (c *applicationServiceImpl) ListApplicationTriggers(ctx context.Context, ap
 		}
 	}
 	return resp, nil
+}
+
+// setEnvWorkflowMode sets the mode of the workflows created for an
+// application's env bindings; none is set for an empty mode.
+func (c *applicationServiceImpl) setEnvWorkflowMode(ctx context.Context, app *model.Application, envs []*apisv1.EnvBinding, mode string) error {
+	if mode == "" {
+		return nil
+	}
+	for _, env := range envs {
+		wf := &model.Workflow{Name: repository.ConvertWorkflowName(env.Name), AppPrimaryKey: app.PrimaryKey()}
+		if err := c.Store.Get(ctx, wf); err != nil {
+			return err
+		}
+		wf.Mode.Steps = wfTypesv1alpha1.WorkflowMode(mode)
+		if err := c.Store.Put(ctx, wf); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *applicationServiceImpl) saveApplicationEnvBinding(ctx context.Context, app model.Application, envBindings []*apisv1.EnvBinding) error {

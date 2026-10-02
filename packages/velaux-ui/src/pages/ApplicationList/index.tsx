@@ -7,14 +7,13 @@ import { HealthChips } from './components/HealthChips';
 import { visibleLabels } from '../../utils/appMeta';
 
 import { deleteApplication } from '../../api/application';
-import { getComponentDefinitions } from '../../api/definitions';
 import { If } from '../../components/If';
 import { ListTitle } from '../../components/ListTitle';
 import Permission from '../../components/Permission';
 import { Translation } from '../../components/Translation';
 import type { ApplicationBase, LoginUserInfo } from '@velaux/data';
 
-import AppDialog from './components/AddAppDialog';
+import { NewServiceDialog } from './components/NewServiceDialog';
 import CardContend from './components/CardContent';
 import EditAppDialog from './components/EditAppDialog';
 import SelectSearch from './components/SelectSearch';
@@ -32,7 +31,6 @@ export type ShowMode = 'table' | 'card' | string | null;
 
 type State = {
   showAddApplication: boolean;
-  componentDefinitions: [];
   isLoading: boolean;
   showEditApplication: boolean;
   editItem?: ApplicationBase;
@@ -53,7 +51,6 @@ class Application extends Component<Props, State> {
     }
     this.state = {
       showAddApplication: false,
-      componentDefinitions: [],
       labelValue: [],
       isLoading: false,
       showEditApplication: false,
@@ -65,7 +62,6 @@ class Application extends Component<Props, State> {
   componentDidMount() {
     this.getApplications({});
     this.getEnvs();
-    this.onGetComponentDefinitions();
   }
 
   getApplications = async (params: any) => {
@@ -104,15 +100,6 @@ class Application extends Component<Props, State> {
     });
   };
 
-  onGetComponentDefinitions = async () => {
-    getComponentDefinitions().then((res) => {
-      if (res) {
-        this.setState({
-          componentDefinitions: res && res.definitions,
-        });
-      }
-    });
-  };
 
   closeAddApplication = () => {
     this.setState({
@@ -156,9 +143,8 @@ class Application extends Component<Props, State> {
   };
 
   render() {
-    const { applicationList, targets, dispatch, envs, userInfo } = this.props;
-    const { showAddApplication, componentDefinitions, isLoading, showEditApplication, editItem, labelValue, showMode } =
-      this.state;
+    const { applicationList, dispatch, envs, userInfo } = this.props;
+    const { showAddApplication, isLoading, showEditApplication, editItem, labelValue, showMode } = this.state;
     let appLabels: string[] = [];
     applicationList?.map((app) => {
       app.labels &&
@@ -227,20 +213,12 @@ class Application extends Component<Props, State> {
           />
         </Loading>
         <If condition={showAddApplication}>
-          <AppDialog
-            visible={showAddApplication}
-            targets={targets}
-            userInfo={userInfo}
+          <NewServiceDialog
             projects={userInfo?.projects}
-            componentDefinitions={componentDefinitions}
-            setVisible={(visible) => {
-              this.setState({ showAddApplication: visible });
-            }}
-            onOK={(name: string) => {
+            onClose={this.closeAddApplication}
+            onCreated={(name: string) => {
               this.props.history.push(`/applications/${name}/config`);
             }}
-            onClose={this.closeAddApplication}
-            dispatch={dispatch}
           />
         </If>
 

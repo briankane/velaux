@@ -922,5 +922,17 @@
   "Pick a built-in repository, or type any git repository URL or Go module path": "选择内置仓库，或输入任意 Git 仓库地址或 Go 模块路径",
   "No addon applications": "没有插件应用",
   "Addon": "插件",
-  "Installed": "已安装"
+  "Installed": "已安装",
+  "New Service": "新建服务",
+  "Service created": "服务已创建",
+  "Give the service a name": "请为服务命名",
+  "Choose a project": "请选择项目",
+  "Where it deploys; more can be added later": "部署位置，之后可添加更多",
+  "Choose": "请选择",
+  "Let properties read sources, context and other components with $( )": "允许属性通过 $( ) 读取数据源、上下文和其他组件",
+  "Workflow mode": "工作流模式",
+  "Step by step": "逐步",
+  "Start paused": "创建后暂停",
+  "Deploy it, but leave the controller from reconciling it until resumed": "部署后控制器暂不调谐，直到恢复",
+  "How often the controller reconciles it, such as 5m; the default when empty": "控制器调谐的频率，例如 5m；留空使用默认值"
 }
