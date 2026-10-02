@@ -96,7 +96,10 @@
     width: 0;
   }
   .collapsed & {
-    .main-nav,
+    // A section's heading keeps its space, so the sections stay apart.
+    .main-nav {
+      visibility: hidden;
+    }
     .menu-item-text {
       display: none;
     }
