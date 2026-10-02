@@ -459,14 +459,16 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
                         <Translation>Type</Translation>
                       </dt>
                       <dd>{stepStatus.type}</dd>
-                      <If condition={stepSpec?.if}>
-                        <dt>
-                          <Translation>Condition</Translation>
-                        </dt>
-                        <dd>
-                          <code>{stepSpec?.if}</code>
-                        </dd>
-                      </If>
+                      {!!stepSpec?.if && (
+                        <>
+                          <dt>
+                            <Translation>Condition</Translation>
+                          </dt>
+                          <dd>
+                            <code>{stepSpec?.if}</code>
+                          </dd>
+                        </>
+                      )}
                       <dt>
                         <Translation>First run</Translation>
                       </dt>
@@ -479,21 +481,25 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
                         <Translation>Duration</Translation>
                       </dt>
                       <dd>{timeDiff(stepStatus.firstExecuteTime, stepStatus.lastExecuteTime) || '-'}</dd>
-                      <If condition={stepSpec?.timeout}>
-                        <dt>
-                          <Translation>Timeout</Translation>
-                        </dt>
-                        <dd>{stepSpec?.timeout}</dd>
-                      </If>
-                      <If condition={stepStatus.message || stepStatus.reason}>
-                        <dt>
-                          <Translation>Message</Translation>
-                        </dt>
-                        <dd>
-                          {stepStatus.message || ''}
-                          {stepStatus.reason && <span className="wf-kv-reason">{stepStatus.reason}</span>}
-                        </dd>
-                      </If>
+                      {!!stepSpec?.timeout && (
+                        <>
+                          <dt>
+                            <Translation>Timeout</Translation>
+                          </dt>
+                          <dd>{stepSpec?.timeout}</dd>
+                        </>
+                      )}
+                      {!!(stepStatus.message || stepStatus.reason) && (
+                        <>
+                          <dt>
+                            <Translation>Message</Translation>
+                          </dt>
+                          <dd>
+                            {stepStatus.message || ''}
+                            {stepStatus.reason && <span className="wf-kv-reason">{stepStatus.reason}</span>}
+                          </dd>
+                        </>
+                      )}
                     </dl>
                   )}
                   {logSource && (
