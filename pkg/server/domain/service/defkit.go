@@ -408,7 +408,8 @@ func defkitApplication(name string, src apisv1.DefKitSource) *v1beta1.Applicatio
 		TypeMeta: metav1.TypeMeta{APIVersion: v1beta1.SchemeGroupVersion.String(), Kind: v1beta1.ApplicationKind},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: defkitAppPrefix + name, Namespace: types.DefaultKubeVelaNS,
-			Labels: map[string]string{defkitModuleLabel: name},
+			// from-inner keeps it out of VelaUX's synced applications.
+			Labels: map[string]string{defkitModuleLabel: name, types.LabelSourceOfTruth: types.FromInner},
 		},
 		Spec: v1beta1.ApplicationSpec{
 			Components: []common.ApplicationComponent{},

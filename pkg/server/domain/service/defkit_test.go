@@ -24,6 +24,7 @@ import (
 	workflowv1alpha1 "github.com/kubevela/workflow/api/v1alpha1"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/common"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
+	"github.com/oam-dev/kubevela/apis/types"
 	"github.com/oam-dev/kubevela/pkg/oam"
 	common2 "github.com/oam-dev/kubevela/pkg/utils/common"
 	"github.com/stretchr/testify/assert"
@@ -85,6 +86,7 @@ func TestDefKitSourceRoundTrips(t *testing.T) {
 	assert.Equal(t, src, defkitSourceOf(app))
 	assert.Equal(t, "defkit-defs", app.Name)
 	assert.Equal(t, "defs", app.Labels[defkitModuleLabel])
+	assert.Equal(t, types.FromInner, app.Labels[types.LabelSourceOfTruth], "a module is not a service")
 }
 
 func installedDefinition(kind, name, description string, labels map[string]string) *v1beta1.TraitDefinition {
