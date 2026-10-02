@@ -72,7 +72,8 @@ class Application extends Component<Props, State> {
     this.setState({ isLoading: true });
     this.props.dispatch({
       type: 'application/getApplicationList',
-      payload: { ...params, withStatus: true },
+      // An addon's applications are listed on the Addons page instead.
+      payload: { ...params, withStatus: true, addons: 'exclude' },
       callback: () => {
         this.setState({
           isLoading: false,
