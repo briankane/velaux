@@ -9,7 +9,16 @@ import {
   AiFillSetting,
   AiOutlineCluster,
 } from 'react-icons/ai';
-import { BsFileEarmarkPerson, BsFillFileCodeFill, BsHddNetworkFill, BsPlugin, BsBoxSeam, BsBoxes } from 'react-icons/bs';
+import {
+  BsBoxSeam,
+  BsBoxes,
+  BsDiagram3,
+  BsFileEarmarkPerson,
+  BsFillFileCodeFill,
+  BsHddNetworkFill,
+  BsLayers,
+  BsPlugin,
+} from 'react-icons/bs';
 import { RiUserSettingsFill } from 'react-icons/ri';
 import { MdConfirmationNumber } from 'react-icons/md';
 import { locationService } from './LocationService';
@@ -82,6 +91,40 @@ const defaultWorkspaceMenus: Menu[] = [
     icon: <BsHddNetworkFill></BsHddNetworkFill>,
     label: 'Pipelines',
     permission: { resource: 'project:?/pipeline:*', action: 'list' },
+  },
+  // Provisioning is not built yet: its items show what is coming.
+  {
+    catalog: 'Provisioning',
+    workspace: 'continuous-delivery',
+    type: MenuTypes.Workspace,
+    name: 'provisioning-clusters',
+    to: '',
+    relatedRoute: [],
+    icon: <AiOutlineCluster />,
+    label: 'Clusters',
+    comingSoon: true,
+  },
+  {
+    catalog: 'Provisioning',
+    workspace: 'continuous-delivery',
+    type: MenuTypes.Workspace,
+    name: 'provisioning-cluster-blueprints',
+    to: '',
+    relatedRoute: [],
+    icon: <BsDiagram3 />,
+    label: 'ClusterBlueprints',
+    comingSoon: true,
+  },
+  {
+    catalog: 'Provisioning',
+    workspace: 'continuous-delivery',
+    type: MenuTypes.Workspace,
+    name: 'provisioning-cluster-planes',
+    to: '',
+    relatedRoute: [],
+    icon: <BsLayers />,
+    label: 'Cluster Planes',
+    comingSoon: true,
   },
   {
     catalog: 'Extension',

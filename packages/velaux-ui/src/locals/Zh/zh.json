@@ -937,5 +937,9 @@
   "How often the controller reconciles it, such as 5m; the default when empty": "控制器调谐的频率，例如 5m；留空使用默认值",
   "Configure": "配置",
   "File": "文件",
-  "No file for this definition": "此定义没有文件"
+  "No file for this definition": "此定义没有文件",
+  "Provisioning": "资源供给",
+  "ClusterBlueprints": "集群蓝图",
+  "Cluster Planes": "集群平面",
+  "Coming Soon": "即将推出"
 }

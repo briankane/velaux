@@ -1,5 +1,6 @@
 import { connect } from 'dva';
 import { Link } from 'dva/router';
+import { Balloon } from '@alifd/next';
 import React, { useEffect, useState } from 'react';
 import { locationService } from '../../services/LocationService';
 import { Translation } from '../../components/Translation';
@@ -84,6 +85,23 @@ const LeftMenuModule = (props: Props) => {
             </span>
           </div>
         );
+        if (childrenItem.comingSoon) {
+          ele.push(
+            <li className="nav-item" key={childrenItem.name}>
+              <Balloon.Tooltip
+                align="r"
+                trigger={
+                  <span className="menu-item menu-item-coming-soon" aria-disabled="true">
+                    {item}
+                  </span>
+                }
+              >
+                <Translation>Coming Soon</Translation>
+              </Balloon.Tooltip>
+            </li>
+          );
+          return;
+        }
         const childrenArr = (
           <li className="nav-item" key={childrenItem.name}>
             <If condition={childrenItem.href}>
