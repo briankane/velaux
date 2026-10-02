@@ -944,5 +944,7 @@
   "Operation Templates": "操作模板",
   "Operations": "操作",
   "Cluster Blueprints": "集群蓝图",
-  "Fleets": "机群"
+  "Fleets": "机群",
+  "Modules": "模块",
+  "DefKit": "DefKit"
 }
