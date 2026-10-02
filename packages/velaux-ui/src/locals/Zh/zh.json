@@ -939,9 +939,10 @@
   "File": "文件",
   "No file for this definition": "此定义没有文件",
   "Provisioning": "资源供给",
-  "ClusterBlueprints": "集群蓝图",
   "Cluster Planes": "集群平面",
   "Coming Soon": "即将推出",
   "Operation Templates": "操作模板",
-  "Operations": "操作"
+  "Operations": "操作",
+  "Cluster Blueprints": "集群蓝图",
+  "Fleets": "机群"
 }
