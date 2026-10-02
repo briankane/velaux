@@ -851,7 +851,7 @@
   "Definition modules written in Go with DefKit, rendered and reviewed before they install": "使用 DefKit 以 Go 编写的定义模块，安装前先渲染并审阅",
   "Definition types": "定义类型",
   "Delete definitions": "删除定义",
-  "Each module is an Application in vela-system, so its definitions are tracked and garbage collected like any other resource.": "每个模块都是 vela-system 中的一个应用，其定义会像其他资源一样被跟踪和回收。",
+  "Each module installs through its own workflow in vela-system, so its definitions are tracked and garbage collected like any other resource.": "每个模块通过 vela-system 中自己的工作流安装，其定义会像其他资源一样被跟踪和回收。",
   "Enable the defkit addon to install DefKit modules": "启用 defkit 插件以安装 DefKit 模块",
   "Experimental": "实验性",
   "Give the module a name": "请为模块命名",

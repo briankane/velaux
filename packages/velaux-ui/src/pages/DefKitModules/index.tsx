@@ -71,7 +71,7 @@ const DefKitModules = (props: { dispatch: (action: any) => void }) => {
         <span className="defkit-experimental-pill">
           <Translation>Experimental</Translation>
         </span>
-        <Translation>Each module is an Application in vela-system, so its definitions are tracked and garbage collected like any other resource.</Translation>
+        <Translation>Each module installs through its own workflow in vela-system, so its definitions are tracked and garbage collected like any other resource.</Translation>
       </div>
       {!loading && !addonEnabled && (
         <div className="package-issue">
