@@ -31,8 +31,13 @@ class ApplicationLayout extends Component<Props, any> {
     this.getNamespaceList();
   }
 
+  // The layout re-renders when the URL moves, its query included: a tab's +
+  // asks its page for the add dialog with ?add=1 on the same path.
   shouldComponentUpdate(nextProps: any) {
-    return nextProps.location.pathname !== this.props.location.pathname;
+    return (
+      nextProps.location.pathname !== this.props.location.pathname ||
+      nextProps.location.search !== this.props.location.search
+    );
   }
 
   onGetApplicationDetails = async () => {
