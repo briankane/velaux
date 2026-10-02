@@ -1,11 +1,12 @@
 import React, { Component } from 'react';
 import './index.less';
-import { Button, Dialog, Dropdown, Menu } from '@alifd/next';
+import { Button, Dialog, Dropdown } from '@alifd/next';
 import axios from 'axios';
 import { connect } from 'dva';
 import { Link, routerRedux } from 'dva/router';
 import {
   AiOutlineCode,
+  AiOutlineLogout,
   AiOutlineMenuFold,
   AiOutlineMenuUnfold,
   AiOutlineQuestionCircle,
@@ -21,11 +22,12 @@ import { customisationService } from '../../services/CustomisationService';
 import { isLight, sidebarTheme } from '../../utils/theme';
 import { If } from '../../components/If';
 import Permission from '../../components/Permission';
-import SwitchLanguage from '../../components/SwitchButton/index';
+import { TbLanguage } from 'react-icons/tb';
 import { Translation } from '../../components/Translation';
 import i18n from '../../i18n';
 import type { AddonBaseStatus, Config, SystemInfo, LoginUserInfo } from '@velaux/data';
 import { getData, setData } from '../../utils/cache';
+import { getLanguage } from '../../utils/common';
 import { locale } from '../../utils/locale';
 import { getBrowserNameAndVersion } from '../../utils/utils';
 import CloudShell from '../CloudShell';
@@ -213,6 +215,13 @@ class Header extends Component<Props, State> {
     });
   };
 
+  // setLanguage switches the interface's language and remembers it.
+  setLanguage = (lang: string) => {
+    i18n.changeLanguage(lang);
+    localStorage.setItem('lang', lang);
+    this.forceUpdate();
+  };
+
   render() {
     const { show, userInfo, currentWorkspace, children, onToggleCollapsed } = this.props;
     // The admin dashboard is linked on its own; its pages join the sidebar
@@ -250,65 +259,11 @@ class Header extends Component<Props, State> {
         <div className="sidebar-menu">{children}</div>
 
         <div className="sidebar-footer">
-          <Permission request={{ resource: 'cloudshell', action: 'create' }}>
-            <div className="sidebar-footer-item" title="Open Cloud Shell" onClick={this.onOpenCloudShell}>
-              <AiOutlineCode size={18} />
-              {!collapsed && (
-                <span>
-                  <Translation>Cloud Shell</Translation>
-                </span>
-              )}
-            </div>
-          </Permission>
-          {admin && (
-            <Link
-              to={admin.rootRoute}
-              className={classNames('sidebar-footer-item', { active: currentWorkspace?.name === admin.name })}
-              title={i18n.t(admin.label || admin.name).toString()}
-            >
-              {admin.icon}
-              {!collapsed && (
-                <span>
-                  <Translation>{admin.label || admin.name}</Translation>
-                </span>
-              )}
-            </Link>
-          )}
-          <Permission request={{ resource: 'systemSetting', action: 'update' }}>
-            <Link to="/settings" className="sidebar-footer-item" title={i18n.t('Platform Settings').toString()}>
-              <AiOutlineSetting size={18} />
-              {!collapsed && (
-                <span>
-                  <Translation>Settings</Translation>
-                </span>
-              )}
-            </Link>
-          </Permission>
-          <a
-            className="sidebar-footer-item"
-            title="KubeVela Documents"
-            href="https://kubevela.io"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <AiOutlineQuestionCircle size={18} />
-            {!collapsed && (
-              <span>
-                <Translation>Documentation</Translation>
-              </span>
-            )}
-          </a>
-          <div className="sidebar-footer-item sidebar-language">
-            <SwitchLanguage />
-            {!collapsed && (
-              <span>
-                <Translation>Language</Translation>
-              </span>
-            )}
-          </div>
           <If condition={userInfo}>
             <Dropdown
-              align="bl tl"
+              triggerType="hover"
+              align="bl br"
+              offset={[8, 0]}
               trigger={
                 <div className="sidebar-user" title={userName}>
                   <span className="sidebar-avatar">{(userName || '?').slice(0, 1).toUpperCase()}</span>
@@ -316,11 +271,66 @@ class Header extends Component<Props, State> {
                 </div>
               }
             >
-              <Menu>
-                <Menu.Item onClick={this.onLogout}>
+              <div className="user-flyout">
+                <div className="user-flyout-head">
+                  <span className="sidebar-avatar">{(userName || '?').slice(0, 1).toUpperCase()}</span>
+                  <div>
+                    <div className="user-flyout-name">{userName}</div>
+                    {userInfo?.name && userInfo.name !== userName && (
+                      <div className="user-flyout-sub">{userInfo.name}</div>
+                    )}
+                  </div>
+                </div>
+                <Permission request={{ resource: 'cloudshell', action: 'create' }}>
+                  <div className="user-flyout-item" onClick={this.onOpenCloudShell}>
+                    <AiOutlineCode size={16} />
+                    <Translation>Cloud Shell</Translation>
+                  </div>
+                </Permission>
+                {admin && (
+                  <Link
+                    to={admin.rootRoute}
+                    className={classNames('user-flyout-item', { active: currentWorkspace?.name === admin.name })}
+                  >
+                    {admin.icon}
+                    <Translation>{admin.label || admin.name}</Translation>
+                  </Link>
+                )}
+                <Permission request={{ resource: 'systemSetting', action: 'update' }}>
+                  <Link to="/settings" className="user-flyout-item">
+                    <AiOutlineSetting size={16} />
+                    <Translation>Settings</Translation>
+                  </Link>
+                </Permission>
+                <a className="user-flyout-item" href="https://kubevela.io" target="_blank" rel="noopener noreferrer">
+                  <AiOutlineQuestionCircle size={16} />
+                  <Translation>Documentation</Translation>
+                </a>
+                <div className="user-flyout-item user-flyout-language">
+                  <TbLanguage size={16} />
+                  <Translation>Language</Translation>
+                  <span className="user-flyout-langs">
+                    {[
+                      { lang: 'en', label: 'EN' },
+                      { lang: 'zh', label: '中文' },
+                    ].map((l) => (
+                      <button
+                        key={l.lang}
+                        type="button"
+                        className={classNames({ active: getLanguage() === l.lang })}
+                        onClick={() => this.setLanguage(l.lang)}
+                      >
+                        {l.label}
+                      </button>
+                    ))}
+                  </span>
+                </div>
+                <div className="user-flyout-divider" />
+                <div className="user-flyout-item user-flyout-logout" onClick={this.onLogout}>
+                  <AiOutlineLogout size={16} />
                   <Translation>Logout</Translation>
-                </Menu.Item>
-              </Menu>
+                </div>
+              </div>
             </Dropdown>
           </If>
         </div>

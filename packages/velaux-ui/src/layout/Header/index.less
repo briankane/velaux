@@ -122,58 +122,11 @@
   border-top: 1px solid var(--sb-border);
 }
 
-.sidebar-footer-item {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin: 2px 12px;
-  padding: 8px 14px;
-  color: var(--sb-text) !important;
-  font-size: 13px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-  svg {
-    flex: none;
-    width: 18px;
-    height: 18px;
-    color: var(--sb-muted);
-  }
-  &:hover {
-    color: var(--sb-text-strong) !important;
-    background: var(--sb-hover);
-    svg {
-      color: var(--sb-text-strong);
-    }
-  }
-  &.active {
-    color: var(--sb-active-text) !important;
-    background: var(--sb-active);
-    svg {
-      color: var(--sb-accent);
-    }
-  }
-  .collapsed & {
-    justify-content: center;
-    margin: 2px 10px;
-    padding: 9px 0;
-  }
-}
-
-.sidebar-language {
-  // The language switch is its own dropdown; its trigger is the icon.
-  > :first-child {
-    display: flex;
-  }
-}
-
 .sidebar-user {
   display: flex;
   gap: 10px;
   align-items: center;
-  margin: 8px 12px 0;
+  margin: 0 12px;
   padding: 8px 10px;
   color: var(--sb-text-strong);
   border-radius: 8px;
@@ -183,7 +136,7 @@
   }
   .collapsed & {
     justify-content: center;
-    margin: 8px 10px 0;
+    margin: 0 10px;
     padding: 8px 0;
   }
 }
@@ -207,4 +160,107 @@
   font-size: 13px;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+// The user's menu, opened by hovering their name at the foot of the sidebar.
+// It renders outside the sidebar, so it takes no sidebar colours.
+.user-flyout {
+  width: 240px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  .sidebar-avatar {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+.user-flyout-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 4px;
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.user-flyout-name {
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.user-flyout-sub {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.user-flyout-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  color: #334155 !important;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  svg {
+    flex: none;
+    color: #64748b;
+  }
+  &:hover,
+  &.active {
+    color: #0f172a !important;
+    background: #f1f5f9;
+  }
+}
+
+.user-flyout-language {
+  cursor: default;
+  &:hover {
+    background: none;
+  }
+}
+
+.user-flyout-langs {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  button {
+    padding: 2px 8px;
+    color: #475569;
+    font-size: 12px;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    &.active {
+      color: #0f172a;
+      font-weight: 600;
+      background: #fff;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+  }
+}
+
+.user-flyout-divider {
+  height: 1px;
+  margin: 6px 4px;
+  background: #e2e8f0;
+}
+
+.user-flyout-logout {
+  color: #b91c1c !important;
+  svg {
+    color: #b91c1c;
+  }
+  &:hover {
+    color: #991b1b !important;
+    background: #fef2f2;
+  }
 }
