@@ -9,7 +9,7 @@ import {
   AiFillSetting,
   AiOutlineCluster,
 } from 'react-icons/ai';
-import { BsFileEarmarkPerson, BsFillFileCodeFill, BsHddNetworkFill, BsPlugin, BsBoxSeam } from 'react-icons/bs';
+import { BsFileEarmarkPerson, BsFillFileCodeFill, BsHddNetworkFill, BsPlugin, BsBoxSeam, BsBoxes } from 'react-icons/bs';
 import { RiUserSettingsFill } from 'react-icons/ri';
 import { MdConfirmationNumber } from 'react-icons/md';
 import { locationService } from './LocationService';
@@ -117,6 +117,18 @@ const defaultWorkspaceMenus: Menu[] = [
     // list definitions may list them.
     permission: { resource: 'definition:*', action: 'list' },
     relatedRoute: ['/packages'],
+  },
+  {
+    catalog: 'Extension',
+    workspace: 'extension',
+    type: MenuTypes.Workspace,
+    to: '/defkit',
+    icon: <BsBoxes />,
+    label: 'DefKit Modules',
+    name: 'defkit-list',
+    // A module installs definitions, so it is listed to whoever may list them.
+    permission: { resource: 'definition:*', action: 'list' },
+    relatedRoute: ['/defkit'],
   },
   {
     catalog: 'Admin',
