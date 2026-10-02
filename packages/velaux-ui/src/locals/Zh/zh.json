@@ -941,5 +941,7 @@
   "Provisioning": "资源供给",
   "ClusterBlueprints": "集群蓝图",
   "Cluster Planes": "集群平面",
-  "Coming Soon": "即将推出"
+  "Coming Soon": "即将推出",
+  "Operation Templates": "操作模板",
+  "Operations": "操作"
 }
