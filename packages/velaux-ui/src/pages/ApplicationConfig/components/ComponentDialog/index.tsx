@@ -67,6 +67,8 @@ type Props = {
 };
 
 type State = {
+  // propertiesValid is whether the properties form can be saved as it stands.
+  propertiesValid?: boolean;
   expressionEnv?: ExpressionEnv;
   definitionDetail?: DefinitionDetail;
   isCreateComponentLoading: boolean;
@@ -263,7 +265,17 @@ class ComponentDialog extends React.Component<Props, State> {
             }}
             project={project}
           >
-            <Button type="primary" onClick={this.onSubmitCreate} loading={isCreateComponentLoading}>
+            <Button
+              type="primary"
+              onClick={this.onSubmitCreate}
+              disabled={this.state.propertiesValid === false}
+              title={
+                this.state.propertiesValid === false
+                  ? i18n.t('Fix the highlighted properties first').toString()
+                  : undefined
+              }
+              loading={isCreateComponentLoading}
+            >
               {i18n.t('Create').toString()}
             </Button>
           </Permission>
@@ -276,7 +288,17 @@ class ComponentDialog extends React.Component<Props, State> {
             }}
             project={project}
           >
-            <Button type="primary" onClick={this.onSubmitEditComponent} loading={isUpdateComponentLoading}>
+            <Button
+              type="primary"
+              onClick={this.onSubmitEditComponent}
+              disabled={this.state.propertiesValid === false}
+              title={
+                this.state.propertiesValid === false
+                  ? i18n.t('Fix the highlighted properties first').toString()
+                  : undefined
+              }
+              loading={isUpdateComponentLoading}
+            >
               {i18n.t('Update').toString()}
             </Button>
           </Permission>
@@ -591,6 +613,7 @@ class ComponentDialog extends React.Component<Props, State> {
                       type: 'component',
                       description: definitionDetail?.description || '',
                     }}
+                    onValidityChange={(valid: boolean) => this.setState({ propertiesValid: valid })}
                     ref={this.uiSchemaRef}
                     mode={isEditComponent ? 'edit' : 'new'}
                     deployed={this.props.deployed}

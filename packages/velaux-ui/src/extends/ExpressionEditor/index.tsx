@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 
 import { checkDraftExpression, checkExpression } from '../../api/application';
 import type { ExpressionEnv, ExpressionFix } from './completion';
+import { blockingIssue } from './completion';
 import { expressionSpans, fixesFor, hoverAt, suggest } from './completion';
 import './index.less';
 
@@ -150,6 +151,8 @@ type Props = {
   // reserve is room at the right of the input kept for the parent's own
   // control, such as the form's ƒx toggle; the status mark sits left of it.
   reserve?: number;
+  // onStatus hears whether the value's last check found an error.
+  onStatus?: (error: boolean) => void;
   // autoFocus focuses the editor when it mounts, its cursor at the end: a
   // field that becomes an expression as it is typed in keeps the keystrokes.
   autoFocus?: boolean;
@@ -330,6 +333,7 @@ class ExpressionEditor extends React.Component<Props, State> {
         severity: i.warning ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Error,
       }))
     );
+    this.props.onStatus?.(!!blockingIssue(issues));
     const first = issues.find((i) => !i.warning) || issues[0];
     if (first) {
       const fix = offered.find((f) => f.start === first.start && f.message === first.message);

@@ -49,6 +49,8 @@ type Props = {
 };
 
 type State = {
+  // propertiesValid is whether the properties form can be saved as it stands.
+  propertiesValid?: boolean;
   expressionEnv?: ExpressionEnv;
   definitionDetail?: DefinitionDetail;
   definitionLoading: boolean;
@@ -318,7 +320,15 @@ class TraitDialog extends React.Component<Props, State> {
         <Button type="secondary" onClick={onClose} className="margin-right-10">
           <Translation>Cancel</Translation>
         </Button>
-        <Button type="primary" onClick={this.onSubmit} loading={isLoading}>
+        <Button
+          type="primary"
+          onClick={this.onSubmit}
+          disabled={this.state.propertiesValid === false}
+          title={
+            this.state.propertiesValid === false ? i18n.t('Fix the highlighted properties first').toString() : undefined
+          }
+          loading={isLoading}
+        >
           <Translation>{isEditTrait ? i18n.t('Update') : i18n.t('Create')}</Translation>
         </Button>
       </div>
@@ -504,6 +514,7 @@ class TraitDialog extends React.Component<Props, State> {
                             name: definitionDetail?.name || '',
                             description: definitionDetail?.description || '',
                           }}
+                          onValidityChange={(valid: boolean) => this.setState({ propertiesValid: valid })}
                           ref={this.uiSchemaRef}
                           mode={this.props.isEditTrait ? 'edit' : 'new'}
                           deployed={this.props.deployed}

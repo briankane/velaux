@@ -414,3 +414,17 @@ export function fixesFor(
 ): ExpressionFix[] {
   return markers.flatMap((m) => fixes.filter((f) => f.start + 1 === m.startColumn && f.message === m.message));
 }
+
+// ExpressionIssue is a problem the server found in an expression.
+export type ExpressionIssue = { message: string; start: number; end: number; warning?: boolean; fix?: string };
+
+// hasExpression is whether a property value holds a $( ) expression to check.
+export function hasExpression(value: unknown): boolean {
+  return typeof value === 'string' && value.includes('$(');
+}
+
+// blockingIssue is the problem that keeps a value from being saved: the first
+// error. Warnings are shown but do not block.
+export function blockingIssue(issues?: ExpressionIssue[]): ExpressionIssue | undefined {
+  return (issues || []).find((i) => !i.warning);
+}
