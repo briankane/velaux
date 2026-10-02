@@ -63,6 +63,11 @@ func (d *definitionServiceImpl) DefinitionDoc(ctx context.Context, name, defType
 	// docgen's Markdown takes no sources: a source is written as a policy,
 	// which adds nothing of its own to the description and parameters, and its
 	// outputs, cache and surfaces follow.
+	if capability.Type == types.TypeSource && len(capability.Parameters) == 0 {
+		// A source with nothing to bind has no specification to show.
+		doc := fmt.Sprintf("## %s\n\n%s\n\n%s", ref.I18N.Get("Description"), capability.Description, sourceSections(*capability, ref.I18N))
+		return &apisv1.DefinitionDocResponse{Markdown: doc}, nil
+	}
 	written := *capability
 	if written.Type == types.TypeSource {
 		written.Type = types.TypePolicy

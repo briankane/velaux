@@ -6,7 +6,7 @@ import React, { Component, Fragment } from 'react';
 
 import { Translation } from '../../components/Translation';
 import { Breadcrumb } from '../../components/Breadcrumb';
-import type { DefinitionMenuType , LoginUserInfo } from '@velaux/data';
+import type { DefinitionMenuType, LoginUserInfo } from '@velaux/data';
 
 import './index.less';
 import classNames from 'classnames';
@@ -34,15 +34,11 @@ class DefinitionDetailsLayout extends Component<Props> {
     const { params = { definitionType: '', definitionName: '' } } = this.props.match;
     const { definitionType, definitionName } = params;
     const list = [
-      ...(definitionType === 'source'
-        ? []
-        : [
-            {
-              id: 'doc',
-              name: <Translation>Documentation</Translation>,
-              to: `/definitions/${definitionType}/${definitionName}/doc`,
-            },
-          ]),
+      {
+        id: 'doc',
+        name: <Translation>Documentation</Translation>,
+        to: `/definitions/${definitionType}/${definitionName}/doc`,
+      },
       {
         id: 'file',
         name: <Translation>File</Translation>,

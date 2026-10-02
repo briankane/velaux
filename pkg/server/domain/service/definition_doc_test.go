@@ -175,3 +175,29 @@ func TestDefinitionCUE(t *testing.T) {
 	_, err = svc.DefinitionCUE(ctx, "missing", "trait")
 	assert.Equal(t, bcode.ErrDefinitionNotFound, err)
 }
+
+func TestDefinitionDocSourceWithoutParameters(t *testing.T) {
+	ctx := context.Background()
+	cli := fake.NewClientBuilder().WithScheme(common2.Scheme).WithRESTMapper(meta.NewDefaultRESTMapper(nil)).WithObjects(&v1beta1.SourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "facts",
+			Namespace:   "vela-system",
+			Annotations: map[string]string{"definition.oam.dev/description": "Facts about the cluster"},
+		},
+		Spec: v1beta1.SourceDefinitionSpec{Schematic: &common.Schematic{CUE: &common.CUE{Template: `
+schema: {
+	// +usage=Cluster name
+	name: string
+}
+parameter: {}
+output: name: "local"
+`}}},
+	}).Build()
+	svc := &definitionServiceImpl{KubeClient: cli}
+
+	doc, err := svc.DefinitionDoc(ctx, "facts", "source", "")
+	require.NoError(t, err)
+	assert.Contains(t, doc.Markdown, "Facts about the cluster", "the description")
+	assert.NotContains(t, doc.Markdown, "## Specification", "no table for parameters it does not take")
+	assert.Contains(t, doc.Markdown, "Cluster name", "its outputs")
+}
