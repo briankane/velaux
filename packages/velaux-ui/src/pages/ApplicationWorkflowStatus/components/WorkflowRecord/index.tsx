@@ -526,7 +526,7 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
                     <>
                       <Message type="notice" className="wf-step-generated">
                         <Translation>
-                          KubeVela generated this step: the workflow declares none, so each component is applied by a
+                          KubeVela generated this step. The workflow declares none, so each component is applied by a
                           step named after it.
                         </Translation>
                       </Message>
