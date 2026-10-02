@@ -917,7 +917,7 @@
   "From": "来自",
   "To": "到",
   "Waits for it to be healthy; no data passes": "等待其健康，不传递数据",
-  "Addon Applications": "插件应用",
   "No addon applications": "没有插件应用",
-  "Addon": "插件"
+  "Addon": "插件",
+  "Installed": "已安装"
 }
