@@ -13,6 +13,8 @@ import AddonDetailDialog from './components/detail/index';
 import RegistryManageDialog from './components/registry-manage/index';
 import SelectSearch from './components/search/index';
 import Plugin from "./components/plugin";
+import i18n from '../../i18n';
+import { AddonApplications } from './components/AddonApplications';
 
 type Props = {
   history: any;
@@ -20,6 +22,7 @@ type Props = {
   dispatch: ({}) => {};
   loading: any;
   match?: any;
+  location?: { search?: string };
 
   // addon props
   addonsList: Addon[];
@@ -144,9 +147,9 @@ class Addons extends React.Component<Props, State> {
           subTitle="Manages extended platform capabilities for KubeVela and VelaUX."
         />
 
-        <Tab defaultActiveKey={plugin ? 'plugins' : 'addons'}
+        <Tab defaultActiveKey={plugin ? 'plugins' : this.props.location?.search?.includes('tab=applications') ? 'applications' : 'addons'}
              onChange={key => {
-               history.push('/' + (key == 'plugins' ? "manage/" : "") + key)
+               history.push(key == 'plugins' ? '/manage/plugins' : key == 'applications' ? '/addons?tab=applications' : '/addons')
              }}>
           <Tab.Item title="Addons" key={'addons'}>
             <SelectSearch
@@ -203,6 +206,9 @@ class Addons extends React.Component<Props, State> {
                 dispatch={dispatch}
               />
             </If>
+          </Tab.Item>
+          <Tab.Item title={i18n.t('Addon Applications').toString()} key={'applications'}>
+            <AddonApplications />
           </Tab.Item>
           <Tab.Item title="VelaUX Plugins" key={'plugins'}>
             <Loading visible={pluginLoading} style={{ width: '100%' }}>
