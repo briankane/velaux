@@ -37,6 +37,7 @@ import vol from '../../assets/resources/vol.svg';
 
 import { componentNodeHeight, componentNodeWidth, layoutTraits, maxTraitRows, traitArea } from './traits';
 import type { GraphNode, TreeNode, Node } from './interface';
+import { maxFlowLines } from '../../pages/ApplicationStatus/components/ApplicationGraph/flows';
 
 // componentSections lists what a component depends on and what depends on it,
 // each with an arrow for its direction and, when KubeVela inferred it from a
@@ -135,6 +136,11 @@ export function getNodeSize(node: TreeNode): { width: number; height: number } {
   if (node.nodeType == 'source') {
     width = 220;
     height = 48;
+  }
+  if (node.nodeType == 'flow') {
+    const items = node.flow?.items.length || 0;
+    width = 300;
+    height = 28 + 18 * Math.min(items, maxFlowLines) + (items > maxFlowLines ? 18 : 0);
   }
   if (node.nodeType == 'pod') {
     width = 220;

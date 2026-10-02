@@ -25,6 +25,8 @@ import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
 import { FaEllipsisV } from 'react-icons/fa';
 import { BsDatabase } from 'react-icons/bs';
 import { sourcePhaseClass } from '../../pages/ApplicationStatus/components/ApplicationGraph/sources';
+import { flowLabels, flowLine, maxFlowLines } from '../../pages/ApplicationStatus/components/ApplicationGraph/flows';
+import { Translation } from '../Translation';
 import { HiOutlineNewspaper } from 'react-icons/hi';
 
 type TreeGraphProps = {
@@ -260,6 +262,64 @@ function renderSourceNode(props: TreeGraphProps, id: string, node: GraphNode) {
   );
 }
 
+// renderFlowNode is what moves along a dependency: each value read, into which
+// property, the first few listed and all of them on hover.
+function renderFlowNode(id: string, node: GraphNode) {
+  const flow = node.flow;
+  if (!flow) {
+    return null;
+  }
+  const lines = flow.items.map(flowLine);
+  const graphNode = (
+    <div
+      key={id}
+      className={classNames('graph-node', 'graph-node-flow', `flow-${flow.via}`)}
+      style={{ left: node.x, top: node.y, width: node.width, height: node.height, transform: `translate(-80px, 0px)` }}
+    >
+      <div className="flow-via">
+        <Translation>{flowLabels[flow.via]}</Translation>
+      </div>
+      {lines.slice(0, maxFlowLines).map((line) => (
+        <div key={line} className="flow-line" title={line}>
+          {line}
+        </div>
+      ))}
+      {lines.length > maxFlowLines && (
+        <div className="flow-more">
+          +{lines.length - maxFlowLines} <Translation>more</Translation>
+        </div>
+      )}
+    </div>
+  );
+  if (lines.length === 0) {
+    return graphNode;
+  }
+  return (
+    <Balloon trigger={graphNode} closable={false} popupClassName={statusTooltipPopupClass}>
+      <StatusTooltip
+        title={i18n.t(flowLabels[flow.via]).toString()}
+        summary={[
+          { key: 'From', value: flow.from.name },
+          { key: 'To', value: flow.to.name },
+        ]}
+        sections={[
+          {
+            title: 'Values',
+            count: lines.length,
+            content: (
+              <ul className="flow-list">
+                {lines.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            ),
+          },
+        ]}
+      />
+    </Balloon>
+  );
+}
+
 function setNode(graph: dagre.graphlib.Graph<GraphNode, GraphEdge>, node: TreeNode) {
   const size = getNodeSize(node);
   graph.setNode(treeNodeKey(node), {
@@ -277,16 +337,24 @@ function setNode(graph: dagre.graphlib.Graph<GraphNode, GraphEdge>, node: TreeNo
     graph.setEdge(treeNodeKey(node), treeNodeKey(subNode), {});
     setNode(graph, subNode);
   });
+  node.detached?.forEach((sub) => setNode(graph, sub));
 }
 
 // setLinks adds each node's links as edges, to nodes the tree put on the graph.
 function setLinks(graph: dagre.graphlib.Graph<GraphNode, GraphEdge>, node: TreeNode) {
+  const key = treeNodeKey(node);
   (node.links || []).forEach((to) => {
     if (graph.hasNode(to)) {
-      graph.setEdge(treeNodeKey(node), to, { link: true });
+      graph.setEdge(key, to, { link: true });
+    }
+  });
+  (node.linksFrom || []).forEach((from) => {
+    if (graph.hasNode(from)) {
+      graph.setEdge(from, key, { link: true });
     }
   });
   node.leafNodes?.forEach((sub) => setLinks(graph, sub));
+  node.detached?.forEach((sub) => setLinks(graph, sub));
 }
 
 export const TreeGraph = (props: TreeGraphProps) => {
@@ -354,6 +422,8 @@ export const TreeGraph = (props: TreeGraphProps) => {
             return <ComponentNode key={key} node={node} showTrait={false} />;
           case 'source':
             return <React.Fragment key={key}>{renderSourceNode(props, key, node)}</React.Fragment>;
+          case 'flow':
+            return <React.Fragment key={key}>{renderFlowNode(key, node)}</React.Fragment>;
           default:
             return <React.Fragment key={key}>{renderResourceNode(props, key, node)}</React.Fragment>;
         }

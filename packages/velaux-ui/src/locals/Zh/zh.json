@@ -907,5 +907,13 @@
   "Phase": "阶段",
   "Readers": "读取者",
   "Also read by": "其他读取者",
-  "Resolved": "已解析"
+  "Resolved": "已解析",
+  "Source values": "数据源取值",
+  "Expressions": "表达式",
+  "Outputs to inputs": "输出到输入",
+  "Order only": "仅顺序",
+  "more": "更多",
+  "Values": "取值",
+  "From": "来自",
+  "To": "到"
 }

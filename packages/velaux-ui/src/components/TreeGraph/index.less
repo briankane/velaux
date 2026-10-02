@@ -137,6 +137,36 @@
       color: #64748b;
     }
   }
+  .graph-node-flow {
+    display: block;
+    padding: 4px 10px;
+    font-size: 12px;
+    background: #f8fafc;
+    border: 1px dashed var(--primary-color);
+    border-radius: 6px;
+    .flow-via {
+      color: var(--primary-color);
+      font-weight: 500;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .flow-line {
+      overflow: hidden;
+      color: #334155;
+      font-family: Menlo, Monaco, monospace;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .flow-more {
+      color: #64748b;
+    }
+    &.flow-dependsOn {
+      border-color: #cbd5e1;
+      .flow-via {
+        color: #64748b;
+      }
+    }
+  }
   .graph-node.unused-status {
     opacity: 0.6;
   }
