@@ -175,7 +175,7 @@ class UiSchema extends Component<Props, State> {
         <div className="uiSchema-wrapper">
           <Loading visible={isLoading} inline={false}>
             <If condition={!uiSchema || uiSchema.length === 0}>
-              <Card locale={locale().Card}>
+              <Card locale={locale().Card} contentHeight="auto">
                 <Empty message={<Translation>There is no ui schema definition</Translation>} iconWidth={'30px'} />
               </Card>
             </If>
