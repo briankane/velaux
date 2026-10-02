@@ -85,6 +85,30 @@ class SourceDialog extends React.Component<Props, State> {
     this.uiSchemaRef = React.createRef();
   }
 
+  // componentDidUpdate lists the types again once the application's
+  // environments, and so the namespaces to check them against, have loaded.
+  componentDidUpdate(prev: Props) {
+    if (deployNamespaces(prev.envbinding).join(',') !== deployNamespaces(this.props.envbinding).join(',')) {
+      this.loadDefinitions();
+    }
+  }
+
+  // loadDefinitions lists the source types usable in every namespace the
+  // application deploys to. Without a namespace to check, an unfiltered list
+  // offers types the webhook then refuses, so none are offered.
+  loadDefinitions = () => {
+    const namespaces = deployNamespaces(this.props.envbinding);
+    if (namespaces.length === 0) {
+      this.setState({ definitions: [] });
+      return;
+    }
+    getSourceDefinitions(namespaces).then((res) => {
+      if (res) {
+        this.setState({ definitions: (res.definitions || []).filter(isUsable) });
+      }
+    });
+  };
+
   componentDidMount() {
     const { dispatch, appName, project, source } = this.props;
     if (dispatch) {
@@ -92,14 +116,7 @@ class SourceDialog extends React.Component<Props, State> {
       dispatch({ type: 'uischema/setProject', payload: project });
     }
     this.loadExpressionEnv();
-    const namespaces = deployNamespaces(this.props.envbinding);
-    // Without a namespace to check, an unfiltered list offers types the webhook
-    // then refuses.
-    getSourceDefinitions(namespaces.length > 0 ? namespaces : undefined).then((res) => {
-      if (res) {
-        this.setState({ definitions: namespaces.length > 0 ? (res.definitions || []).filter(isUsable) : [] });
-      }
-    });
+    this.loadDefinitions();
     if (source) {
       this.field.setValues({
         name: source.name,

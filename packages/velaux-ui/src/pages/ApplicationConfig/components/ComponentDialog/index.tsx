@@ -522,60 +522,63 @@ class ComponentDialog extends React.Component<Props, State> {
                 </Row>
               </AwaitingType>
             </Card>
-            <AwaitingType ready={ready}></AwaitingType>
           </Loading>
-          <Card
-            contentHeight={'auto'}
-            className="withActions"
-            title="Deployment Properties"
-            subTitle={
-              definitionDetail && definitionDetail.uiSchema
-                ? [
-                    <Button
-                      style={{ alignItems: 'center', display: 'flex' }}
-                      onClick={() => {
-                        if (propertiesMode === 'native') {
-                          this.setState({ propertiesMode: 'code' });
-                        } else {
-                          this.setState({ propertiesMode: 'native' });
-                        }
-                      }}
-                    >
-                      {propertiesMode === 'native' && (
-                        <BiCodeBlock size={14} title={i18n.t('Switch to the coding mode')} />
-                      )}
-                      {propertiesMode === 'code' && <BiLaptop size={14} title={i18n.t('Switch to the native mode')} />}
-                    </Button>,
-                  ]
-                : []
-            }
-          >
-            <Row>
-              <If condition={definitionDetail}>
-                <UISchema
-                  {...init(`properties`, {
-                    rules: [
-                      {
-                        validator: validator,
-                        message: i18n.t('Please check the component properties'),
-                      },
-                    ],
-                  })}
-                  enableCodeEdit={propertiesMode === 'code'}
-                  uiSchema={definitionDetail && definitionDetail.uiSchema}
-                  definition={{
-                    name: definitionDetail?.name || '',
-                    type: 'component',
-                    description: definitionDetail?.description || '',
-                  }}
-                  ref={this.uiSchemaRef}
-                  mode={isEditComponent ? 'edit' : 'new'}
-                  deployed={this.props.deployed}
-                  expressions={this.expressionContext()}
-                />
-              </If>
-            </Row>
-          </Card>
+          <AwaitingType ready={ready}>
+            <Card
+              contentHeight={'auto'}
+              className="withActions"
+              title="Deployment Properties"
+              subTitle={
+                definitionDetail && definitionDetail.uiSchema
+                  ? [
+                      <Button
+                        style={{ alignItems: 'center', display: 'flex' }}
+                        onClick={() => {
+                          if (propertiesMode === 'native') {
+                            this.setState({ propertiesMode: 'code' });
+                          } else {
+                            this.setState({ propertiesMode: 'native' });
+                          }
+                        }}
+                      >
+                        {propertiesMode === 'native' && (
+                          <BiCodeBlock size={14} title={i18n.t('Switch to the coding mode')} />
+                        )}
+                        {propertiesMode === 'code' && (
+                          <BiLaptop size={14} title={i18n.t('Switch to the native mode')} />
+                        )}
+                      </Button>,
+                    ]
+                  : []
+              }
+            >
+              <Row>
+                <If condition={definitionDetail}>
+                  <UISchema
+                    {...init(`properties`, {
+                      rules: [
+                        {
+                          validator: validator,
+                          message: i18n.t('Please check the component properties'),
+                        },
+                      ],
+                    })}
+                    enableCodeEdit={propertiesMode === 'code'}
+                    uiSchema={definitionDetail && definitionDetail.uiSchema}
+                    definition={{
+                      name: definitionDetail?.name || '',
+                      type: 'component',
+                      description: definitionDetail?.description || '',
+                    }}
+                    ref={this.uiSchemaRef}
+                    mode={isEditComponent ? 'edit' : 'new'}
+                    deployed={this.props.deployed}
+                    expressions={this.expressionContext()}
+                  />
+                </If>
+              </Row>
+            </Card>
+          </AwaitingType>
         </Form>
       </ModalWithFooter>
     );
