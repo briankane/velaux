@@ -16,6 +16,8 @@ import Plugin from "./components/plugin";
 import i18n from '../../i18n';
 import { AddonApplications } from './components/AddonApplications';
 
+import './index.less';
+
 type Props = {
   history: any;
   plugin: boolean
@@ -147,7 +149,7 @@ class Addons extends React.Component<Props, State> {
           subTitle="Manages extended platform capabilities for KubeVela and VelaUX."
         />
 
-        <Tab defaultActiveKey={plugin ? 'plugins' : this.props.location?.search?.includes('tab=applications') ? 'applications' : 'addons'}
+        <Tab className="addons-tabs" defaultActiveKey={plugin ? 'plugins' : this.props.location?.search?.includes('tab=applications') ? 'applications' : 'addons'}
              onChange={key => {
                history.push(key == 'plugins' ? '/manage/plugins' : key == 'applications' ? '/addons?tab=applications' : '/addons')
              }}>
