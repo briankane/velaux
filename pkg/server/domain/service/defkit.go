@@ -31,6 +31,7 @@ import (
 	"github.com/oam-dev/kubevela/apis/types"
 	"github.com/oam-dev/kubevela/pkg/appkeeper"
 	"github.com/oam-dev/kubevela/pkg/oam"
+	"github.com/oam-dev/kubevela/pkg/resourcetracker"
 	"github.com/oam-dev/kubevela/pkg/workflow/operation"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -218,14 +219,21 @@ func (s *defkitServiceImpl) ApplyPreview(ctx context.Context, name string, req a
 	}
 	takeOver, remove := setOf(req.TakeOver), setOf(req.Delete)
 	skip := []string{}
-	var deletes []*apisv1.DefKitPreviewItem
+	var adopts, deletes []*apisv1.DefKitPreviewItem
 	for _, item := range preview.Items {
 		id := item.Kind + "/" + item.Name
 		switch {
-		case item.Status == defkitConflict && !takeOver[id]:
+		case item.Status == defkitConflict && takeOver[id]:
+			adopts = append(adopts, item)
+		case item.Status == defkitConflict:
 			skip = append(skip, id)
 		case item.Status == defkitRemoved && remove[id]:
 			deletes = append(deletes, item)
+		}
+	}
+	for _, item := range adopts {
+		if err := s.adopt(ctx, app, item); err != nil {
+			return err
 		}
 	}
 	b, err := json.Marshal(skip)
@@ -247,6 +255,28 @@ func (s *defkitServiceImpl) ApplyPreview(ctx context.Context, name string, req a
 		}
 	}
 	return operation.ResumeWorkflow(ctx, s.KubeClient, app, "")
+}
+
+// adopt makes the module the owner of a definition the review takes over, so
+// its apply step may write it.
+func (s *defkitServiceImpl) adopt(ctx context.Context, app *v1beta1.Application, item *apisv1.DefKitPreviewItem) error {
+	obj := &unstructured.Unstructured{}
+	obj.SetAPIVersion(v1beta1.SchemeGroupVersion.String())
+	obj.SetKind(item.Kind)
+	if err := s.KubeClient.Get(ctx, client.ObjectKey{Namespace: types.DefaultKubeVelaNS, Name: item.Name}, obj); err != nil {
+		return err
+	}
+	labels := obj.GetLabels()
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	owner := resourcetracker.LabelsForKey(fmt.Sprintf("%s/%s/%s", v1beta1.ApplicationKind, app.Namespace, app.Name))
+	owner[oam.LabelAppName], owner[oam.LabelAppNamespace] = app.Name, app.Namespace
+	for k, v := range owner {
+		labels[k] = v
+	}
+	obj.SetLabels(labels)
+	return s.KubeClient.Update(ctx, obj)
 }
 
 func (s *defkitServiceImpl) application(ctx context.Context, name string) (*v1beta1.Application, error) {
@@ -401,9 +431,6 @@ func defkitApplication(name string, src apisv1.DefKitSource) *v1beta1.Applicatio
 		"ref": src.Ref, "git": src.Git, "version": src.Version, "prefix": src.Prefix, "types": nonNil(src.Types),
 	})
 	gc, _ := json.Marshal(map[string]interface{}{"keepLegacyResource": true})
-	takeOver, _ := json.Marshal(map[string]interface{}{"rules": []interface{}{map[string]interface{}{
-		"selector": map[string]interface{}{"resourceTypes": sortedKinds()},
-	}}})
 	return &v1beta1.Application{
 		TypeMeta: metav1.TypeMeta{APIVersion: v1beta1.SchemeGroupVersion.String(), Kind: v1beta1.ApplicationKind},
 		ObjectMeta: metav1.ObjectMeta{
@@ -415,9 +442,9 @@ func defkitApplication(name string, src apisv1.DefKitSource) *v1beta1.Applicatio
 			Components: []common.ApplicationComponent{},
 			Policies: []v1beta1.AppPolicy{
 				// An update keeps what it no longer renders; a review deletes the ones it picks.
+				// No take-over policy: a review adopts the conflicts it picks, and the
+				// resource keeper refuses to overwrite any other definition it does not own.
 				{Name: "keep-removed-definitions", Type: "garbage-collect", Properties: &runtime.RawExtension{Raw: gc}},
-				// Safe because a review skips every conflict it does not pick.
-				{Name: "take-over-reviewed", Type: "take-over", Properties: &runtime.RawExtension{Raw: takeOver}},
 			},
 			Workflow: &v1beta1.Workflow{Steps: []oamv1alpha1.WorkflowStep{
 				{WorkflowStepBase: oamv1alpha1.WorkflowStepBase{
@@ -572,15 +599,6 @@ func definitionYAML(u *unstructured.Unstructured) string {
 		return ""
 	}
 	return string(b)
-}
-
-func sortedKinds() []string {
-	out := make([]string, 0, len(definitionKinds))
-	for k := range definitionKinds {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
 }
 
 func setOf(items []string) map[string]bool {

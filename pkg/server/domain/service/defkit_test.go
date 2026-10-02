@@ -87,6 +87,9 @@ func TestDefKitSourceRoundTrips(t *testing.T) {
 	assert.Equal(t, "defkit-defs", app.Name)
 	assert.Equal(t, "defs", app.Labels[defkitModuleLabel])
 	assert.Equal(t, types.FromInner, app.Labels[types.LabelSourceOfTruth], "a module is not a service")
+	for _, p := range app.Spec.Policies {
+		assert.NotEqual(t, "take-over", p.Type, "a module adopts only the conflicts a review picks, never by policy")
+	}
 }
 
 func installedDefinition(kind, name, description string, labels map[string]string) *v1beta1.TraitDefinition {
@@ -198,10 +201,17 @@ func TestDefKitApplyPreview(t *testing.T) {
 	require.NoError(t, cli.Get(ctx, client.ObjectKey{Namespace: "vela-system", Name: "defkit-defs"}, app))
 	assert.False(t, app.Status.Workflow.Suspend, "the review step is resumed")
 
+	taken := &v1beta1.TraitDefinition{}
+	require.NoError(t, cli.Get(ctx, client.ObjectKey{Namespace: "vela-system", Name: "taken"}, taken))
+	assert.Empty(t, taken.Labels[oam.LabelAppName], "a conflict not taken over is left unowned, so the apply cannot overwrite it")
+
 	svc2, cli2 := reviewFixture(t)
 	require.NoError(t, svc2.ApplyPreview(ctx, "defs", apisv1.ApplyDefKitPreviewRequest{TakeOver: []string{"TraitDefinition/taken"}}))
 	require.NoError(t, cli2.Get(ctx, client.ObjectKey{Namespace: defkitRenderNamespace, Name: "defkit-defs-abc"}, cm))
 	assert.JSONEq(t, `[]`, cm.Data[defkitKeySkip], "a conflict taken over is applied")
+	require.NoError(t, cli2.Get(ctx, client.ObjectKey{Namespace: "vela-system", Name: "taken"}, taken))
+	assert.Equal(t, "defkit-defs", taken.Labels[oam.LabelAppName], "a conflict taken over is adopted by the module")
+	assert.Equal(t, "defkit-defs", taken.Labels["owner.oam.dev/name"])
 	assert.NoError(t, cli2.Get(ctx, client.ObjectKey{Namespace: "vela-system", Name: "gone"}, &v1beta1.TraitDefinition{}),
 		"an unticked removed definition is kept")
 }
