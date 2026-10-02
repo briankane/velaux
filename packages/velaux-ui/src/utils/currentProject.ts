@@ -54,3 +54,17 @@ export function askedProject(): string | null {
     return null;
   }
 }
+
+// scopedTo is what a view of the picked project shows of a list it shares with
+// other views: nothing until the project is known, then only that project's.
+// A list loaded for another project, or for all of them, never shows meanwhile.
+export function scopedTo<T>(
+  items: T[] | undefined,
+  picked: { current: string; resolved: boolean } | undefined,
+  projectOf: (item: T) => string | undefined
+): T[] {
+  if (!picked?.resolved) {
+    return [];
+  }
+  return (items || []).filter((item) => inProject(picked.current, projectOf(item)));
+}

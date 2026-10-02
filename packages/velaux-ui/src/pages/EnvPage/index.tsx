@@ -1,5 +1,5 @@
 import { Pagination, Button } from '@alifd/next';
-import { projectChanged } from '../../utils/currentProject';
+import { projectChanged, scopedTo } from '../../utils/currentProject';
 import { connect } from 'dva';
 import React from 'react';
 
@@ -144,7 +144,7 @@ class EnvList extends React.Component<Props, State> {
         />
 
         <TableList
-          list={envs || []}
+          list={scopedTo(envs, this.props.currentProject, (e: Env) => e.project?.name)}
           updateEnvList={this.updateEnvList}
           userInfo={userInfo}
           changeISEdit={(is: boolean, record: Env) => {

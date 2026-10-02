@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { allProjects, inProject, resolveProject, projectChanged } from '../currentProject';
+import { allProjects, inProject, resolveProject, projectChanged, scopedTo } from '../currentProject';
 
 describe('resolveProject', () => {
   it('keeps a project the user may open', () => {
@@ -30,5 +30,16 @@ describe('projectChanged', () => {
     expect(projectChanged({ current: 'shop', resolved: true }, { current: 'default', resolved: true })).to.equal(true);
     expect(projectChanged({ current: 'shop', resolved: true }, { current: 'shop', resolved: true })).to.equal(false);
     expect(projectChanged({ current: '', resolved: false }, { current: '', resolved: false })).to.equal(false);
+  });
+});
+
+describe('scopedTo', () => {
+  const items = [{ project: 'shop' }, { project: 'default' }];
+  it('shows nothing until the project is known', () => {
+    expect(scopedTo(items, { current: 'shop', resolved: false }, (i) => i.project)).to.deep.equal([]);
+  });
+  it("shows only the picked project's, or everything for all of them", () => {
+    expect(scopedTo(items, { current: 'shop', resolved: true }, (i) => i.project)).to.deep.equal([{ project: 'shop' }]);
+    expect(scopedTo(items, { current: '', resolved: true }, (i) => i.project)).to.deep.equal(items);
   });
 });

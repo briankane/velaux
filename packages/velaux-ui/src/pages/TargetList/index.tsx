@@ -1,5 +1,5 @@
 import { Pagination, Button } from '@alifd/next';
-import { projectChanged } from '../../utils/currentProject';
+import { projectChanged, scopedTo } from '../../utils/currentProject';
 import { connect } from 'dva';
 import React from 'react';
 
@@ -16,7 +16,7 @@ import TargetDialog from './components/TargetDialog';
 import './index.less';
 
 type Props = {
-  targets?: [];
+  targets?: Target[];
   total?: number;
   currentProject?: { current: string; resolved: boolean };
   clusterList?: Cluster[];
@@ -152,7 +152,7 @@ class TargetList extends React.Component<Props, State> {
         />
 
         <TableList
-          list={targets}
+          list={scopedTo<Target>(targets, this.props.currentProject, (t: Target) => t.project?.name)}
           updateTargetList={this.updateTargetList}
           changeISEdit={(is: boolean, record: Target) => {
             this.changeISEdit(is, record);

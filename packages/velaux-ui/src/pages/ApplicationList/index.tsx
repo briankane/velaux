@@ -6,7 +6,7 @@ import { byHealth, healthCounts } from './components/AppStatus/health';
 import { HealthChips } from './components/HealthChips';
 import { visibleLabels } from '../../utils/appMeta';
 
-import { inProject, projectChanged } from '../../utils/currentProject';
+import { projectChanged, scopedTo } from '../../utils/currentProject';
 import { deleteApplication } from '../../api/application';
 import { If } from '../../components/If';
 import { ListTitle } from '../../components/ListTitle';
@@ -76,6 +76,7 @@ class Application extends Component<Props, State> {
   componentDidUpdate(prev: Props) {
     if (projectChanged(prev.currentProject, this.props.currentProject)) {
       this.getApplications({});
+      this.getEnvs();
     }
   }
 
@@ -98,10 +99,15 @@ class Application extends Component<Props, State> {
     });
   };
 
+  // getEnvs lists the environments the Environment filter offers, the picked
+  // project's.
   getEnvs = async () => {
+    if (!this.props.currentProject?.resolved) {
+      return;
+    }
     this.props.dispatch({
       type: 'env/listEnvs',
-      payload: {},
+      payload: { project: this.props.currentProject.current },
     });
   };
 
@@ -162,7 +168,8 @@ class Application extends Component<Props, State> {
   };
 
   render() {
-    const { applicationList, dispatch, envs, userInfo } = this.props;
+    const { dispatch, envs, userInfo } = this.props;
+    const applicationList = scopedTo(this.props.applicationList, this.props.currentProject, (a) => a.project?.name);
     const { showAddApplication, isLoading, showEditApplication, editItem, labelValue, showMode } = this.state;
     let appLabels: string[] = [];
     applicationList?.map((app) => {
@@ -199,9 +206,7 @@ class Application extends Component<Props, State> {
           dispatch={dispatch}
           setLabelValue={this.setLabelValue}
           labelValue={labelValue}
-          envs={(envs || []).filter((env: Env) =>
-            inProject(this.props.currentProject?.current || '', env.project?.name)
-          )}
+          envs={scopedTo(envs, this.props.currentProject, (env: Env) => env.project?.name)}
           showMode={showMode}
           setMode={(mode: ShowMode) => {
             this.setState({ showMode: mode });
