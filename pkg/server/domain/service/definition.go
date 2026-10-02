@@ -55,6 +55,8 @@ import (
 type DefinitionService interface {
 	// ListDefinitions list definition base info
 	ListDefinitions(ctx context.Context, ops DefinitionQueryOption) ([]*apisv1.DefinitionBase, error)
+	// DefinitionDoc is a definition's reference documentation in Markdown.
+	DefinitionDoc(ctx context.Context, name, defType, lang string) (*apisv1.DefinitionDocResponse, error)
 	// DetailDefinition get definition detail
 	DetailDefinition(ctx context.Context, name, defType string) (*apisv1.DetailDefinitionResponse, error)
 	// DefinitionUsage reports each namespace's use of a component or trait definition against its quota

@@ -34,6 +34,15 @@ class DefinitionDetailsLayout extends Component<Props> {
     const { params = { definitionType: '', definitionName: '' } } = this.props.match;
     const { definitionType, definitionName } = params;
     const list = [
+      ...(definitionType === 'source'
+        ? []
+        : [
+            {
+              id: 'doc',
+              name: <Translation>Documentation</Translation>,
+              to: `/definitions/${definitionType}/${definitionName}/doc`,
+            },
+          ]),
       {
         id: 'uiSchema',
         name: <Translation>UI Schema</Translation>,

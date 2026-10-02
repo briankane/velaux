@@ -2151,6 +2151,11 @@ type ExpressionEnvResponse struct {
 	Variables []*ExpressionVariable `json:"variables"`
 }
 
+// DefinitionDocResponse is a definition's reference documentation, in Markdown.
+type DefinitionDocResponse struct {
+	Markdown string `json:"markdown"`
+}
+
 // ExpressionVariable is a value an expression can read, and its fields.
 type ExpressionVariable struct {
 	Name        string `json:"name"`

@@ -173,7 +173,7 @@ class Definitions extends Component<Props, State> {
         cell: (v: string, i: number, record: DefinitionBase) => {
           return (
             <span className="definition-name">
-              <Link to={`/definitions/${definitionType}/${v}/ui-schema`}>{v}</Link>
+              <Link to={`/definitions/${definitionType}/${v}/doc`}>{v}</Link>
               {record.abstract && (
                 <Tag size="small" className="definition-abstract">
                   <Translation>Abstract</Translation>

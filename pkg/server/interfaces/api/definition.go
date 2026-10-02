@@ -76,6 +76,16 @@ func (d *definition) GetWebServiceRoute() *restful.WebService {
 		Returns(200, "OK", apis.DefinitionUsageResponse{}).
 		Writes(apis.DefinitionUsageResponse{}).Do(returns500))
 
+	ws.Route(ws.GET("/{definitionName}/doc").To(d.definitionDoc).
+		Doc("A definition's reference documentation in Markdown, as vela show generates it").
+		Filter(d.RbacService.CheckPerm("definition", "detail")).
+		Param(ws.PathParameter("definitionName", "identifier of the definition").DataType("string")).
+		Param(ws.QueryParameter("type", "the definition type").DataType("string").Required(true).PossibleValues([]string{"component", "trait", "workflowstep", "policy"})).
+		Param(ws.QueryParameter("lang", "en (the default) or zh").DataType("string")).
+		Metadata(restfulspec.KeyOpenAPITags, tags).
+		Returns(200, "OK", apis.DefinitionDocResponse{}).
+		Writes(apis.DefinitionDocResponse{}).Do(returns500))
+
 	ws.Route(ws.PUT("/{definitionName}/uischema").To(d.updateUISchema).
 		Doc("Update the UI schema for a definition").
 		Filter(d.RbacService.CheckPerm("definition", "update")).
@@ -207,4 +217,15 @@ func splitNamespaces(param string) []string {
 		}
 	}
 	return namespaces
+}
+
+func (d *definition) definitionDoc(req *restful.Request, res *restful.Response) {
+	doc, err := d.DefinitionService.DefinitionDoc(req.Request.Context(), req.PathParameter("definitionName"), req.QueryParameter("type"), req.QueryParameter("lang"))
+	if err != nil {
+		bcode.ReturnError(req, res, err)
+		return
+	}
+	if err := res.WriteEntity(doc); err != nil {
+		bcode.ReturnError(req, res, err)
+	}
 }

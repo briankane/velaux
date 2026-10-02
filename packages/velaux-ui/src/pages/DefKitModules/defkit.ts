@@ -45,7 +45,7 @@ export const kindLabels: Record<string, string> = {
 
 // definitionLink is a definition's page under Definitions.
 export function definitionLink(kind: string, name: string): string {
-  return `/definitions/${kindTypes[kind] || 'component'}/${name}/ui-schema`;
+  return `/definitions/${kindTypes[kind] || 'component'}/${name}/doc`;
 }
 
 // sourceText is where a module comes from, as one line.

@@ -91,6 +91,13 @@ export function getDefinitionUsage(params: { name: string; type: 'component' | '
   return get(_url, { params: { type: params.type } }).then((res) => res);
 }
 
+// getDefinitionDoc is a definition's reference documentation in Markdown, as
+// vela show generates it, in the UI's language.
+export function getDefinitionDoc(params: { name: string; type: string; lang: string }) {
+  const _url = `${base + definition}/${params.name}/doc`;
+  return get(_url, { params: { type: params.type, lang: params.lang } }).then((res) => res);
+}
+
 export function detailTraitDefinition(params: { name: string }) {
   const _url = `${base + definition}/${params.name}`;
   return get(_url, { params: { type: 'trait' } }).then((res) => res);

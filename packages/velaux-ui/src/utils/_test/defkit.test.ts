@@ -13,8 +13,8 @@ import {
 
 describe('defkit', () => {
   it('links a definition to its page by kind', () => {
-    expect(definitionLink('TraitDefinition', 'scaler')).to.equal('/definitions/trait/scaler/ui-schema');
-    expect(definitionLink('WorkflowStepDefinition', 'deploy')).to.equal('/definitions/workflowstep/deploy/ui-schema');
+    expect(definitionLink('TraitDefinition', 'scaler')).to.equal('/definitions/trait/scaler/doc');
+    expect(definitionLink('WorkflowStepDefinition', 'deploy')).to.equal('/definitions/workflowstep/deploy/doc');
   });
 
   it('reads a URL as a git repository and anything else as a Go module', () => {

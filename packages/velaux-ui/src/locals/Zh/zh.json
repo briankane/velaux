@@ -900,5 +900,7 @@
   "Auto update every": "自动更新间隔",
   "Render and apply": "渲染并应用",
   "At least 5m": "至少 5m",
-  "A duration after each run, at least 5m, such as 10m or 1h": "每次运行之后的间隔，至少 5m，例如 10m 或 1h"
+  "A duration after each run, at least 5m, such as 10m or 1h": "每次运行之后的间隔，至少 5m，例如 10m 或 1h",
+  "Documentation": "文档",
+  "No documentation for this definition": "此定义没有文档"
 }

@@ -2,6 +2,7 @@ import { Redirect, Route, Switch } from 'dva/router';
 import React from 'react';
 
 import Addons from '../../pages/Addons/index';
+import DefinitionDoc from '../../pages/DefinitionDoc';
 import DefKitModuleDetail from '../../pages/DefKitModuleDetail';
 import DefKitModules from '../../pages/DefKitModules';
 import PackageDetail from '../../pages/PackageDetail';
@@ -421,6 +422,18 @@ export default function Router() {
             <DefinitionsLayout {...props}>
               <Definitions {...props} />
             </DefinitionsLayout>
+          );
+        }}
+      />
+      <Route
+        exact
+        path="/definitions/:definitionType/:definitionName/doc"
+        render={(props: any) => {
+          const mergeProps = { ...props, ...{ activeId: 'doc' } };
+          return (
+            <DefinitionDetails {...mergeProps}>
+              <DefinitionDoc {...props} />
+            </DefinitionDetails>
           );
         }}
       />
