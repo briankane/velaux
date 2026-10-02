@@ -63,7 +63,7 @@ export default function MainLayout(props: any) {
                   onToggleCollapsed={toggleCollapsed}
                   {...props}
                 >
-                  <LeftMenu {...props} />
+                  <LeftMenu {...props} collapsed={collapsed || mode === LayoutModes.Neat} />
                 </Header>
               )}
               <div className="layout-shell">

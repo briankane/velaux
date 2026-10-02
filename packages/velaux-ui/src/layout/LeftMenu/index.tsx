@@ -13,12 +13,13 @@ import { checkPermission } from '../../types';
 import { getConfigs } from '../../api/config';
 import { Config, MenuTypes, PluginMeta } from '@velaux/data';
 import { MdOutlineMonitorHeart } from 'react-icons/md';
-import { If } from '../../components/If';
 
 interface Props {
   userInfo?: LoginUserInfo;
   systemInfo?: SystemInfo;
   pluginList: PluginMeta[];
+  // collapsed is whether the sidebar shows icons only, so names show on hover.
+  collapsed?: boolean;
 }
 
 const LeftMenuModule = (props: Props) => {
@@ -85,48 +86,71 @@ const LeftMenuModule = (props: Props) => {
             </span>
           </div>
         );
+        // hint names a collapsed item, and says when one is not available yet.
+        const hint = (props.collapsed || childrenItem.comingSoon) && (
+          <div className="menu-item-hint">
+            {props.collapsed && (
+              <div className="menu-item-hint-name">
+                <Translation>{childrenItem.label}</Translation>
+              </div>
+            )}
+            {childrenItem.comingSoon && (
+              <div className="menu-item-hint-soon">
+                <Translation>Coming Soon</Translation>
+              </div>
+            )}
+          </div>
+        );
+        const withHint = (trigger: JSX.Element) =>
+          hint ? (
+            <Balloon.Tooltip align="r" trigger={trigger}>
+              {hint}
+            </Balloon.Tooltip>
+          ) : (
+            trigger
+          );
         if (childrenItem.comingSoon) {
           ele.push(
             <li className="nav-item" key={childrenItem.name}>
-              <Balloon.Tooltip
-                align="r"
-                trigger={
-                  <span className="menu-item menu-item-coming-soon" aria-disabled="true">
-                    {item}
-                  </span>
-                }
-              >
-                <Translation>Coming Soon</Translation>
-              </Balloon.Tooltip>
+              {withHint(
+                <span className="menu-item menu-item-coming-soon" aria-disabled="true">
+                  {item}
+                </span>
+              )}
             </li>
           );
           return;
         }
-        const childrenArr = (
+        // The tooltip names a collapsed item, so the browser's title is only
+        // given when it is not shown.
+        const title = hint ? undefined : i18n.t(childrenItem.label).toString();
+        ele.push(
           <li className="nav-item" key={childrenItem.name}>
-            <If condition={childrenItem.href}>
-              <a
-                rel="noopener noreferrer"
-                target="_blank"
-                className={childrenItem.active ? 'menu-item-active' : 'menu-item'}
-                href={childrenItem.href}
-                title={i18n.t(childrenItem.label).toString()}
-              >
-                {item}
-              </a>
-            </If>
-            <If condition={childrenItem.to && !childrenItem.href}>
-              <Link
-                to={childrenItem.to}
-                className={childrenItem.active ? 'menu-item-active' : 'menu-item'}
-                title={i18n.t(childrenItem.label).toString()}
-              >
-                {item}
-              </Link>
-            </If>
+            {childrenItem.href &&
+              withHint(
+                <a
+                  rel="noopener noreferrer"
+                  target="_blank"
+                  className={childrenItem.active ? 'menu-item-active' : 'menu-item'}
+                  href={childrenItem.href}
+                  title={title}
+                >
+                  {item}
+                </a>
+              )}
+            {childrenItem.to &&
+              !childrenItem.href &&
+              withHint(
+                <Link
+                  to={childrenItem.to}
+                  className={childrenItem.active ? 'menu-item-active' : 'menu-item'}
+                  title={title}
+                >
+                  {item}
+                </Link>
+              )}
           </li>
         );
-        ele.push(childrenArr);
       });
     }
     if (ele.length > 0) {
