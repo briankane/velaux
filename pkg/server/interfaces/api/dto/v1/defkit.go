@@ -1,0 +1,115 @@
+/*
+Copyright 2026 The KubeVela Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package v1
+
+import "time"
+
+// DefKitSource is where a DefKit module comes from and how it is rendered.
+type DefKitSource struct {
+	// Ref is the Go module path; Git is a repository URL in its place.
+	Ref string `json:"ref,omitempty"`
+	Git string `json:"git,omitempty"`
+	// Version is a module version or, with Git, a branch, tag or commit.
+	Version string   `json:"version,omitempty"`
+	Prefix  string   `json:"prefix,omitempty"`
+	Types   []string `json:"types,omitempty"`
+}
+
+// DefKitModuleInfo is what a module says about itself in its module.yaml, as
+// its last render read it.
+type DefKitModuleInfo struct {
+	Name            string             `json:"name"`
+	ResolvedVersion string             `json:"resolvedVersion,omitempty"`
+	Description     string             `json:"description,omitempty"`
+	Maintainers     []DefKitMaintainer `json:"maintainers,omitempty"`
+	Categories      []string           `json:"categories,omitempty"`
+	HasHooks        bool               `json:"hasHooks,omitempty"`
+}
+
+// DefKitMaintainer is a maintainer a module lists.
+type DefKitMaintainer struct {
+	Name  string `json:"name"`
+	Email string `json:"email,omitempty"`
+}
+
+// DefKitModule is an installed module: an Application of the defkit addon.
+type DefKitModule struct {
+	Name   string       `json:"name"`
+	Source DefKitSource `json:"source"`
+	// Phase is rendering, review, applying, applied or failed.
+	Phase   string            `json:"phase"`
+	Message string            `json:"message,omitempty"`
+	Info    *DefKitModuleInfo `json:"info,omitempty"`
+	// Counts are the installed definitions by kind.
+	Counts     map[string]int `json:"counts"`
+	UpdateTime time.Time      `json:"updateTime"`
+}
+
+// ListDefKitModulesResponse lists the installed modules.
+type ListDefKitModulesResponse struct {
+	// AddonEnabled is whether the defkit addon's steps are installed.
+	AddonEnabled bool            `json:"addonEnabled"`
+	Modules      []*DefKitModule `json:"modules"`
+}
+
+// DefKitDefinition is one definition of a module.
+type DefKitDefinition struct {
+	Kind        string `json:"kind"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+// DefKitModuleDetail is a module and the definitions it has installed.
+type DefKitModuleDetail struct {
+	DefKitModule
+	Definitions []*DefKitDefinition `json:"definitions"`
+}
+
+// DefKitPreviewItem is one definition a render would change, or leave.
+type DefKitPreviewItem struct {
+	DefKitDefinition
+	// Status is new, changed, unchanged, conflict (exists, not from this
+	// module) or removed (installed, no longer rendered).
+	Status string `json:"status"`
+	// Current and Next are the definition's YAML in the cluster and as rendered.
+	Current string `json:"current,omitempty"`
+	Next    string `json:"next,omitempty"`
+}
+
+// DefKitPreview is a module's pending render against the cluster.
+type DefKitPreview struct {
+	// Phase is the module's: a preview is ready to apply in review.
+	Phase   string               `json:"phase"`
+	Message string               `json:"message,omitempty"`
+	Info    *DefKitModuleInfo    `json:"info,omitempty"`
+	Errors  []string             `json:"errors,omitempty"`
+	Items   []*DefKitPreviewItem `json:"items"`
+}
+
+// CreateDefKitModuleRequest installs a module.
+type CreateDefKitModuleRequest struct {
+	Name string `json:"name" validate:"checkname"`
+	DefKitSource
+}
+
+// ApplyDefKitPreviewRequest applies a module's pending render.
+type ApplyDefKitPreviewRequest struct {
+	// TakeOver are the conflicts to take over, as Kind/name; the rest are skipped.
+	TakeOver []string `json:"takeOver,omitempty"`
+	// Delete are the removed definitions to delete, as Kind/name; the rest are kept.
+	Delete []string `json:"delete,omitempty"`
+}
