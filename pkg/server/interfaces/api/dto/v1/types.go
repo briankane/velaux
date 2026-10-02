@@ -2382,3 +2382,49 @@ type DataFlow struct {
 type ApplicationDataFlowsResponse struct {
 	Flows []*DataFlow `json:"flows"`
 }
+
+// ReportMeta is a built-in report in the catalogue.
+type ReportMeta struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+// ListReportsResponse is the catalogue of built-in reports.
+type ListReportsResponse struct {
+	Reports []ReportMeta `json:"reports"`
+}
+
+// ReportColumn is a column of a report's table.
+type ReportColumn struct {
+	Key   string `json:"key"`
+	Title string `json:"title"`
+}
+
+// ReportRow is a row of a report's table, and the page it describes.
+type ReportRow struct {
+	Values map[string]interface{} `json:"values"`
+	Link   string                 `json:"link,omitempty"`
+}
+
+// ReportBar is a bar of a report's chart.
+type ReportBar struct {
+	Label string  `json:"label"`
+	Value float64 `json:"value"`
+}
+
+// ReportChart is a bar chart summarising a report.
+type ReportChart struct {
+	Title string      `json:"title"`
+	Bars  []ReportBar `json:"bars"`
+}
+
+// ReportResult is a report run over one project.
+type ReportResult struct {
+	Report      ReportMeta     `json:"report"`
+	Project     string         `json:"project"`
+	GeneratedAt time.Time      `json:"generatedAt"`
+	Columns     []ReportColumn `json:"columns"`
+	Rows        []ReportRow    `json:"rows"`
+	Chart       *ReportChart   `json:"chart,omitempty"`
+}
