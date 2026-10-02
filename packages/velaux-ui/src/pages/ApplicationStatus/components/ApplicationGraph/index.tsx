@@ -7,6 +7,8 @@ import { TreeGraph } from '../../../../components/TreeGraph';
 import { dependencyItems } from '../../../../utils/dependencies';
 import type { DependencyItem } from '../../../../utils/dependencies';
 import type { TreeNode } from '../../../../components/TreeGraph/interface';
+import { treeNodeKey } from '../../../../components/TreeGraph/utils';
+import { placementKey, sourceLinks, sourceReads } from './sources';
 import type {
   ApplicationDetail,
   ApplicationStatus,
@@ -133,6 +135,7 @@ class ApplicationGraph extends React.Component<Props, State> {
 
   buildClusterNode(resources: AppliedResource[], graphType?: string): TreeNode[] {
     const clusterTree: Map<string, TreeNode> = new Map<string, TreeNode>();
+    this.placements = new Map<string, string>();
     if (graphType === 'resource-graph') {
       resources.map((res) => {
         const cluster = res.cluster || 'local';
@@ -169,12 +172,12 @@ class ApplicationGraph extends React.Component<Props, State> {
         const clusterNode = clusterTree.get(name);
         if (clusterNode) {
           const component = componentMap.get(s.name);
-          const dependencies = dependencyItems(s.name, applicationStatus?.dependencies, types);
-          if (!clusterNode.leafNodes) {
-            clusterNode.leafNodes = [this.convertComponentNode(s, component, dependencies)];
-          } else {
-            clusterNode.leafNodes = clusterNode.leafNodes.concat(this.convertComponentNode(s, component, dependencies));
-          }
+          const dependencies = dependencyItems(s.name, applicationStatus?.dependencies, types).concat(
+            sourceReads(s.name, s.cluster, s.namespace, applicationStatus?.sources)
+          );
+          const componentNode = this.convertComponentNode(s, component, dependencies);
+          this.placements.set(placementKey(s.cluster, s.namespace, s.name), treeNodeKey(componentNode));
+          clusterNode.leafNodes = (clusterNode.leafNodes || []).concat(componentNode);
         }
       });
       //this.generateTree(clusterTree, components || []);
@@ -184,6 +187,26 @@ class ApplicationGraph extends React.Component<Props, State> {
       tree.push(value);
     });
     return tree;
+  }
+
+  // placements are the component nodes buildClusterNode put on the graph, by
+  // placementKey, for the source nodes to link to.
+  placements = new Map<string, string>();
+
+  // buildSourceNodes are the Application's spec.sources bindings, each linked
+  // to the component placements that read it.
+  buildSourceNodes(): TreeNode[] {
+    const { applicationStatus } = this.props;
+    return (applicationStatus?.sources || []).map((source) => {
+      const { links, elsewhere } = sourceLinks(source, this.placements);
+      return {
+        nodeType: 'source',
+        resource: { name: source.name, kind: 'Source' },
+        source,
+        links,
+        readersElsewhere: elsewhere,
+      };
+    });
   }
 
   buildTree(): TreeNode {
@@ -198,6 +221,9 @@ class ApplicationGraph extends React.Component<Props, State> {
       },
       leafNodes: this.buildClusterNode(resources, graphType),
     };
+    if (graphType === 'application-graph') {
+      root.leafNodes = this.buildSourceNodes().concat(root.leafNodes || []);
+    }
     return root;
   }
 

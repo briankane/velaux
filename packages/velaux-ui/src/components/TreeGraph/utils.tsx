@@ -49,9 +49,16 @@ export function componentSections(node: GraphNode): TooltipSection[] {
   const content = (
     <ul className="dependency-list">
       {items.map((item) => (
-        <li key={`${item.direction}:${item.name}@${item.where || ''}`}>
+        <li key={`${item.kind || 'component'}:${item.direction}:${item.name}@${item.where || ''}`}>
           {item.direction === 'outbound' ? (
-            <span className="dependency-direction" title={`Outbound: ${node.resource.name} depends on ${item.name}`}>
+            <span
+              className="dependency-direction"
+              title={
+                item.kind === 'source'
+                  ? `Outbound: ${node.resource.name} reads the source ${item.name}`
+                  : `Outbound: ${node.resource.name} depends on ${item.name}`
+              }
+            >
               <AiOutlineArrowRight />
             </span>
           ) : (
@@ -60,6 +67,7 @@ export function componentSections(node: GraphNode): TooltipSection[] {
             </span>
           )}
           {item.name}
+          {item.kind === 'source' && <span className="dependency-type dependency-source">source</span>}
           {item.type && <span className="dependency-type">{item.type}</span>}
           {item.where && <span className="dependency-where">in {item.where}</span>}
           {item.inferred && (
@@ -123,6 +131,10 @@ export function getNodeSize(node: TreeNode): { width: number; height: number } {
   if (node.nodeType == 'app') {
     width = 180;
     height = 40;
+  }
+  if (node.nodeType == 'source') {
+    width = 220;
+    height = 48;
   }
   if (node.nodeType == 'pod') {
     width = 220;

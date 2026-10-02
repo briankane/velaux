@@ -17,12 +17,14 @@ import { If } from '../If';
 import { ComponentNode } from './component-node';
 import type { GraphNode, TreeNode, GraphEdge, Line } from './interface';
 import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
-import { clusterTooltip, resourceTooltip, targetTooltip } from './tooltip';
+import { clusterTooltip, resourceTooltip, sourceTooltip, targetTooltip } from './tooltip';
 import { treeNodeKey, getGraphSize, getNodeSize, ResourceIcon } from './utils';
 
 import { Link } from 'dva/router';
 import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
 import { FaEllipsisV } from 'react-icons/fa';
+import { BsDatabase } from 'react-icons/bs';
+import { sourcePhaseClass } from '../../pages/ApplicationStatus/components/ApplicationGraph/sources';
 import { HiOutlineNewspaper } from 'react-icons/hi';
 
 type TreeGraphProps = {
@@ -223,6 +225,41 @@ function renderTargetNode(props: TreeGraphProps, id: string, node: GraphNode) {
   );
 }
 
+// renderSourceNode is a spec.sources binding: its name, the SourceDefinition
+// resolving it, and its phase as the node's status.
+function renderSourceNode(props: TreeGraphProps, id: string, node: GraphNode) {
+  const source = node.source;
+  const graphNode = (
+    <div
+      key={id}
+      className={classNames('graph-node', 'graph-node-source', sourcePhaseClass(source?.phase))}
+      style={{
+        left: node.x,
+        top: node.y,
+        width: node.width,
+        height: node.height,
+        transform: `translate(-80px, 0px)`,
+      }}
+    >
+      <div className="icon">
+        <BsDatabase />
+      </div>
+      <div className={classNames('name')}>
+        <div>{node.resource.name}</div>
+        <div className="kind">
+          {source?.type || 'Source'}
+          {source?.phase && <span className="source-phase"> · {i18n.t(source.phase)}</span>}
+        </div>
+      </div>
+    </div>
+  );
+  return (
+    <Balloon trigger={graphNode} closable={false} popupClassName={statusTooltipPopupClass}>
+      {source && <StatusTooltip {...sourceTooltip(source, node.readersElsewhere)} />}
+    </Balloon>
+  );
+}
+
 function setNode(graph: dagre.graphlib.Graph<GraphNode, GraphEdge>, node: TreeNode) {
   const size = getNodeSize(node);
   graph.setNode(treeNodeKey(node), {
@@ -242,6 +279,16 @@ function setNode(graph: dagre.graphlib.Graph<GraphNode, GraphEdge>, node: TreeNo
   });
 }
 
+// setLinks adds each node's links as edges, to nodes the tree put on the graph.
+function setLinks(graph: dagre.graphlib.Graph<GraphNode, GraphEdge>, node: TreeNode) {
+  (node.links || []).forEach((to) => {
+    if (graph.hasNode(to)) {
+      graph.setEdge(treeNodeKey(node), to, { link: true });
+    }
+  });
+  node.leafNodes?.forEach((sub) => setLinks(graph, sub));
+}
+
 export const TreeGraph = (props: TreeGraphProps) => {
   // init the graph
   const graph = new dagre.graphlib.Graph<GraphNode, GraphEdge>();
@@ -250,11 +297,13 @@ export const TreeGraph = (props: TreeGraphProps) => {
     rankdir: 'LR',
   });
 
-  // set node and make layout
+  // set node and make layout; links join nodes across the tree once every
+  // node is in it
   setNode(graph, props.node);
+  setLinks(graph, props.node);
   dagre.layout(graph);
 
-  const edges: Array<{ from: string; to: string; lines: Line[] }> = [];
+  const edges: Array<{ from: string; to: string; lines: Line[]; link?: boolean }> = [];
   graph.edges().forEach((edgeInfo) => {
     const edge = graph.edge(edgeInfo);
     const lines: Line[] = [];
@@ -272,6 +321,7 @@ export const TreeGraph = (props: TreeGraphProps) => {
       from: edgeInfo.v,
       to: edgeInfo.w,
       lines: lines,
+      link: !!edge.link,
     });
   });
 
@@ -302,13 +352,15 @@ export const TreeGraph = (props: TreeGraphProps) => {
             return <React.Fragment key={key}>{renderPodNode(props, key, node)}</React.Fragment>;
           case 'component':
             return <ComponentNode key={key} node={node} showTrait={false} />;
+          case 'source':
+            return <React.Fragment key={key}>{renderSourceNode(props, key, node)}</React.Fragment>;
           default:
             return <React.Fragment key={key}>{renderResourceNode(props, key, node)}</React.Fragment>;
         }
       })}
 
       {edges.map((edge) => (
-        <div key={`${edge.from}-${edge.to}`} className="graph-edge">
+        <div key={`${edge.from}-${edge.to}`} className={classNames('graph-edge', { 'graph-edge-link': edge.link })}>
           {edge.lines.map((line) => {
             const distance = Math.sqrt(Math.pow(line.x1 - line.x2, 2) + Math.pow(line.y1 - line.y2, 2));
             const xMid = (line.x1 + line.x2) / 2;

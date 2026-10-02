@@ -127,6 +127,22 @@
     border: solid 0.2em var(--warning-color);
   }
 
+  .graph-node-source {
+    border-left: 3px solid var(--primary-color);
+    .icon {
+      color: var(--primary-color);
+      font-size: 18px;
+    }
+    .source-phase {
+      color: #64748b;
+    }
+  }
+  .graph-node.unused-status {
+    opacity: 0.6;
+  }
+  .graph-edge.graph-edge-link .graph-edge-line {
+    border-top: 2px dotted var(--primary-color);
+  }
   .graph-edge {
     .graph-edge-line {
       position: absolute;

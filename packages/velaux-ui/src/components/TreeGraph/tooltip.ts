@@ -1,4 +1,4 @@
-import type { ResourceTreeNode } from '@velaux/data';
+import type { ApplicationSourceStatus, ResourceTreeNode, SourceConsumer } from '@velaux/data';
 import type { StatusTooltipProps } from '../StatusTooltip';
 import { summaryEntries } from '../../utils/status';
 
@@ -61,5 +61,25 @@ export function traitTooltip(trait: {
     summary: [{ key: 'Kind', value: 'Trait' }],
     message: trait.message,
     details: trait.details,
+  };
+}
+
+// sourceTooltip summarises a source binding on the service graph: its
+// definition and phase, and its readers that have no node on the graph.
+export function sourceTooltip(source: ApplicationSourceStatus, elsewhere: SourceConsumer[] = []): StatusTooltipProps {
+  const phase = source.phase;
+  return {
+    title: source.name,
+    healthy: phase === 'Resolved' ? true : phase === 'Failed' ? false : undefined,
+    progressing: phase === 'Stale',
+    summary: summaryEntries([
+      ['Kind', 'Source'],
+      ['Definition', source.type],
+      ['Phase', phase],
+      ['Auto update', source.autoUpdate === undefined ? undefined : source.autoUpdate ? 'On' : 'Off'],
+      ['Readers', String((source.consumedBy || []).length)],
+      ['Also read by', elsewhere.map((c) => `${c.name} (${c.definitionKind})`).join(', ') || undefined],
+    ]),
+    message: source.message || (source.resolutions || []).find((r) => r.message)?.message,
   };
 }
