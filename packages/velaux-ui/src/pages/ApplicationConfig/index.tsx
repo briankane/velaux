@@ -18,6 +18,7 @@ import {
   deleteSource,
 } from '../../api/application';
 import { getComponentDefinitions, getPolicyDefinitions } from '../../api/definitions';
+import { wantsAdd } from '../../layout/Application/components/AppTabs/add';
 import { deployNamespaces } from '../../utils/restrictions';
 import { If } from '../../components/If';
 import Permission from '../../components/Permission';
@@ -71,7 +72,9 @@ type Props = {
   };
   history: {
     push: (path: string, state: {}) => {};
+    replace?: (path: string) => void;
   };
+  location?: { pathname: string; search?: string };
   dispatch: ({}) => {};
   applicationDetail?: ApplicationDetail;
   components?: ApplicationComponentBase[];
@@ -135,6 +138,7 @@ class ApplicationConfig extends Component<Props, State> {
   }
 
   componentDidMount() {
+    this.openAddIfAsked();
     this.onGetApplicationTrigger();
     this.onGetComponentDefinitions();
     this.onGetPolicyScopes();
@@ -143,10 +147,46 @@ class ApplicationConfig extends Component<Props, State> {
   }
 
   componentDidUpdate(prevProps: Props) {
+    if (
+      prevProps.location?.search !== this.props.location?.search ||
+      prevProps.match.params.section !== this.props.match.params.section ||
+      prevProps.applicationDetail !== this.props.applicationDetail
+    ) {
+      this.openAddIfAsked();
+    }
     if (deployNamespaces(prevProps.envbinding).join(',') !== deployNamespaces(this.props.envbinding).join(',')) {
       this.onGetComponentDefinitions();
     }
   }
+
+  // openAddIfAsked opens the section's add dialog when the URL asks for it
+  // (the tab's +), once: the ask is dropped from the URL as it opens. A
+  // read-only application opens nothing.
+  openAddIfAsked = () => {
+    const { applicationDetail, location, history, match } = this.props;
+    if (!wantsAdd(location?.search) || !applicationDetail) {
+      return;
+    }
+    if (!applicationDetail.readOnly) {
+      switch (match.params.section) {
+        case 'sources':
+          this.setState({ visibleSource: true, editSource: undefined });
+          break;
+        case 'components':
+          this.onAddComponent();
+          break;
+        case 'policies':
+          this.onAddPolicy();
+          break;
+        case 'triggers':
+          this.onAddTrigger();
+          break;
+      }
+    }
+    if (history.replace) {
+      history.replace(location?.pathname || '');
+    }
+  };
 
   loadSources = () => {
     getSources(this.state.appName).then((res: { sources?: ApplicationSource[] }) => {

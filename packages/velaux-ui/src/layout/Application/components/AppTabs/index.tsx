@@ -1,7 +1,7 @@
 import { connect } from 'dva';
 import { Link } from 'dva/router';
 import React from 'react';
-import { AiOutlineArrowLeft } from 'react-icons/ai';
+import { AiOutlineArrowLeft, AiOutlinePlus } from 'react-icons/ai';
 
 import type { EnvBinding } from '@velaux/data';
 import { StatusBadge } from '../../../../components/StatusBadge';
@@ -13,9 +13,11 @@ import {
   pausedEnvs,
   summariseStatuses,
 } from '../../../../pages/ApplicationList/components/AppStatus/health';
+import { addLink } from './add';
 import './index.less';
 
-type Tab = { key: string; label: string; to: string; active: (path: string) => boolean };
+// A tab in the configure group has a + that opens its add dialog.
+type Tab = { key: string; label: string; to: string; active: (path: string) => boolean; configure?: boolean };
 
 // appTabs are the application page's tabs, in the order a reader builds an
 // application up: what it reads, what it runs, its rules, what starts it, then
@@ -25,6 +27,7 @@ export function appTabs(appName: string): Tab[] {
   const config = (section: string) => ({
     to: `${base}/config/${section}`,
     active: (path: string) => path.startsWith(`${base}/config/${section}`),
+    configure: true,
   });
   return [
     { key: 'overview', label: 'Overview', to: `${base}/config`, active: (path) => path === `${base}/config` },
@@ -53,22 +56,51 @@ export function appTabs(appName: string): Tab[] {
   ];
 }
 
-// AppTabs is the application page's one row of tabs.
-export const AppTabs = (props: { appName: string; currentPath: string }) => (
-  <div className="app-tabs" role="tablist">
-    {appTabs(props.appName).map((tab) => (
-      <Link
-        key={tab.key}
-        role="tab"
-        aria-selected={tab.active(props.currentPath)}
-        className={`app-tab ${tab.active(props.currentPath) ? 'active' : ''}`}
-        to={tab.to}
-      >
-        <Translation>{tab.label}</Translation>
-      </Link>
-    ))}
-  </div>
-);
+// AppTabs is the application page's one row of tabs. The tabs that configure
+// it sit together under a label, each with a + to add one; a read-only
+// application has no +.
+export const AppTabs = (props: { appName: string; currentPath: string; readOnly?: boolean }) => {
+  const tabs = appTabs(props.appName);
+  const tab = (t: Tab) => (
+    <Link
+      key={t.key}
+      role="tab"
+      aria-selected={t.active(props.currentPath)}
+      className={`app-tab ${t.active(props.currentPath) ? 'active' : ''}`}
+      to={t.to}
+    >
+      <Translation>{t.label}</Translation>
+    </Link>
+  );
+  const configure = tabs.filter((t) => t.configure);
+  const first = tabs.findIndex((t) => t.configure);
+  return (
+    <div className="app-tabs" role="tablist">
+      {tabs.slice(0, first).map(tab)}
+      <div className="app-tab-group" role="group" aria-label={i18n.t('Configure').toString()}>
+        <span className="app-tab-group-label">
+          <Translation>Configure</Translation>
+        </span>
+        {configure.map((t) => (
+          <span key={t.key} className="app-tab-with-add">
+            {tab(t)}
+            {!props.readOnly && (
+              <Link
+                className="app-tab-add"
+                to={addLink(t.to)}
+                title={i18n.t('Add').toString()}
+                aria-label={`${i18n.t('Add').toString()} ${i18n.t(t.label).toString()}`}
+              >
+                <AiOutlinePlus />
+              </Link>
+            )}
+          </span>
+        ))}
+      </div>
+      {tabs.slice(first + configure.length).map(tab)}
+    </div>
+  );
+};
 
 // OrbitBar heads one env's live view: back to all of them, the env's health,
 // and its views.

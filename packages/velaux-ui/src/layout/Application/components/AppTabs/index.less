@@ -25,6 +25,49 @@
   }
 }
 
+// The tabs that configure the application, together under a label.
+.app-tabs .app-tab-group {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  align-items: flex-end;
+  margin: 4px 4px 0;
+  padding: 0 6px;
+  background: #f1f5f9;
+  border-radius: 8px 8px 0 0;
+}
+
+.app-tabs .app-tab-group-label {
+  align-self: center;
+  margin-right: 4px;
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app-tabs .app-tab-with-add {
+  display: inline-flex;
+  align-items: center;
+  .app-tab {
+    padding-right: 4px;
+  }
+}
+
+.app-tabs .app-tab-add {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+  padding: 3px;
+  color: #94a3b8;
+  border-radius: 4px;
+  &:hover {
+    color: var(--primary-color, #1b58f4);
+    background: #e2e8f0;
+  }
+}
+
 // The bar over one env's live view.
 .orbit-bar {
   display: flex;

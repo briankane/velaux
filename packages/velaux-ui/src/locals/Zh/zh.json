@@ -934,5 +934,6 @@
   "Step by step": "逐步",
   "Start paused": "创建后暂停",
   "Deploy it, but leave the controller from reconciling it until resumed": "部署后控制器暂不调谐，直到恢复",
-  "How often the controller reconciles it, such as 5m; the default when empty": "控制器调谐的频率，例如 5m；留空使用默认值"
+  "How often the controller reconciles it, such as 5m; the default when empty": "控制器调谐的频率，例如 5m；留空使用默认值",
+  "Configure": "配置"
 }
