@@ -26,9 +26,12 @@ import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
 import { FaEllipsisV } from 'react-icons/fa';
 import { BsDatabase } from 'react-icons/bs';
 import { sourcePhaseClass } from '../../pages/ApplicationStatus/components/ApplicationGraph/sources';
-import { flowLabels, flowLine, maxFlowLines } from '../../pages/ApplicationStatus/components/ApplicationGraph/flows';
-import { Translation } from '../Translation';
+import { flowLabels, flowLine } from '../../pages/ApplicationStatus/components/ApplicationGraph/flows';
+import { BiTransferAlt } from 'react-icons/bi';
 import { HiOutlineNewspaper } from 'react-icons/hi';
+
+// edgeOffset is how far from a laid-out point every edge is drawn.
+const edgeOffset = { x: 40, y: 30 };
 
 type TreeGraphProps = {
   node: TreeNode;
@@ -263,39 +266,31 @@ function renderSourceNode(props: TreeGraphProps, id: string, node: GraphNode) {
   );
 }
 
-// renderFlowNode is what moves along a dependency: each value read, into which
-// property, the first few listed and all of them on hover.
+// renderFlowNode is what moves along a dependency, as a small node: how many
+// fields pass, or none for an order alone; all of them on hover. It is
+// centred where its edges meet, which is where every edge is drawn to.
 function renderFlowNode(id: string, node: GraphNode) {
   const flow = node.flow;
   if (!flow) {
     return null;
   }
-  const lines = flow.items.map((item) => flowLine(item, flow.from.name));
-  const full = flow.items.map((item) => flowLine(item));
+  const lines = flow.items.map((item) => flowLine(item));
+  const orderOnly = flow.via === 'dependsOn';
   const graphNode = (
     <div
       key={id}
       className={classNames('graph-node', 'graph-node-flow', `flow-${flow.via}`)}
-      style={{ left: node.x, top: node.y, width: node.width, height: node.height, transform: `translate(-80px, 0px)` }}
+      style={{
+        left: node.x + edgeOffset.x - node.width / 2,
+        top: node.y + edgeOffset.y - node.height / 2,
+        width: node.width,
+        height: node.height,
+      }}
     >
-      <div className="flow-via">
-        <Translation>{flowLabels[flow.via]}</Translation>
-      </div>
-      {lines.slice(0, maxFlowLines).map((line) => (
-        <div key={line} className="flow-line" title={line}>
-          {line}
-        </div>
-      ))}
-      {lines.length > maxFlowLines && (
-        <div className="flow-more">
-          +{lines.length - maxFlowLines} <Translation>more</Translation>
-        </div>
-      )}
+      <BiTransferAlt />
+      {!orderOnly && <span className="flow-count">{lines.length}</span>}
     </div>
   );
-  if (lines.length === 0) {
-    return graphNode;
-  }
   return (
     <Balloon trigger={graphNode} closable={false} popupClassName={statusTooltipPopupClass}>
       <StatusTooltip
@@ -304,19 +299,28 @@ function renderFlowNode(id: string, node: GraphNode) {
           { key: 'From', value: flow.from.name },
           { key: 'To', value: flow.to.name },
         ]}
-        sections={[
-          {
-            title: 'Values',
-            count: full.length,
-            content: (
-              <ul className="flow-list">
-                {full.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            ),
-          },
-        ]}
+        message={
+          orderOnly
+            ? i18n.t('Waits for it to be healthy; no data passes').toString()
+            : undefined
+        }
+        sections={
+          lines.length === 0
+            ? []
+            : [
+                {
+                  title: 'Values',
+                  count: lines.length,
+                  content: (
+                    <ul className="flow-list">
+                      {lines.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  ),
+                },
+              ]
+        }
       />
     </Balloon>
   );
@@ -446,7 +450,7 @@ export const TreeGraph = (props: TreeGraphProps) => {
                   width: distance,
                   left: xMid - distance / 2,
                   top: yMid,
-                  transform: `translate(40px, 30px) rotate(${angle}deg)`,
+                  transform: `translate(${edgeOffset.x}px, ${edgeOffset.y}px) rotate(${angle}deg)`,
                 }}
               />
             );

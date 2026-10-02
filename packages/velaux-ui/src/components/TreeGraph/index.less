@@ -138,33 +138,24 @@
     }
   }
   .graph-node-flow {
-    display: block;
-    padding: 4px 10px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--primary-color);
     font-size: 12px;
-    background: #f8fafc;
-    border: 1px dashed var(--primary-color);
-    border-radius: 6px;
-    .flow-via {
-      color: var(--primary-color);
-      font-weight: 500;
-      font-size: 11px;
-      text-transform: uppercase;
-    }
-    .flow-line {
-      overflow: hidden;
-      color: #334155;
-      font-family: Menlo, Monaco, monospace;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
-    .flow-more {
-      color: #64748b;
+    background: #fff;
+    border: 1px solid var(--primary-color);
+    border-radius: 13px;
+    cursor: default;
+    .flow-count {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
     }
     &.flow-dependsOn {
+      color: #94a3b8;
       border-color: #cbd5e1;
-      .flow-via {
-        color: #64748b;
-      }
     }
   }
   .graph-node.unused-status {

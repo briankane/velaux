@@ -915,5 +915,6 @@
   "more": "更多",
   "Values": "取值",
   "From": "来自",
-  "To": "到"
+  "To": "到",
+  "Waits for it to be healthy; no data passes": "等待其健康，不传递数据"
 }

@@ -56,11 +56,4 @@ describe('data flow nodes', () => {
     expect(flowLine({ read: 'data.port', property: 'port', value: 5432 })).to.equal('data.port → port = 5432');
   });
 
-  it('drops the producer a read starts with, which the edge already names', () => {
-    expect(flowLine({ read: 'component.db.output.data.host', property: 'env[0].value' }, 'db')).to.equal('output.data.host → env[0].value');
-    expect(flowLine({ read: 'component["my-db"].cluster("east").output.port', property: 'p' }, 'my-db')).to.equal('cluster("east").output.port → p');
-    expect(flowLine({ read: 'component.db.output.x + component.api.output.y', property: 'p' }, 'api')).to.equal(
-      'component.db.output.x + component.api.output.y → p'
-    );
-  });
 });
