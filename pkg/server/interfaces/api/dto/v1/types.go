@@ -872,7 +872,7 @@ type CreateComponentRequest struct {
 	Description   string                           `json:"description" optional:"true"`
 	Icon          string                           `json:"icon" optional:"true"`
 	Labels        map[string]string                `json:"labels,omitempty"`
-	ComponentType string                           `json:"componentType" validate:"checkname"`
+	ComponentType string                           `json:"componentType" validate:"checktype"`
 	Properties    string                           `json:"properties,omitempty"`
 	DependsOn     []string                         `json:"dependsOn" optional:"true"`
 	Inputs        wfTypesv1alpha1.StepInputs       `json:"inputs,omitempty" optional:"true"`
@@ -1136,7 +1136,7 @@ type CreatePolicyRequest struct {
 	Alias       string `json:"alias"`
 	EnvName     string `json:"envName"`
 	Description string `json:"description"`
-	Type        string `json:"type" validate:"checkname"`
+	Type        string `json:"type" validate:"checktype"`
 	// Properties json data
 	Properties string `json:"properties"`
 
@@ -1166,7 +1166,7 @@ type CreateSourceRequest struct {
 	// Name is the binding expressions read it by, $(source.<name>), so a CEL
 	// identifier: clusterInfo, not cluster-info.
 	Name string `json:"name" validate:"checkidentifier"`
-	Type string `json:"type" validate:"checkname"`
+	Type string `json:"type" validate:"checktype"`
 	// Properties json data
 	Properties string `json:"properties"`
 	// AutoUpdate is the binding's own say; unset follows the source definition.
@@ -1175,7 +1175,7 @@ type CreateSourceRequest struct {
 
 // UpdateSourceRequest changes the type or parameter of an application source
 type UpdateSourceRequest struct {
-	Type string `json:"type" validate:"checkname"`
+	Type string `json:"type" validate:"checktype"`
 	// Properties json data
 	Properties string `json:"properties"`
 	// AutoUpdate is the binding's own say; unset follows the source definition.
@@ -1193,7 +1193,7 @@ type UpdatePolicyRequest struct {
 	Alias       string `json:"alias"`
 	EnvName     string `json:"envName"`
 	Description string `json:"description"`
-	Type        string `json:"type" validate:"checkname"`
+	Type        string `json:"type" validate:"checktype"`
 	// Properties json data
 	Properties string `json:"properties"`
 
@@ -1433,7 +1433,7 @@ type CreateApplicationEnvbindingRequest struct {
 
 // CreateApplicationTraitRequest create application trait request
 type CreateApplicationTraitRequest struct {
-	Type        string `json:"type" validate:"checkname"`
+	Type        string `json:"type" validate:"checktype"`
 	Alias       string `json:"alias,omitempty" validate:"checkalias" optional:"true"`
 	Description string `json:"description,omitempty" optional:"true"`
 	Properties  string `json:"properties"`

@@ -100,3 +100,9 @@ func TestDetailDefinitionAtRevision(t *testing.T) {
 	_, err = svc.DetailDefinitionAt(ctx, "webapp", "component", "v9")
 	assert.Equal(t, bcode.ErrDefinitionNotFound, err, "a version with no revision")
 }
+
+func TestDefinitionName(t *testing.T) {
+	assert.Equal(t, "webapp", definitionName("webapp@v1.1.0"))
+	assert.Equal(t, "webapp", definitionName("webapp@v2"))
+	assert.Equal(t, "webapp", definitionName("webapp"))
+}
