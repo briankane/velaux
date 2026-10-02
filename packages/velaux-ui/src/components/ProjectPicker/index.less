@@ -1,34 +1,37 @@
-// The project picker takes the sidebar's colours, which the branding sets on
-// the page root; unbranded, those of the default dark sidebar.
+// The project picker matches the search bar beside it.
 .next-select.project-picker {
   width: 240px;
-  .next-select-inner,
-  .next-select-inner:hover {
+  .next-select-inner {
     height: 36px;
-    color: var(--sb-text-strong, #f1f5f9);
-    background: var(--sb-bg, #111827) !important;
-    border: 1px solid var(--sb-border, rgba(255, 255, 255, 0.06)) !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
     border-radius: 8px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease;
+    &:hover {
+      background: #fff !important;
+      border-color: #cbd5e1 !important;
+    }
   }
   .next-input-label {
     display: inline-flex;
     align-items: center;
-    padding-left: 10px;
+    padding-left: 12px;
   }
   .project-picker-icon {
-    color: var(--sb-accent, #60a5fa);
-    font-size: 17px;
+    color: #64748b;
+    font-size: 16px;
   }
   .next-select-values,
   .next-select-values em {
-    color: var(--sb-text-strong, #f1f5f9);
+    color: #0f172a;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 34px;
   }
   .next-select-arrow,
   .next-icon {
-    color: var(--sb-text, #a3adbd);
+    color: #94a3b8;
   }
 }
