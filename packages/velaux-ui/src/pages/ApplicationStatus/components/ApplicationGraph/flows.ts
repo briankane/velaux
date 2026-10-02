@@ -77,9 +77,19 @@ export function flowNodes(flows: DataFlow[], placements: Map<string, string>, so
 export const maxFlowLines = 4;
 
 // flowLine renders an item as read → property, with the value where one was
-// recorded and the trait that read it.
-export function flowLine(item: { read: string; property?: string; trait?: string; value?: any }): string {
-  let line = item.property ? `${item.read} → ${item.property}` : item.read;
+// recorded and the trait that read it. Given the producer, a read of it drops
+// the component.<producer> it starts with, which the flow's edge already says.
+export function flowLine(item: { read: string; property?: string; trait?: string; value?: any }, producer?: string): string {
+  let read = item.read;
+  if (producer) {
+    for (const prefix of [`component.${producer}.`, `component["${producer}"].`]) {
+      if (read.startsWith(prefix)) {
+        read = read.slice(prefix.length);
+        break;
+      }
+    }
+  }
+  let line = item.property ? `${read} → ${item.property}` : read;
   if (item.value !== undefined && item.value !== null) {
     line += ` = ${typeof item.value === 'string' ? item.value : JSON.stringify(item.value)}`;
   }

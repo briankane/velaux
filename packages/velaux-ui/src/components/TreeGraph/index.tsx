@@ -269,7 +269,8 @@ function renderFlowNode(id: string, node: GraphNode) {
   if (!flow) {
     return null;
   }
-  const lines = flow.items.map(flowLine);
+  const lines = flow.items.map((item) => flowLine(item, flow.from.name));
+  const full = flow.items.map((item) => flowLine(item));
   const graphNode = (
     <div
       key={id}
@@ -305,10 +306,10 @@ function renderFlowNode(id: string, node: GraphNode) {
         sections={[
           {
             title: 'Values',
-            count: lines.length,
+            count: full.length,
             content: (
               <ul className="flow-list">
-                {lines.map((line) => (
+                {full.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>
