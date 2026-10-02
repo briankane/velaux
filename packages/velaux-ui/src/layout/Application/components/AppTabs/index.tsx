@@ -13,7 +13,7 @@ import {
   pausedEnvs,
   summariseStatuses,
 } from '../../../../pages/ApplicationList/components/AppStatus/health';
-import { addLink } from './add';
+import { addLink, tabsReadOnly } from './add';
 import './index.less';
 
 // A tab in the configure group has a + that opens its add dialog.
@@ -56,10 +56,10 @@ export function appTabs(appName: string): Tab[] {
   ];
 }
 
-// AppTabs is the application page's one row of tabs. The tabs that configure
-// it sit together under a label, each with a + to add one; a read-only
-// application has no +.
-export const AppTabs = (props: { appName: string; currentPath: string; readOnly?: boolean }) => {
+// AppTabsView is the application page's one row of tabs. The tabs that
+// configure it sit together under a label, each with a + to add one; a
+// read-only application has no +.
+const AppTabsView = (props: { appName: string; currentPath: string; readOnly: boolean }) => {
   const tabs = appTabs(props.appName);
   const tab = (t: Tab) => (
     <Link
@@ -101,6 +101,12 @@ export const AppTabs = (props: { appName: string; currentPath: string; readOnly?
     </div>
   );
 };
+
+// AppTabs reads whether the application is read-only from the store, as the
+// layout does not re-render when its details load.
+export const AppTabs = connect((store: any, own: { appName: string }) => ({
+  readOnly: tabsReadOnly(store.application.applicationDetail, own.appName),
+}))(AppTabsView);
 
 // OrbitBar heads one env's live view: back to all of them, the env's health,
 // and its views.
