@@ -1049,6 +1049,14 @@ func (c *application) createComponent(req *restful.Request, res *restful.Respons
 		bcode.ReturnError(req, res, err)
 		return
 	}
+	if !c.checkExpressions(req, res, app, "component", "component", createReq.ComponentType, createReq.Properties, "", createReq.Name) {
+		return
+	}
+	for _, trait := range createReq.Traits {
+		if !c.checkExpressions(req, res, app, "trait", "trait", trait.Type, trait.Properties, "", createReq.Name) {
+			return
+		}
+	}
 	base, err := c.ApplicationService.CreateComponent(req.Request.Context(), app, createReq)
 	if err != nil {
 		bcode.ReturnError(req, res, err)
@@ -1138,6 +1146,9 @@ func (c *application) updateComponent(req *restful.Request, res *restful.Respons
 		bcode.ReturnError(req, res, err)
 		return
 	}
+	if updateReq.Properties != nil && !c.checkExpressions(req, res, app, "component", "component", component.Type, *updateReq.Properties, "", component.Name) {
+		return
+	}
 	base, err := c.ApplicationService.UpdateComponent(req.Request.Context(), app, component, updateReq)
 	if err != nil {
 		bcode.ReturnError(req, res, err)
@@ -1173,6 +1184,9 @@ func (c *application) createApplicationPolicy(req *restful.Request, res *restful
 	}
 	if err := validate.Struct(&createReq); err != nil {
 		bcode.ReturnError(req, res, err)
+		return
+	}
+	if !c.checkExpressions(req, res, app, "policy", "policy", createReq.Type, createReq.Properties, "", "") {
 		return
 	}
 	base, err := c.ApplicationService.CreatePolicy(req.Request.Context(), app, createReq)
@@ -1239,6 +1253,9 @@ func (c *application) updateApplicationPolicy(req *restful.Request, res *restful
 		bcode.ReturnError(req, res, err)
 		return
 	}
+	if !c.checkExpressions(req, res, app, "policy", "policy", updateReq.Type, updateReq.Properties, "", "") {
+		return
+	}
 	response, err := c.ApplicationService.UpdatePolicy(req.Request.Context(), app, req.PathParameter("policyName"), updateReq)
 	if err != nil {
 		bcode.ReturnError(req, res, err)
@@ -1270,6 +1287,9 @@ func (c *application) createApplicationSource(req *restful.Request, res *restful
 		bcode.ReturnError(req, res, err)
 		return
 	}
+	if !c.checkExpressions(req, res, app, "source", "source", createReq.Type, createReq.Properties, createReq.Name, "") {
+		return
+	}
 	source, err := c.ApplicationService.CreateSource(req.Request.Context(), app, createReq)
 	if err != nil {
 		bcode.ReturnError(req, res, err)
@@ -1290,6 +1310,9 @@ func (c *application) updateApplicationSource(req *restful.Request, res *restful
 	}
 	if err := validate.Struct(&updateReq); err != nil {
 		bcode.ReturnError(req, res, err)
+		return
+	}
+	if !c.checkExpressions(req, res, app, "source", "source", updateReq.Type, updateReq.Properties, req.PathParameter("sourceName"), "") {
 		return
 	}
 	source, err := c.ApplicationService.UpdateSource(req.Request.Context(), app, req.PathParameter("sourceName"), updateReq)
@@ -1349,6 +1372,9 @@ func (c *application) addApplicationTrait(req *restful.Request, res *restful.Res
 		bcode.ReturnError(req, res, err)
 		return
 	}
+	if !c.checkExpressions(req, res, app, "trait", "trait", createReq.Type, createReq.Properties, "", req.PathParameter("compName")) {
+		return
+	}
 	trait, err := c.ApplicationService.CreateApplicationTrait(req.Request.Context(), app,
 		&model.ApplicationComponent{Name: req.PathParameter("compName")}, createReq)
 	if err != nil {
@@ -1370,6 +1396,9 @@ func (c *application) updateApplicationTrait(req *restful.Request, res *restful.
 	}
 	if err := validate.Struct(&updateReq); err != nil {
 		bcode.ReturnError(req, res, err)
+		return
+	}
+	if !c.checkExpressions(req, res, app, "trait", "trait", req.PathParameter("traitType"), updateReq.Properties, "", req.PathParameter("compName")) {
 		return
 	}
 	trait, err := c.ApplicationService.UpdateApplicationTrait(req.Request.Context(), app,
@@ -1739,4 +1768,15 @@ func (c *application) rollbackApplicationWithRevision(req *restful.Request, res 
 		bcode.ReturnError(req, res, err)
 		return
 	}
+}
+
+// checkExpressions refuses properties holding an expression with an error, so a
+// save through the API is checked as the form checks it; it reports whether
+// the request may go on.
+func (c *application) checkExpressions(req *restful.Request, res *restful.Response, app *model.Application, surface, defType, typeName, properties, source, component string) bool {
+	if err := c.ExpressionService.CheckProperties(req.Request.Context(), app, surface, defType, typeName, properties, source, component); err != nil {
+		bcode.ReturnError(req, res, err)
+		return false
+	}
+	return true
 }
