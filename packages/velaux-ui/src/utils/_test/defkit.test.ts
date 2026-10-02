@@ -3,6 +3,8 @@ import { expect } from 'chai';
 import {
   autoText,
   definitionLink,
+  durationMs,
+  minIntervalMs,
   withOverride,
   groupPreview,
   parseSource,
@@ -57,5 +59,13 @@ describe('defkit', () => {
     expect(autoText({ autoUpdate: true })).to.equal('10m');
     expect(autoText({ autoUpdate: true, interval: '1h' })).to.equal('1h');
     expect(autoText({ interval: '1h' })).to.equal('');
+  });
+
+  it('reads a duration and holds the 5m minimum', () => {
+    expect(durationMs('1h30m')).to.equal(5400000);
+    expect(durationMs(' 10m ')).to.equal(600000);
+    expect(durationMs('soon')).to.equal(undefined);
+    expect(durationMs('4m59s')! < minIntervalMs).to.equal(true);
+    expect(durationMs('5m')! >= minIntervalMs).to.equal(true);
   });
 });

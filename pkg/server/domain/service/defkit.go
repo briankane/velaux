@@ -66,8 +66,11 @@ const (
 
 	defkitSettingsAnnotation = "defkit.oam.dev/settings"
 	defkitDefaultInterval    = "10m"
-	defkitRetain             = "retain"
-	defkitDelete             = "delete"
+	// defkitMinInterval bounds how often a module re-renders: each run is a Job
+	// that downloads and builds the module.
+	defkitMinInterval = 5 * time.Minute
+	defkitRetain      = "retain"
+	defkitDelete      = "delete"
 )
 
 // Module phases, from its Application's workflow.
@@ -571,7 +574,7 @@ func validateDefKitSettings(settings apisv1.DefKitSettings) error {
 	}
 	if settings.AutoUpdate {
 		d, err := time.ParseDuration(intervalOf(settings))
-		if err != nil || d < time.Minute {
+		if err != nil || d < defkitMinInterval {
 			return bcode.ErrDefKitInvalidSettings
 		}
 	}

@@ -287,10 +287,13 @@ func TestDefKitAutoUpdate(t *testing.T) {
 		{Overrides: map[string]string{"TraitDefinition/x": "maybe"}},
 		{AutoUpdate: true, Interval: "soon"},
 		{AutoUpdate: true, Interval: "10s"},
+		{AutoUpdate: true, Interval: "1m"},
+		{AutoUpdate: true, Interval: "4m59s"},
 	} {
 		assert.Equal(t, bcode.ErrDefKitInvalidSettings, validateDefKitSettings(bad), "%+v", bad)
 	}
-	assert.NoError(t, validateDefKitSettings(apisv1.DefKitSettings{DeletionPolicy: "delete", AutoUpdate: true, Interval: "1m"}))
+	assert.NoError(t, validateDefKitSettings(apisv1.DefKitSettings{DeletionPolicy: "delete", AutoUpdate: true, Interval: "5m"}))
+	assert.NoError(t, validateDefKitSettings(apisv1.DefKitSettings{Interval: "1m"}), "an interval is only checked when auto update is on")
 }
 
 func TestDefKitEffectivePolicy(t *testing.T) {

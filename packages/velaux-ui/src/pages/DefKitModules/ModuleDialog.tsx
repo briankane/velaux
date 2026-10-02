@@ -5,7 +5,7 @@ import type { DefKitModule, DefKitSettings } from '@velaux/data';
 import { createDefKitModule, updateDefKitModule } from '../../api/defkit';
 import { Translation } from '../../components/Translation';
 import i18n from '../../i18n';
-import { parseSource } from './defkit';
+import { durationMs, minIntervalMs, parseSource } from './defkit';
 
 const typeOptions = [
   { value: 'component', label: 'Components' },
@@ -148,14 +148,22 @@ export const ModuleDialog = (props: { module?: DefKitModule; onClose: () => void
           <Form.Item
             label={<Translation>Every</Translation>}
             required
-            help={<Translation>A duration after each run, such as 10m or 1h</Translation>}
+            help={<Translation>A duration after each run, at least 5m, such as 10m or 1h</Translation>}
           >
             <Input
               {...init('interval', {
                 rules: [
                   {
-                    pattern: /^\s*([0-9]+(\.[0-9]+)?(h|m|s))+\s*$/,
-                    message: i18n.t('A duration such as 10m or 1h').toString(),
+                    validator: (_: any, value: string, callback: (error?: string) => void) => {
+                      const ms = durationMs(value || '');
+                      if (ms === undefined) {
+                        callback(i18n.t('A duration such as 10m or 1h').toString());
+                      } else if (ms < minIntervalMs) {
+                        callback(i18n.t('At least 5m').toString());
+                      } else {
+                        callback();
+                      }
+                    },
                   },
                 ],
               })}

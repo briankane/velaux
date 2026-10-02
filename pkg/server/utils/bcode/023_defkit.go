@@ -28,5 +28,5 @@ var (
 	// ErrDefKitNotInReview the module has no render waiting for review
 	ErrDefKitNotInReview = NewBcode(400, 23005, "the module has no render waiting for review")
 	// ErrDefKitInvalidSettings the deletion policy or interval is not valid
-	ErrDefKitInvalidSettings = NewBcode(400, 23006, "a deletion policy is retain or delete, and an interval a duration of at least a minute, such as 10m")
+	ErrDefKitInvalidSettings = NewBcode(400, 23006, "a deletion policy is retain or delete, and an interval a duration of at least 5m, such as 10m")
 )

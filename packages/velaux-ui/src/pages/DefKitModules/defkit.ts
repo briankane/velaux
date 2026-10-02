@@ -113,3 +113,22 @@ export function withOverride(settings: DefKitSettings, id: string, policy?: DefK
 export function autoText(settings: DefKitSettings): string {
   return settings.autoUpdate ? settings.interval || '10m' : '';
 }
+
+// minIntervalMs is the shortest auto update interval the server accepts.
+export const minIntervalMs = 5 * 60 * 1000;
+
+// durationMs reads a Go duration of hours, minutes and seconds, such as 1h30m,
+// or undefined when it is not one.
+export function durationMs(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!/^([0-9]+(\.[0-9]+)?(h|m|s))+$/.test(trimmed)) {
+    return undefined;
+  }
+  const unit: Record<string, number> = { h: 3600000, m: 60000, s: 1000 };
+  let total = 0;
+  trimmed.replace(/([0-9]+(?:\.[0-9]+)?)(h|m|s)/g, (_, n: string, u: string) => {
+    total += parseFloat(n) * unit[u];
+    return '';
+  });
+  return total;
+}
