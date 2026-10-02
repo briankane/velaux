@@ -207,7 +207,7 @@ class Addons extends React.Component<Props, State> {
               />
             </If>
           </Tab.Item>
-          <Tab.Item title={i18n.t('Addon Applications').toString()} key={'applications'}>
+          <Tab.Item title={i18n.t('Installed').toString()} key={'applications'}>
             <AddonApplications />
           </Tab.Item>
           <Tab.Item title="VelaUX Plugins" key={'plugins'}>
