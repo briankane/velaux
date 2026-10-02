@@ -6,7 +6,7 @@ import { v4 as uuid } from 'uuid';
 
 import { createPipeline, createPipelineContext, loadPipeline, updatePipeline } from '../../../../api/pipeline';
 import type DefinitionCode from '../../../../components/DefinitionCode';
-import DrawerWithFooter from '../../../../components/Drawer';
+import ModalWithFooter from '../../../../components/ModalWithFooter';
 import { If } from '../../../../components/If';
 import { Translation } from '../../../../components/Translation';
 import i18n from '../../../../i18n';
@@ -197,7 +197,7 @@ class CreatePipeline extends React.Component<PipelineProps, State> {
     const modeOptions = [{ value: 'StepByStep' }, { value: 'DAG' }];
     const { loading } = this.state;
     return (
-      <DrawerWithFooter
+      <ModalWithFooter
         title={i18n.t(!editMode ? 'New Pipeline' : 'Edit Pipeline')}
         onClose={this.props.onClose}
         onOk={this.onSubmit}
@@ -324,7 +324,7 @@ class CreatePipeline extends React.Component<PipelineProps, State> {
             </If>
           </Row>
         </Form>
-      </DrawerWithFooter>
+      </ModalWithFooter>
     );
   }
 }
