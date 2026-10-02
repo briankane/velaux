@@ -102,12 +102,18 @@ class Configs extends Component<Props, State> {
         title: <Translation>Name</Translation>,
         dataIndex: 'name',
         cell: (v: string, i: number, config: Config) => {
-          const title = `${v}(${config.alias || '-'})`;
+          const title = v;
           if (config.sensitive || config.shared) {
             return <span>{title}</span>;
           }
           return <a onClick={() => this.onClick(config)}>{title}</a>;
         },
+      },
+      {
+        key: 'alias',
+        title: <Translation>Alias</Translation>,
+        dataIndex: 'alias',
+        cell: (v: string) => v || '',
       },
       {
         key: 'template',

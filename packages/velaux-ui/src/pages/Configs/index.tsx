@@ -138,10 +138,10 @@ class Configs extends Component<Props, State> {
     const columns = [
       {
         key: 'name',
-        title: <Translation>Name(Alias)</Translation>,
+        title: <Translation>Name</Translation>,
         dataIndex: 'name',
         cell: (v: string, i: number, config: Config) => {
-          const title = `${v}(${config.alias || '-'})`;
+          const title = v;
           const legacy = config.legacy && (
             <Tag size="small" style={{ marginLeft: '8px' }}>
               <Translation>Legacy</Translation>
@@ -162,6 +162,12 @@ class Configs extends Component<Props, State> {
             </span>
           );
         },
+      },
+      {
+        key: 'alias',
+        title: <Translation>Alias</Translation>,
+        dataIndex: 'alias',
+        cell: (v: string) => v || '',
       },
       {
         key: 'phase',
