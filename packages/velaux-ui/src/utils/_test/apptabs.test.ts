@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { addLink, tabsReadOnly, wantsAdd } from '../../layout/Application/components/AppTabs/add';
+import { addLink, tabRuns, tabsReadOnly, wantsAdd } from '../../layout/Application/components/AppTabs/add';
 
 describe('configure tabs', () => {
   it('asks a tab for its add dialog through the URL', () => {
@@ -17,5 +17,23 @@ describe('configure tabs', () => {
     expect(tabsReadOnly({ name: 'addon-fluxcd', readOnly: true }, 'addon-fluxcd')).to.equal(true);
     expect(tabsReadOnly(undefined, 'shop')).to.equal(true);
     expect(tabsReadOnly({ name: 'other', readOnly: false }, 'shop')).to.equal(true, "another application's details");
+  });
+});
+
+describe('tabRuns', () => {
+  it('groups neighbouring tabs under their shared label, in order', () => {
+    const tabs = [
+      { key: 'overview' },
+      { key: 'sources', group: 'Configure' },
+      { key: 'components', group: 'Configure' },
+      { key: 'workflows', group: 'Deploy' },
+      { key: 'revisions', group: 'Deploy' },
+    ];
+    const runs = tabRuns(tabs).map((r) => ({ group: r.group, keys: r.tabs.map((t) => t.key) }));
+    expect(runs).to.deep.equal([
+      { group: undefined, keys: ['overview'] },
+      { group: 'Configure', keys: ['sources', 'components'] },
+      { group: 'Deploy', keys: ['workflows', 'revisions'] },
+    ]);
   });
 });

@@ -19,3 +19,17 @@ export function tabsReadOnly(detail: { name?: string; readOnly?: boolean } | und
   }
   return !!detail.readOnly;
 }
+
+// tabRuns splits tabs into runs of neighbours that share a group, or none.
+export function tabRuns<T extends { group?: string }>(tabs: T[]): Array<{ group?: string; tabs: T[] }> {
+  const runs: Array<{ group?: string; tabs: T[] }> = [];
+  tabs.forEach((t) => {
+    const last = runs[runs.length - 1];
+    if (last && last.group === t.group) {
+      last.tabs.push(t);
+    } else {
+      runs.push({ group: t.group, tabs: [t] });
+    }
+  });
+  return runs;
+}

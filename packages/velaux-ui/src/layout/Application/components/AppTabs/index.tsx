@@ -13,11 +13,19 @@ import {
   pausedEnvs,
   summariseStatuses,
 } from '../../../../pages/ApplicationList/components/AppStatus/health';
-import { addLink, tabsReadOnly } from './add';
+import { addLink, tabRuns, tabsReadOnly } from './add';
 import './index.less';
 
-// A tab in the configure group has a + that opens its add dialog.
-type Tab = { key: string; label: string; to: string; active: (path: string) => boolean; configure?: boolean };
+// A tab may sit in a labelled group; one that can add has a + that opens its
+// add dialog.
+type Tab = {
+  key: string;
+  label: string;
+  to: string;
+  active: (path: string) => boolean;
+  group?: string;
+  canAdd?: boolean;
+};
 
 // appTabs are the application page's tabs, in the order a reader builds an
 // application up: what it reads, what it runs, its rules, what starts it, then
@@ -27,7 +35,8 @@ export function appTabs(appName: string): Tab[] {
   const config = (section: string) => ({
     to: `${base}/config/${section}`,
     active: (path: string) => path.startsWith(`${base}/config/${section}`),
-    configure: true,
+    group: 'Configure',
+    canAdd: true,
   });
   return [
     { key: 'overview', label: 'Overview', to: `${base}/config`, active: (path) => path === `${base}/config` },
@@ -37,18 +46,21 @@ export function appTabs(appName: string): Tab[] {
     { key: 'triggers', label: 'Triggers', ...config('triggers') },
     {
       key: 'workflows',
+      group: 'Deploy',
       label: 'Workflows',
       to: `${base}/workflows`,
       active: (path) => path.startsWith(`${base}/workflows`),
     },
     {
       key: 'orbits',
+      group: 'Deploy',
       label: 'Environments',
       to: `${base}/orbits`,
       active: (path) => path.startsWith(`${base}/orbits`) || path.startsWith(`${base}/envbinding`),
     },
     {
       key: 'revisions',
+      group: 'Deploy',
       label: 'Revisions',
       to: `${base}/revisions`,
       active: (path) => path.startsWith(`${base}/revisions`),
@@ -56,11 +68,10 @@ export function appTabs(appName: string): Tab[] {
   ];
 }
 
-// AppTabsView is the application page's one row of tabs. The tabs that
-// configure it sit together under a label, each with a + to add one; a
-// read-only application has no +.
+// AppTabsView is the application page's one row of tabs. Tabs that share a
+// group sit together under its label; those that can add have a + unless the
+// application is read-only.
 const AppTabsView = (props: { appName: string; currentPath: string; readOnly: boolean }) => {
-  const tabs = appTabs(props.appName);
   const tab = (t: Tab) => (
     <Link
       key={t.key}
@@ -72,34 +83,36 @@ const AppTabsView = (props: { appName: string; currentPath: string; readOnly: bo
       <Translation>{t.label}</Translation>
     </Link>
   );
-  const configure = tabs.filter((t) => t.configure);
-  const first = tabs.findIndex((t) => t.configure);
+  const withAdd = (t: Tab) =>
+    t.canAdd && !props.readOnly ? (
+      <span key={t.key} className="app-tab-with-add">
+        {tab(t)}
+        <Link
+          className="app-tab-add"
+          to={addLink(t.to)}
+          title={i18n.t('Add').toString()}
+          aria-label={`${i18n.t('Add').toString()} ${i18n.t(t.label).toString()}`}
+        >
+          <AiOutlinePlus />
+        </Link>
+      </span>
+    ) : (
+      tab(t)
+    );
   return (
     <div className="app-tabs" role="tablist">
-      {tabs.slice(0, first).map(tab)}
-      <div className="app-tab-group" role="group" aria-label={i18n.t('Configure').toString()}>
-        <span className="app-tab-group-label">
-          <Translation>Configure</Translation>
-        </span>
-        <div className="app-tab-group-tabs">
-          {configure.map((t) => (
-          <span key={t.key} className="app-tab-with-add">
-            {tab(t)}
-            {!props.readOnly && (
-              <Link
-                className="app-tab-add"
-                to={addLink(t.to)}
-                title={i18n.t('Add').toString()}
-                aria-label={`${i18n.t('Add').toString()} ${i18n.t(t.label).toString()}`}
-              >
-                <AiOutlinePlus />
-              </Link>
-            )}
-          </span>
-          ))}
-        </div>
-      </div>
-      {tabs.slice(first + configure.length).map(tab)}
+      {tabRuns(appTabs(props.appName)).map((run) =>
+        run.group ? (
+          <div key={run.group} className="app-tab-group" role="group" aria-label={i18n.t(run.group).toString()}>
+            <span className="app-tab-group-label">
+              <Translation>{run.group}</Translation>
+            </span>
+            <div className="app-tab-group-tabs">{run.tabs.map(withAdd)}</div>
+          </div>
+        ) : (
+          run.tabs.map(withAdd)
+        )
+      )}
     </div>
   );
 };
