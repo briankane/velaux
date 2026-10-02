@@ -1,5 +1,6 @@
 import type { Terminology } from '../utils/terminology';
 import { applyTerminology } from '../utils/terminology';
+import { sidebarTheme } from '../utils/theme';
 
 // Customisation is how this VelaUX is branded, kept in the vela-system
 // velaux-configuration ConfigMap.
@@ -30,6 +31,8 @@ class CustomisationService {
   private listeners: Listener[] = [];
   // defaultTitle is the tab's title as the page set it.
   private defaultTitle = typeof document !== 'undefined' ? document.title : '';
+  // rootTheme is the sidebar's colours as last set on the page root.
+  private rootTheme: Record<string, string> = {};
   // defaultIcon is the tab's icon as the page set it.
   private defaultIcon = typeof document !== 'undefined' ? iconLink()?.getAttribute('href') || '' : '';
 
@@ -41,6 +44,12 @@ class CustomisationService {
     this.current = c;
     if (typeof document !== 'undefined') {
       document.title = c.pageTitle || this.defaultTitle;
+      // The sidebar's colours on the page root too, for what renders outside the
+      // sidebar in them, such as a modal's header.
+      const root = document.documentElement.style;
+      Object.keys(this.rootTheme).forEach((k) => root.removeProperty(k));
+      this.rootTheme = sidebarTheme(c.sidebarColor, c.accentColor);
+      Object.entries(this.rootTheme).forEach(([k, v]) => root.setProperty(k, v));
       // The tab shows the icon the minimised sidebar does.
       const link = iconLink();
       const href = c.iconURL || this.defaultIcon;
