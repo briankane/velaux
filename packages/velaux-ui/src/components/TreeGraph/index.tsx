@@ -311,6 +311,7 @@ function renderFlowNode(id: string, node: GraphNode) {
                 {
                   title: 'Values',
                   count: lines.length,
+                  open: true,
                   content: (
                     <ul className="flow-list">
                       {lines.map((line) => (

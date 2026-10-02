@@ -19,6 +19,8 @@ export interface TooltipSection {
   title: string;
   count: number;
   content: React.ReactNode;
+  // open shows the section expanded to begin with.
+  open?: boolean;
 }
 
 export interface StatusTooltipProps {
@@ -35,7 +37,7 @@ export interface StatusTooltipProps {
 }
 
 function CollapsibleSection(props: TooltipSection) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!!props.open);
   return (
     <div className="status-tooltip-section">
       <button type="button" className="status-tooltip-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
