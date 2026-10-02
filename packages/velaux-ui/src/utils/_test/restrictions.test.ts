@@ -6,7 +6,6 @@ import {
   describeNamespaces,
   describeQuota,
   describeSelector,
-  defaultComponentType,
   isUsable,
   restrictsNamespaces,
   usageState,
@@ -97,13 +96,3 @@ describe('test definition restrictions', () => {
   });
 });
 
-describe('defaultComponentType', () => {
-  it('starts a new component as webservice where it is usable', () => {
-    assert.equal(defaultComponentType([{ name: 'worker' }, { name: 'webservice' }]), 'webservice');
-  });
-  it('starts it as nothing where webservice is restricted or absent', () => {
-    assert.equal(defaultComponentType([{ name: 'webservice', unusableIn: ['default'] }, { name: 'worker' }]), '');
-    assert.equal(defaultComponentType([{ name: 'worker' }]), '');
-    assert.equal(defaultComponentType([]), '');
-  });
-});

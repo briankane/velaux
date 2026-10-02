@@ -16,7 +16,8 @@ type Props = {
 };
 
 // ModalWithFooter is DrawerWithFooter as a centred modal: the same props, its
-// buttons in the footer, and a body that scrolls within the window.
+// buttons in the footer, and a body that scrolls within the window. It is 60%
+// of the window wide unless given a width.
 const ModalWithFooter = (props: Props) => {
   const { children, title, width, onOk, onClose, extButtons, onOkButtonText, onOkButtonLoading } = props;
   return (
@@ -24,7 +25,7 @@ const ModalWithFooter = (props: Props) => {
       v2
       visible
       title={title}
-      width={width || 800}
+      width={width || '60vw'}
       onClose={onClose}
       className="modal-with-footer"
       footer={

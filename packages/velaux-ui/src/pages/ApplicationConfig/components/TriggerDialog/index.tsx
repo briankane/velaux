@@ -246,7 +246,6 @@ class TriggerDialog extends React.Component<Props, State> {
     return (
       <ModalWithFooter
         title={editMode ? i18n.t('Edit Trigger') : i18n.t('Add Trigger')}
-        width={800}
         onClose={onClose}
         extButtons={this.extButtonList()}
       >

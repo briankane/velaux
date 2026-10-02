@@ -105,8 +105,3 @@ export function usageState(state: NamespaceUsage['state']): {
   }
 }
 
-// defaultComponentType is the type a new component starts as: webservice where
-// it is offered and usable, otherwise none, so the type picker asks.
-export function defaultComponentType(defs: Array<{ name: string; unusableIn?: string[] }>): string {
-  return (defs || []).some((d) => d.name === 'webservice' && isUsable(d)) ? 'webservice' : '';
-}
