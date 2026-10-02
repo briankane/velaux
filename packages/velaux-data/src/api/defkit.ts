@@ -64,6 +64,33 @@ export interface DefKitDefinition {
 
 export interface DefKitModuleDetail extends DefKitModule {
   definitions: DefKitDefinition[];
+  application?: DefKitApplication;
+}
+
+// DefKitApplication is the Application a module is: its workflow as far as it
+// has run, and every resource it tracks.
+export interface DefKitApplication {
+  name: string;
+  namespace: string;
+  phase?: string;
+  steps: DefKitStep[];
+  resources: DefKitResource[];
+}
+
+export interface DefKitStep {
+  name: string;
+  type?: string;
+  phase?: string;
+  message?: string;
+  startTime?: string;
+  endTime?: string;
+}
+
+export interface DefKitResource {
+  apiVersion: string;
+  kind: string;
+  name: string;
+  namespace?: string;
 }
 
 export type DefKitItemStatus = 'new' | 'changed' | 'unchanged' | 'conflict' | 'removed';

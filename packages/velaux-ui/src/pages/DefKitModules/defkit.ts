@@ -132,3 +132,18 @@ export function durationMs(value: string): number | undefined {
   });
   return total;
 }
+
+// stepTones colours a workflow step by its phase.
+export function stepTone(phase?: string): Tone {
+  switch (phase) {
+    case 'succeeded':
+      return 'healthy';
+    case 'failed':
+      return 'failed';
+    case 'suspending':
+      return 'suspended';
+    case 'running':
+      return 'progressing';
+  }
+  return 'neutral';
+}

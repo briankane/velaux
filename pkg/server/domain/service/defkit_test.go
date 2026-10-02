@@ -44,7 +44,7 @@ func withSteps(app *v1beta1.Application, phases ...string) *v1beta1.Application 
 	for i, name := range []string{defkitRenderStep, defkitReviewStep, defkitApplyStep} {
 		if i < len(phases) {
 			app.Status.Workflow.Steps = append(app.Status.Workflow.Steps, workflowv1alpha1.WorkflowStepStatus{
-				StepStatus: workflowv1alpha1.StepStatus{Name: name, Phase: workflowv1alpha1.WorkflowStepPhase(phases[i])},
+				StepStatus: workflowv1alpha1.StepStatus{Name: name, Type: name, Phase: workflowv1alpha1.WorkflowStepPhase(phases[i])},
 			})
 		}
 	}
@@ -149,6 +149,9 @@ func reviewFixture(t *testing.T) (*defkitServiceImpl, client.Client) {
 			ObjectReference: corev1.ObjectReference{APIVersion: "core.oam.dev/v1beta1", Kind: "TraitDefinition", Namespace: "vela-system", Name: name},
 		}})
 	}
+	rt.Spec.ManagedResources = append(rt.Spec.ManagedResources, v1beta1.ManagedResource{ClusterObjectReference: common.ClusterObjectReference{
+		ObjectReference: corev1.ObjectReference{APIVersion: "batch/v1", Kind: "Job", Namespace: defkitRenderNamespace, Name: "defkit-defs-abc"},
+	}})
 	cli := fake.NewClientBuilder().WithScheme(common2.Scheme).WithObjects(app, render, stale, rt,
 		installedDefinition("TraitDefinition", "edited", "before", owned),
 		installedDefinition("TraitDefinition", "same", "same", owned),
@@ -184,6 +187,29 @@ func TestDefKitPreview(t *testing.T) {
 			assert.NotContains(t, item.Current, "managed-by")
 		}
 	}
+}
+
+func TestDefKitDetailShowsItsApplication(t *testing.T) {
+	svc, _ := reviewFixture(t)
+	detail, err := svc.DetailModule(context.Background(), "defs")
+	require.NoError(t, err)
+	require.NotNil(t, detail.Application)
+	assert.Equal(t, "defkit-defs", detail.Application.Name)
+	assert.Equal(t, "vela-system", detail.Application.Namespace)
+
+	var steps []string
+	for _, st := range detail.Application.Steps {
+		steps = append(steps, st.Name+":"+st.Phase)
+	}
+	assert.Equal(t, []string{"render:succeeded", "review:suspending"}, steps, "the workflow as far as it has run")
+
+	var kinds []string
+	for _, r := range detail.Application.Resources {
+		kinds = append(kinds, r.Kind+"/"+r.Name)
+	}
+	assert.Contains(t, kinds, "Job/defkit-defs-abc", "everything the module tracks, its render Jobs too")
+	assert.Contains(t, kinds, "TraitDefinition/edited")
+	assert.Len(t, detail.Definitions, 3, "Definitions keeps to the definitions")
 }
 
 func TestDefKitApplyPreview(t *testing.T) {

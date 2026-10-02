@@ -5,6 +5,7 @@ import {
   definitionLink,
   durationMs,
   minIntervalMs,
+  stepTone,
   withOverride,
   groupPreview,
   parseSource,
@@ -67,5 +68,11 @@ describe('defkit', () => {
     expect(durationMs('soon')).to.equal(undefined);
     expect(durationMs('4m59s')! < minIntervalMs).to.equal(true);
     expect(durationMs('5m')! >= minIntervalMs).to.equal(true);
+  });
+
+  it('colours a workflow step by its phase', () => {
+    expect(stepTone('succeeded')).to.equal('healthy');
+    expect(stepTone('suspending')).to.equal('suspended');
+    expect(stepTone('skipped')).to.equal('neutral');
   });
 });

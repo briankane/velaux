@@ -5,7 +5,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { AiOutlineArrowLeft, AiOutlineDown, AiOutlineRight } from 'react-icons/ai';
 import { BsBoxes } from 'react-icons/bs';
 
-import type { DefKitModuleDetail as Detail, DefKitPolicy, DefKitPreview, DefKitPreviewItem } from '@velaux/data';
+import type {
+  DefKitApplication,
+  DefKitModuleDetail as Detail,
+  DefKitPolicy,
+  DefKitPreview,
+  DefKitPreviewItem,
+} from '@velaux/data';
 import {
   applyDefKitPreview,
   deleteDefKitModule,
@@ -33,6 +39,7 @@ import {
   policyLabels,
   sourceText,
   statusLabels,
+  stepTone,
   withOverride,
 } from '../DefKitModules/defkit';
 import { ModuleDialog } from '../DefKitModules/ModuleDialog';
@@ -40,7 +47,7 @@ import '../DefKitModules/index.less';
 import '../Packages/index.less';
 import '../PackageDetail/index.less';
 
-type Tab = 'definitions' | 'review';
+type Tab = 'definitions' | 'review' | 'application';
 
 // ItemRow is one definition in a review. A changed or conflicting one opens to
 // its diff, a new one to what it would be; conflicts and removals carry the
@@ -91,6 +98,89 @@ const ItemRow = (props: { item: DefKitPreviewItem; checked?: boolean; onCheck?: 
           ) : (
             <pre className="package-code">{item.next || item.current}</pre>
           )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ModuleApplication is the Application a module is: its workflow's steps as
+// far as they have run, and everything it tracks, render Jobs included.
+const ModuleApplication = (props: { application: DefKitApplication }) => {
+  const { application } = props;
+  return (
+    <div className="defkit-application">
+      <div className="package-facts">
+        <div>
+          <span>
+            <Translation>Application</Translation>
+          </span>
+          <code>
+            {application.namespace}/{application.name}
+          </code>
+        </div>
+        {application.phase && (
+          <div>
+            <span>
+              <Translation>Phase</Translation>
+            </span>
+            <span>{application.phase}</span>
+          </div>
+        )}
+      </div>
+      <h3 className="defkit-section-title">
+        <Translation>Workflow</Translation> <span className="package-tab-count">{application.steps.length}</span>
+      </h3>
+      {application.steps.length === 0 ? (
+        <Empty message={<Translation>The workflow has not started</Translation>} />
+      ) : (
+        <div className="row-list defkit-steps">
+          {application.steps.map((step) => (
+            <div key={step.name} className="row-list-row">
+              <div className="row-list-main">
+                <span>
+                  <span className="row-list-title">{step.name}</span>
+                  <span className="row-list-type">{step.type}</span>
+                </span>
+                <span>
+                  <StatusBadge tone={stepTone(step.phase)} label={step.phase || 'pending'} />
+                </span>
+                <span className="defkit-description" title={step.message}>
+                  {step.message}
+                </span>
+                <span>{step.endTime && <RelativeTime time={step.endTime} />}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <h3 className="defkit-section-title">
+        <Translation>Resources</Translation> <span className="package-tab-count">{application.resources.length}</span>
+      </h3>
+      {application.resources.length === 0 ? (
+        <Empty message={<Translation>Nothing tracked yet</Translation>} />
+      ) : (
+        <div className="row-list defkit-resources">
+          <div className="row-list-head">
+            <span>
+              <Translation>Kind</Translation>
+            </span>
+            <span>
+              <Translation>Name</Translation>
+            </span>
+            <span>
+              <Translation>Namespace</Translation>
+            </span>
+          </div>
+          {application.resources.map((r) => (
+            <div key={`${r.kind}/${r.namespace}/${r.name}`} className="row-list-row">
+              <div className="row-list-main">
+                <span>{r.kind}</span>
+                <span className="row-list-title">{r.name}</span>
+                <span>{r.namespace}</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -374,7 +464,7 @@ const DefKitModuleDetail = (props: {
         )}
       </div>
       <div className="package-tabs" role="tablist">
-        {(['definitions', 'review'] as Tab[]).map((t) => (
+        {(['definitions', 'review', 'application'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
@@ -383,9 +473,9 @@ const DefKitModuleDetail = (props: {
             className={tab === t ? 'active' : ''}
             onClick={() => setTab(t)}
           >
-            <Translation>{t === 'definitions' ? 'Definitions' : 'Review'}</Translation>{' '}
+            <Translation>{t === 'definitions' ? 'Definitions' : t === 'review' ? 'Review' : 'Application'}</Translation>{' '}
             <span className="package-tab-count">
-              {t === 'definitions' ? detail.definitions.length : preview?.phase === 'review' ? '•' : ''}
+              {t === 'definitions' ? detail.definitions.length : t === 'review' && preview?.phase === 'review' ? '•' : ''}
             </span>
           </button>
         ))}
@@ -441,6 +531,7 @@ const DefKitModuleDetail = (props: {
             ))}
           </div>
         ))}
+      {tab === 'application' && detail.application && <ModuleApplication application={detail.application} />}
       {tab === 'review' && (
         <Review
           name={name}
