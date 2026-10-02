@@ -1,5 +1,5 @@
 import { Loading } from '@alifd/next';
-import { allTenants, askedTenant } from '../../utils/tenant';
+import { allProjects, askedProject } from '../../utils/currentProject';
 import { connect } from 'dva';
 import React, { Component } from 'react';
 import { AppTabs, OrbitBar } from './components/AppTabs';
@@ -14,10 +14,10 @@ interface Props {
   dispatch: Dispatch;
   location: any;
   applicationDetail?: ApplicationDetail;
-  tenant?: { current: string; resolved: boolean };
+  currentProject?: { current: string; resolved: boolean };
 }
 @connect((store: any) => {
-  return { ...store.application, tenant: store.tenant };
+  return { ...store.application, currentProject: store.currentProject };
 })
 class ApplicationLayout extends Component<Props, any> {
   constructor(props: any) {
@@ -42,15 +42,15 @@ class ApplicationLayout extends Component<Props, any> {
     );
   }
 
-  // followTenant moves the picked tenant to the application's own, so a link
-  // into another tenant's application lands in that tenant.
-  followTenant = () => {
-    const { tenant, applicationDetail, dispatch } = this.props;
+  // followProject moves the picked project to the application's own, so a link
+  // into another project's application lands in that project.
+  followProject = () => {
+    const { currentProject, applicationDetail, dispatch } = this.props;
     const project = applicationDetail?.project?.name;
-    // Before the picker has settled, the tenant is the one it is about to pick.
-    const current = tenant?.resolved ? tenant.current : askedTenant();
-    if (project && current !== allTenants && project !== current) {
-      dispatch({ type: 'tenant/setTenant', payload: project });
+    // Before the picker has settled, the project is the one it is about to pick.
+    const current = currentProject?.resolved ? currentProject.current : askedProject();
+    if (project && current !== allProjects && project !== current) {
+      dispatch({ type: 'currentProject/setProject', payload: project });
     }
   };
 
@@ -63,7 +63,7 @@ class ApplicationLayout extends Component<Props, any> {
       type: 'application/getApplicationDetail',
       payload: { appName: appName },
       callback: () => {
-        this.followTenant();
+        this.followProject();
         this.setState({ loading: false }, () => {
           this.loadApplicationComponents();
           this.loadApplicationEnvbinding();

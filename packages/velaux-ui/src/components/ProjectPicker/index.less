@@ -1,0 +1,34 @@
+// The project picker takes the sidebar's colours, which the branding sets on
+// the page root; unbranded, those of the default dark sidebar.
+.next-select.project-picker {
+  width: 240px;
+  .next-select-inner,
+  .next-select-inner:hover {
+    height: 36px;
+    color: var(--sb-text-strong, #f1f5f9);
+    background: var(--sb-bg, #111827) !important;
+    border: 1px solid var(--sb-border, rgba(255, 255, 255, 0.06)) !important;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+  }
+  .next-input-label {
+    display: inline-flex;
+    align-items: center;
+    padding-left: 10px;
+  }
+  .project-picker-icon {
+    color: var(--sb-accent, #60a5fa);
+    font-size: 17px;
+  }
+  .next-select-values,
+  .next-select-values em {
+    color: var(--sb-text-strong, #f1f5f9);
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 34px;
+  }
+  .next-select-arrow,
+  .next-icon {
+    color: var(--sb-text, #a3adbd);
+  }
+}

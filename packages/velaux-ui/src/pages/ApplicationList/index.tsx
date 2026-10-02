@@ -6,7 +6,7 @@ import { byHealth, healthCounts } from './components/AppStatus/health';
 import { HealthChips } from './components/HealthChips';
 import { visibleLabels } from '../../utils/appMeta';
 
-import { inTenant, tenantChanged } from '../../utils/tenant';
+import { inProject, projectChanged } from '../../utils/currentProject';
 import { deleteApplication } from '../../api/application';
 import { If } from '../../components/If';
 import { ListTitle } from '../../components/ListTitle';
@@ -26,7 +26,7 @@ type Props = {
   envs?: [];
   history: any;
   userInfo?: LoginUserInfo;
-  tenant?: { current: string; resolved: boolean };
+  currentProject?: { current: string; resolved: boolean };
 };
 
 export type ShowMode = 'table' | 'card' | string | null;
@@ -48,7 +48,7 @@ type State = {
     ...store.clusters,
     ...store.env,
     ...store.user,
-    tenant: store.tenant,
+    currentProject: store.currentProject,
   };
 })
 class Application extends Component<Props, State> {
@@ -74,22 +74,22 @@ class Application extends Component<Props, State> {
   }
 
   componentDidUpdate(prev: Props) {
-    if (tenantChanged(prev.tenant, this.props.tenant)) {
+    if (projectChanged(prev.currentProject, this.props.currentProject)) {
       this.getApplications({});
     }
   }
 
-  // getApplications lists the picked tenant's applications, or every tenant's
-  // for all of them, and not before the tenant is known.
+  // getApplications lists the picked project's applications, or every project's
+  // for all of them, and not before the project is known.
   getApplications = async (params: any) => {
-    if (!this.props.tenant?.resolved) {
+    if (!this.props.currentProject?.resolved) {
       return;
     }
     this.setState({ isLoading: true });
     this.props.dispatch({
       type: 'application/getApplicationList',
       // An addon's applications are listed on the Addons page instead.
-      payload: { ...params, project: this.props.tenant.current, withStatus: true, addons: 'exclude' },
+      payload: { ...params, project: this.props.currentProject.current, withStatus: true, addons: 'exclude' },
       callback: () => {
         this.setState({
           isLoading: false,
@@ -199,7 +199,9 @@ class Application extends Component<Props, State> {
           dispatch={dispatch}
           setLabelValue={this.setLabelValue}
           labelValue={labelValue}
-          envs={(envs || []).filter((env: Env) => inTenant(this.props.tenant?.current || '', env.project?.name))}
+          envs={(envs || []).filter((env: Env) =>
+            inProject(this.props.currentProject?.current || '', env.project?.name)
+          )}
           showMode={showMode}
           setMode={(mode: ShowMode) => {
             this.setState({ showMode: mode });
@@ -233,7 +235,7 @@ class Application extends Component<Props, State> {
         <If condition={showAddApplication}>
           <NewServiceDialog
             projects={userInfo?.projects}
-            project={this.props.tenant?.current || undefined}
+            project={this.props.currentProject?.current || undefined}
             onClose={this.closeAddApplication}
             onCreated={(name: string) => {
               this.props.history.push(`/applications/${name}/config`);

@@ -1,5 +1,5 @@
 import { Pagination, Button } from '@alifd/next';
-import { tenantChanged } from '../../utils/tenant';
+import { projectChanged } from '../../utils/currentProject';
 import { connect } from 'dva';
 import React from 'react';
 
@@ -18,7 +18,7 @@ import './index.less';
 type Props = {
   targets?: [];
   total?: number;
-  tenant?: { current: string; resolved: boolean };
+  currentProject?: { current: string; resolved: boolean };
   clusterList?: Cluster[];
   dispatch: ({}) => void;
   userInfo?: LoginUserInfo;
@@ -36,7 +36,7 @@ type State = {
 };
 
 @connect((store: any) => {
-  return { ...store.target, ...store.clusters, ...store.user, tenant: store.tenant };
+  return { ...store.target, ...store.clusters, ...store.user, currentProject: store.currentProject };
 })
 class TargetList extends React.Component<Props, State> {
   constructor(props: Props) {
@@ -58,14 +58,14 @@ class TargetList extends React.Component<Props, State> {
   }
 
   componentDidUpdate(prev: Props) {
-    if (tenantChanged(prev.tenant, this.props.tenant)) {
+    if (projectChanged(prev.currentProject, this.props.currentProject)) {
       this.getTargetList();
     }
   }
 
-  // getTargetList lists the picked tenant's, or every tenant's for all of them.
+  // getTargetList lists the picked project's, or every project's for all of them.
   getTargetList = async () => {
-    if (!this.props.tenant?.resolved) {
+    if (!this.props.currentProject?.resolved) {
       return;
     }
     const { page, pageSize, query } = this.state;
@@ -75,7 +75,7 @@ class TargetList extends React.Component<Props, State> {
         query,
         page,
         pageSize,
-        project: this.props.tenant.current,
+        project: this.props.currentProject.current,
       },
     });
   };

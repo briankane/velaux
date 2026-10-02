@@ -1,6 +1,6 @@
 import { ListTitle as Title } from '../../components/ListTitle';
 
-import { tenantChanged } from '../../utils/tenant';
+import { projectChanged } from '../../utils/currentProject';
 import { Loading, Button, Table, Dialog, Message, Balloon } from '@alifd/next';
 import { connect } from 'dva';
 import { Link, routerRedux } from 'dva/router';
@@ -41,7 +41,7 @@ type Props = {
   userInfo?: LoginUserInfo;
   dispatch: Dispatch<any>;
   enabledAddons?: AddonBaseStatus[];
-  tenant?: { current: string; resolved: boolean };
+  currentProject?: { current: string; resolved: boolean };
 };
 
 export type ShowMode = 'table' | 'card' | string | null;
@@ -59,7 +59,7 @@ type State = {
 };
 
 @connect((store: any) => {
-  return { ...store.user, ...store.addons, tenant: store.tenant };
+  return { ...store.user, ...store.addons, currentProject: store.currentProject };
 })
 class PipelineListPage extends Component<Props, State> {
   constructor(props: Props) {
@@ -75,18 +75,18 @@ class PipelineListPage extends Component<Props, State> {
   }
 
   componentDidUpdate(prev: Props) {
-    if (tenantChanged(prev.tenant, this.props.tenant)) {
+    if (projectChanged(prev.currentProject, this.props.currentProject)) {
       this.getPipelines({});
     }
   }
 
-  // getPipelines lists the picked tenant's pipelines, or every tenant's for all of them.
+  // getPipelines lists the picked project's pipelines, or every project's for all of them.
   getPipelines = async (params: { query?: string }) => {
-    if (!this.props.tenant?.resolved) {
+    if (!this.props.currentProject?.resolved) {
       return;
     }
     this.setState({ isLoading: true });
-    listPipelines({ query: params.query, projectName: this.props.tenant.current })
+    listPipelines({ query: params.query, projectName: this.props.currentProject.current })
       .then((res) => {
         this.setState({
           pipelines: res && Array.isArray(res.pipelines) ? res.pipelines : [],
@@ -423,7 +423,7 @@ class PipelineListPage extends Component<Props, State> {
         </If>
         <If condition={showNewPipeline}>
           <CreatePipeline
-            project={this.props.tenant?.current || undefined}
+            project={this.props.currentProject?.current || undefined}
             onClose={() => {
               this.setState({ showNewPipeline: false, pipeline: undefined });
             }}
