@@ -38,7 +38,7 @@ import i18n from '../../../../i18n';
 import { convertAny, momentDate, timeDiff } from '../../../../utils/common';
 import { locale } from '../../../../utils/locale';
 import { StatusBadge } from '../../../../components/StatusBadge';
-import { recordStatus } from './status';
+import { generatedStepProperties, recordStatus } from './status';
 import { HiOutlineRefresh } from 'react-icons/hi';
 import { AiOutlineClose } from 'react-icons/ai';
 
@@ -323,6 +323,7 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
     if (typeof properties === 'string') {
       properties = JSON.parse(properties) as Record<string, any>;
     }
+    const generated = generatedStepProperties(workflow, stepStatus);
     const status = recordStatus(showRecord?.status);
     const failed = showRecord?.status === 'failed' || showRecord?.status === 'terminated';
 
@@ -521,7 +522,24 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
                   )}
                 </Tab.Item>
                 <Tab.Item title={i18n.t('Properties').toString()} key={'properties'}>
-                  {properties && Object.keys(properties).length > 0 ? (
+                  {generated ? (
+                    <>
+                      <Message type="notice" className="wf-step-generated">
+                        <Translation>
+                          KubeVela generated this step: the workflow declares none, so each component is applied by a
+                          step named after it.
+                        </Translation>
+                      </Message>
+                      <dl className="wf-kv">
+                        <dt>component</dt>
+                        <dd>
+                          <Link to={`/applications/${applicationDetail.name}/config/components`}>
+                            {generated.component}
+                          </Link>
+                        </dd>
+                      </dl>
+                    </>
+                  ) : properties && Object.keys(properties).length > 0 ? (
                     <dl className="wf-kv">
                       {Object.keys(properties).map((key: string) => (
                         <React.Fragment key={key}>
