@@ -110,6 +110,7 @@ func (d *defkit) GetWebServiceRoute() *restful.WebService {
 		Returns(400, "Bad Request", bcode.Bcode{}).
 		Writes(apis.EmptyResponse{}))
 
+	ws.Filter(authCheckFilter)
 	return ws
 }
 
