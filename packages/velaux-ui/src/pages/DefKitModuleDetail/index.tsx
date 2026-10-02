@@ -1,13 +1,20 @@
-import { Button, Checkbox, Dialog, Message } from '@alifd/next';
+import { Button, Checkbox, Dialog, Message, Select } from '@alifd/next';
 import { Link, routerRedux } from 'dva/router';
 import { connect } from 'dva';
 import React, { useCallback, useEffect, useState } from 'react';
 import { AiOutlineArrowLeft, AiOutlineDown, AiOutlineRight } from 'react-icons/ai';
 import { BsBoxes } from 'react-icons/bs';
 
-import type { DefKitModuleDetail as Detail, DefKitPreview, DefKitPreviewItem } from '@velaux/data';
-import { applyDefKitPreview, deleteDefKitModule, detailDefKitModule, previewDefKitModule } from '../../api/defkit';
+import type { DefKitModuleDetail as Detail, DefKitPolicy, DefKitPreview, DefKitPreviewItem } from '@velaux/data';
+import {
+  applyDefKitPreview,
+  deleteDefKitModule,
+  detailDefKitModule,
+  previewDefKitModule,
+  updateDefKitModule,
+} from '../../api/defkit';
 import { DiffEditor } from '../../components/DiffEditor';
+import { RelativeTime } from '../../components/RelativeTime';
 import Empty from '../../components/Empty';
 import Permission from '../../components/Permission';
 import '../../components/RowList';
@@ -15,6 +22,7 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { Translation } from '../../components/Translation';
 import i18n from '../../i18n';
 import {
+  autoText,
   busy,
   definitionLink,
   groupPreview,
@@ -22,8 +30,10 @@ import {
   kindLabels,
   phaseLabels,
   phaseTones,
+  policyLabels,
   sourceText,
   statusLabels,
+  withOverride,
 } from '../DefKitModules/defkit';
 import { ModuleDialog } from '../DefKitModules/ModuleDialog';
 import '../DefKitModules/index.less';
@@ -39,8 +49,9 @@ const ItemRow = (props: { item: DefKitPreviewItem; checked?: boolean; onCheck?: 
   const { item } = props;
   const [open, setOpen] = useState(false);
   const canOpen = !!(item.next || item.current);
+  const willDelete = item.status === 'removed' && item.policy === 'delete';
   const choice =
-    item.status === 'conflict' ? 'Take over' : item.status === 'removed' ? 'Delete' : undefined;
+    item.status === 'conflict' ? 'Take over' : item.status === 'removed' && !willDelete ? 'Delete' : undefined;
   return (
     <div className="row-list-row">
       <div className="row-list-main">
@@ -63,6 +74,11 @@ const ItemRow = (props: { item: DefKitPreviewItem; checked?: boolean; onCheck?: 
             <Checkbox checked={props.checked} onChange={(v: boolean) => props.onCheck && props.onCheck(v)}>
               <Translation>{choice}</Translation>
             </Checkbox>
+          )}
+          {willDelete && (
+            <span className="defkit-will-delete" title={i18n.t('Its deletion policy is delete').toString()}>
+              <Translation>Will be deleted</Translation>
+            </span>
           )}
         </span>
       </div>
@@ -181,7 +197,7 @@ const Review = (props: { name: string; preview?: DefKitPreview; onApplied: () =>
           )}
           {g.status === 'removed' && (
             <p className="defkit-hint">
-              <Translation>Kept unless deleted.</Translation>
+              <Translation>Kept unless ticked, except those whose deletion policy is delete.</Translation>
             </p>
           )}
           <div className="row-list defkit-items">
@@ -250,6 +266,23 @@ const DefKitModuleDetail = (props: {
         }),
       locale: { ok: i18n.t('Uninstall').toString(), cancel: i18n.t('Cancel').toString() },
     });
+  // setPolicy changes one definition's deletion policy. It is a change to the
+  // module's garbage-collect policy, so the module renders and applies again.
+  const setPolicy = (id: string, policy?: DefKitPolicy) =>
+    updateDefKitModule(name, detail.source, withOverride(detail.settings, id, policy)).then((res: any) => {
+      if (res) {
+        Message.success(
+          i18n
+            .t(
+              detail.settings.autoUpdate
+                ? 'Policy saved; the module renders and applies again'
+                : 'Policy saved; the module renders again for review'
+            )
+            .toString()
+        );
+        load();
+      }
+    });
   const info = detail.info;
   return (
     <div className="package-detail defkit-detail">
@@ -297,6 +330,32 @@ const DefKitModuleDetail = (props: {
             <code>{detail.source.prefix}</code>
           </div>
         )}
+        <div>
+          <span>
+            <Translation>Deletion policy</Translation>
+          </span>
+          <span>
+            <Translation>{policyLabels[detail.settings.deletionPolicy || 'retain']}</Translation>
+          </span>
+        </div>
+        <div>
+          <span>
+            <Translation>Auto update</Translation>
+          </span>
+          {detail.settings.autoUpdate ? (
+            <span>
+              <Translation>Every</Translation> {autoText(detail.settings)}
+              {detail.nextUpdate && (
+                <span className="defkit-next">
+                  {' · '}
+                  <Translation>next</Translation> <RelativeTime time={detail.nextUpdate} />
+                </span>
+              )}
+            </span>
+          ) : (
+            <Translation>Off</Translation>
+          )}
+        </div>
         {info?.maintainers && info.maintainers.length > 0 && (
           <div>
             <span>
@@ -346,6 +405,9 @@ const DefKitModuleDetail = (props: {
               <span>
                 <Translation>Description</Translation>
               </span>
+              <span>
+                <Translation>On removal</Translation>
+              </span>
             </div>
             {detail.definitions.map((d) => (
               <div key={itemId(d)} className="row-list-row">
@@ -355,6 +417,25 @@ const DefKitModuleDetail = (props: {
                   </Link>
                   <span>{i18n.t(kindLabels[d.kind] || d.kind)}</span>
                   <span className="defkit-description">{d.description}</span>
+                  <span>
+                    <Select
+                      size="small"
+                      className="defkit-policy"
+                      value={detail.settings.overrides?.[itemId(d)] || 'default'}
+                      onChange={(v: string) => setPolicy(itemId(d), v === 'default' ? undefined : (v as DefKitPolicy))}
+                      dataSource={[
+                        {
+                          value: 'default',
+                          label: `${i18n.t('Module').toString()} (${i18n
+                            .t(policyLabels[detail.settings.deletionPolicy || 'retain'])
+                            .toString()
+                            .toLowerCase()})`,
+                        },
+                        { value: 'retain', label: i18n.t('Retain').toString() },
+                        { value: 'delete', label: i18n.t('Delete').toString() },
+                      ]}
+                    />
+                  </span>
                 </div>
               </div>
             ))}

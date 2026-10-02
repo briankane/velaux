@@ -881,5 +881,22 @@
   "Waiting for review": "等待审阅",
   "Workflow steps": "工作流步骤",
   "changes": "项变更",
-  "definitions": "个定义"
+  "definitions": "个定义",
+  "Deletion policy": "删除策略",
+  "Retain": "保留",
+  "Retain keeps a definition when the module drops it or is uninstalled. Delete removes it with them. A definition can override this.": "保留：模块不再包含某定义或被卸载时，保留该定义。删除：随之删除。单个定义可覆盖此设置。",
+  "Auto update": "自动更新",
+  "Render and apply on a schedule, without review. Definitions it does not own are never taken over.": "按计划渲染并应用，无需审阅。不属于此模块的定义永远不会被接管。",
+  "A duration after each run, such as 10m or 1h": "每次运行之后的间隔，例如 10m 或 1h",
+  "A duration such as 10m or 1h": "时长，例如 10m 或 1h",
+  "Rendering the module; it applies when ready": "正在渲染模块，完成后自动应用",
+  "Its deletion policy is delete": "其删除策略为删除",
+  "Will be deleted": "将被删除",
+  "Kept unless ticked, except those whose deletion policy is delete.": "除删除策略为删除的定义外，未勾选的均保留。",
+  "next": "下次",
+  "On removal": "移除时",
+  "Module": "模块",
+  "Policy saved; the module renders and applies again": "策略已保存，模块将重新渲染并应用",
+  "Policy saved; the module renders again for review": "策略已保存，模块将重新渲染以供审阅",
+  "Auto update every": "自动更新间隔"
 }

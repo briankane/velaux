@@ -1,7 +1,9 @@
 import { expect } from 'chai';
 
 import {
+  autoText,
   definitionLink,
+  withOverride,
   groupPreview,
   parseSource,
   sourceText,
@@ -43,5 +45,17 @@ describe('defkit', () => {
     ]);
     expect(groups.map((g) => g.status)).to.deep.equal(['conflict', 'new', 'unchanged']);
     expect(groups[1].items.map((i) => i.name)).to.deep.equal(['a', 'b']);
+  });
+
+  it('sets and clears a definition override', () => {
+    const one = withOverride({ deletionPolicy: 'retain' }, 'TraitDefinition/x', 'delete');
+    expect(one.overrides).to.deep.equal({ 'TraitDefinition/x': 'delete' });
+    expect(withOverride(one, 'TraitDefinition/x', undefined).overrides).to.equal(undefined);
+  });
+
+  it('says how often a module updates itself', () => {
+    expect(autoText({ autoUpdate: true })).to.equal('10m');
+    expect(autoText({ autoUpdate: true, interval: '1h' })).to.equal('1h');
+    expect(autoText({ interval: '1h' })).to.equal('');
   });
 });

@@ -1,4 +1,11 @@
-import type { DefKitItemStatus, DefKitPhase, DefKitPreviewItem, DefKitSource } from '@velaux/data';
+import type {
+  DefKitItemStatus,
+  DefKitPhase,
+  DefKitPolicy,
+  DefKitPreviewItem,
+  DefKitSettings,
+  DefKitSource,
+} from '@velaux/data';
 import type { Tone } from '../../components/StatusBadge';
 
 export const phaseLabels: Record<DefKitPhase, string> = {
@@ -83,4 +90,26 @@ export function parseSource(from: string, version: string, prefix: string, types
     prefix: prefix.trim() || undefined,
     types: types.length > 0 ? types : undefined,
   };
+}
+
+export const policyLabels: Record<DefKitPolicy, string> = {
+  retain: 'Retain',
+  delete: 'Delete',
+};
+
+// withOverride is settings with one definition's policy set, or with its
+// override removed when policy is undefined.
+export function withOverride(settings: DefKitSettings, id: string, policy?: DefKitPolicy): DefKitSettings {
+  const overrides = { ...(settings.overrides || {}) };
+  if (policy) {
+    overrides[id] = policy;
+  } else {
+    delete overrides[id];
+  }
+  return { ...settings, overrides: Object.keys(overrides).length > 0 ? overrides : undefined };
+}
+
+// autoText says how often a module updates itself, or nothing when it does not.
+export function autoText(settings: DefKitSettings): string {
+  return settings.autoUpdate ? settings.interval || '10m' : '';
 }

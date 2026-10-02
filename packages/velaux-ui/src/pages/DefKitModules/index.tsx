@@ -15,7 +15,7 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { Translation } from '../../components/Translation';
 import i18n from '../../i18n';
 import '../Packages/index.less';
-import { busy, kindLabels, phaseLabels, phaseTones, sourceText } from './defkit';
+import { autoText, busy, kindLabels, phaseLabels, phaseTones, sourceText } from './defkit';
 import { ModuleDialog } from './ModuleDialog';
 import './index.less';
 
@@ -125,6 +125,11 @@ const DefKitModules = (props: { dispatch: (action: any) => void }) => {
                     </Link>
                   ) : (
                     <StatusBadge tone={phaseTones[m.phase]} label={phaseLabels[m.phase]} title={m.message} />
+                  )}
+                  {m.settings?.autoUpdate && (
+                    <span className="defkit-auto">
+                      <Translation>Auto update every</Translation> {autoText(m.settings)}
+                    </span>
                   )}
                 </span>
                 <span>{countsText(m.counts) || '-'}</span>

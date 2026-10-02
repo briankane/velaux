@@ -27,4 +27,6 @@ var (
 	ErrDefKitNoSource = NewBcode(400, 23004, "give a Go module path or a git repository, not both")
 	// ErrDefKitNotInReview the module has no render waiting for review
 	ErrDefKitNotInReview = NewBcode(400, 23005, "the module has no render waiting for review")
+	// ErrDefKitInvalidSettings the deletion policy or interval is not valid
+	ErrDefKitInvalidSettings = NewBcode(400, 23006, "a deletion policy is retain or delete, and an interval a duration of at least a minute, such as 10m")
 )

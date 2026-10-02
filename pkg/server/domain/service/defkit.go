@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 
 	oamv1alpha1 "github.com/kubevela/pkg/apis/oam/v1alpha1"
 	workflowv1alpha1 "github.com/kubevela/workflow/api/v1alpha1"
@@ -61,8 +62,12 @@ const (
 	defkitKeyModule      = "module.json"
 	defkitKeyDefinitions = "definitions.json"
 	defkitKeyErrors      = "errors.json"
-	defkitKeySkip        = "skip.json"
 	defkitRenderedAt     = "defkit.oam.dev/rendered-at"
+
+	defkitSettingsAnnotation = "defkit.oam.dev/settings"
+	defkitDefaultInterval    = "10m"
+	defkitRetain             = "retain"
+	defkitDelete             = "delete"
 )
 
 // Module phases, from its Application's workflow.
@@ -96,7 +101,7 @@ type DefKitService interface {
 	ListModules(ctx context.Context) (*apisv1.ListDefKitModulesResponse, error)
 	DetailModule(ctx context.Context, name string) (*apisv1.DefKitModuleDetail, error)
 	CreateModule(ctx context.Context, req apisv1.CreateDefKitModuleRequest) (*apisv1.DefKitModule, error)
-	UpdateModule(ctx context.Context, name string, src apisv1.DefKitSource) (*apisv1.DefKitModule, error)
+	UpdateModule(ctx context.Context, name string, req apisv1.UpdateDefKitModuleRequest) (*apisv1.DefKitModule, error)
 	PreviewModule(ctx context.Context, name string) (*apisv1.DefKitPreview, error)
 	ApplyPreview(ctx context.Context, name string, req apisv1.ApplyDefKitPreviewRequest) error
 	DeleteModule(ctx context.Context, name string) error
@@ -142,7 +147,7 @@ func (s *defkitServiceImpl) DetailModule(ctx context.Context, name string) (*api
 	m, installed := s.module(ctx, app)
 	detail := &apisv1.DefKitModuleDetail{DefKitModule: *m, Definitions: []*apisv1.DefKitDefinition{}}
 	for _, ref := range installed {
-		def := &apisv1.DefKitDefinition{Kind: ref.Kind, Name: ref.Name}
+		def := &apisv1.DefKitDefinition{Kind: ref.Kind, Name: ref.Name, Policy: effectivePolicy(m.Settings, ref.Kind, ref.Name)}
 		obj := &unstructured.Unstructured{}
 		obj.SetAPIVersion(ref.APIVersion)
 		obj.SetKind(ref.Kind)
@@ -161,7 +166,10 @@ func (s *defkitServiceImpl) CreateModule(ctx context.Context, req apisv1.CreateD
 	if (req.Ref == "") == (req.Git == "") {
 		return nil, bcode.ErrDefKitNoSource
 	}
-	app := defkitApplication(req.Name, req.DefKitSource)
+	if err := validateDefKitSettings(req.DefKitSettings); err != nil {
+		return nil, err
+	}
+	app := defkitApplication(req.Name, req.DefKitSource, req.DefKitSettings)
 	if err := s.KubeClient.Create(ctx, app); err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			return nil, bcode.ErrDefKitModuleExist
@@ -172,15 +180,29 @@ func (s *defkitServiceImpl) CreateModule(ctx context.Context, req apisv1.CreateD
 	return m, nil
 }
 
-func (s *defkitServiceImpl) UpdateModule(ctx context.Context, name string, src apisv1.DefKitSource) (*apisv1.DefKitModule, error) {
-	if (src.Ref == "") == (src.Git == "") {
+func (s *defkitServiceImpl) UpdateModule(ctx context.Context, name string, req apisv1.UpdateDefKitModuleRequest) (*apisv1.DefKitModule, error) {
+	if (req.Ref == "") == (req.Git == "") {
 		return nil, bcode.ErrDefKitNoSource
+	}
+	if err := validateDefKitSettings(req.DefKitSettings); err != nil {
+		return nil, err
 	}
 	app, err := s.application(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	app.Spec = defkitApplication(name, src).Spec
+	want := defkitApplication(name, req.DefKitSource, req.DefKitSettings)
+	app.Spec = want.Spec
+	if app.Annotations == nil {
+		app.Annotations = map[string]string{}
+	}
+	for _, k := range []string{defkitSettingsAnnotation, oam.AnnotationWorkflowRestart} {
+		if v, ok := want.Annotations[k]; ok {
+			app.Annotations[k] = v
+		} else {
+			delete(app.Annotations, k)
+		}
+	}
 	if err := s.KubeClient.Update(ctx, app); err != nil {
 		return nil, err
 	}
@@ -217,16 +239,14 @@ func (s *defkitServiceImpl) ApplyPreview(ctx context.Context, name string, req a
 	if preview.Phase != defkitPhaseReview || cm == nil {
 		return bcode.ErrDefKitNotInReview
 	}
+	// A conflict not taken over stays unowned, which the apply step skips.
 	takeOver, remove := setOf(req.TakeOver), setOf(req.Delete)
-	skip := []string{}
 	var adopts, deletes []*apisv1.DefKitPreviewItem
 	for _, item := range preview.Items {
 		id := item.Kind + "/" + item.Name
 		switch {
 		case item.Status == defkitConflict && takeOver[id]:
 			adopts = append(adopts, item)
-		case item.Status == defkitConflict:
-			skip = append(skip, id)
 		case item.Status == defkitRemoved && remove[id]:
 			deletes = append(deletes, item)
 		}
@@ -235,14 +255,6 @@ func (s *defkitServiceImpl) ApplyPreview(ctx context.Context, name string, req a
 		if err := s.adopt(ctx, app, item); err != nil {
 			return err
 		}
-	}
-	b, err := json.Marshal(skip)
-	if err != nil {
-		return err
-	}
-	cm.Data[defkitKeySkip] = string(b)
-	if err := s.KubeClient.Update(ctx, cm); err != nil {
-		return err
 	}
 	for _, item := range deletes {
 		obj := &unstructured.Unstructured{}
@@ -297,12 +309,16 @@ func (s *defkitServiceImpl) application(ctx context.Context, name string) (*v1be
 func (s *defkitServiceImpl) module(ctx context.Context, app *v1beta1.Application) (*apisv1.DefKitModule, []common.ClusterObjectReference) {
 	phase, message := defkitPhase(app)
 	m := &apisv1.DefKitModule{
-		Name: app.Labels[defkitModuleLabel], Source: defkitSourceOf(app),
+		Name: app.Labels[defkitModuleLabel], Source: defkitSourceOf(app), Settings: defkitSettingsOf(app),
 		Phase: phase, Message: message, Counts: map[string]int{},
 		UpdateTime: app.CreationTimestamp.Time,
 	}
 	if app.Status.Workflow != nil && !app.Status.Workflow.StartTime.IsZero() {
 		m.UpdateTime = app.Status.Workflow.StartTime.Time
+	}
+	if m.Settings.AutoUpdate && app.Status.WorkflowRestartScheduledAt != nil {
+		next := app.Status.WorkflowRestartScheduledAt.Time
+		m.NextUpdate = &next
 	}
 	if cm := s.renderFor(ctx, app); cm != nil {
 		m.Info = renderInfo(cm)
@@ -371,6 +387,7 @@ func (s *defkitServiceImpl) renderFor(ctx context.Context, app *v1beta1.Applicat
 // preview diffs the pending render against the cluster.
 func (s *defkitServiceImpl) preview(ctx context.Context, app *v1beta1.Application) (*apisv1.DefKitPreview, *corev1.ConfigMap, error) {
 	phase, message := defkitPhase(app)
+	settings := defkitSettingsOf(app)
 	preview := &apisv1.DefKitPreview{Phase: phase, Message: message, Items: []*apisv1.DefKitPreviewItem{}}
 	cm := s.renderFor(ctx, app)
 	if cm == nil {
@@ -403,7 +420,7 @@ func (s *defkitServiceImpl) preview(ctx context.Context, app *v1beta1.Applicatio
 		default:
 			item.Current = definitionYAML(current)
 			switch {
-			case current.GetLabels()[oam.LabelAppName] != app.Name:
+			case current.GetLabels()[oam.LabelAppName] != app.Name || current.GetLabels()[oam.LabelAppNamespace] != app.Namespace:
 				item.Status = defkitConflict
 			case sameDefinition(current, next):
 				item.Status = defkitUnchanged
@@ -417,8 +434,9 @@ func (s *defkitServiceImpl) preview(ctx context.Context, app *v1beta1.Applicatio
 	for _, ref := range s.installed(ctx, app) {
 		if !inRender[ref.Kind+"/"+ref.Name] {
 			preview.Items = append(preview.Items, &apisv1.DefKitPreviewItem{
-				DefKitDefinition: apisv1.DefKitDefinition{Kind: ref.Kind, Name: ref.Name},
-				Status:           defkitRemoved,
+				DefKitDefinition: apisv1.DefKitDefinition{Kind: ref.Kind, Name: ref.Name,
+					Policy: effectivePolicy(settings, ref.Kind, ref.Name)},
+				Status: defkitRemoved,
 			})
 		}
 	}
@@ -426,39 +444,145 @@ func (s *defkitServiceImpl) preview(ctx context.Context, app *v1beta1.Applicatio
 }
 
 // defkitApplication is the Application that installs a module.
-func defkitApplication(name string, src apisv1.DefKitSource) *v1beta1.Application {
+func defkitApplication(name string, src apisv1.DefKitSource, settings apisv1.DefKitSettings) *v1beta1.Application {
 	render, _ := json.Marshal(map[string]interface{}{
 		"ref": src.Ref, "git": src.Git, "version": src.Version, "prefix": src.Prefix, "types": nonNil(src.Types),
 	})
-	gc, _ := json.Marshal(map[string]interface{}{"keepLegacyResource": true})
+	// The rules decide what outlives an update and the module itself, so no
+	// legacy resource is kept beyond them. No take-over policy: a review adopts
+	// the conflicts it picks, and the apply step skips any definition it does
+	// not own.
+	gc, _ := json.Marshal(map[string]interface{}{"keepLegacyResource": false, "rules": gcRules(settings)})
+	stored, _ := json.Marshal(settings)
+	annotations := map[string]string{defkitSettingsAnnotation: string(stored)}
+	steps := []oamv1alpha1.WorkflowStep{
+		{WorkflowStepBase: oamv1alpha1.WorkflowStepBase{
+			Name: defkitRenderStep, Type: defkitRenderStepType, Properties: &runtime.RawExtension{Raw: render},
+			Outputs: oamv1alpha1.StepOutputs{{Name: "rendered", ValueFrom: "configMap"}},
+		}},
+	}
+	if settings.AutoUpdate {
+		// KubeVela restarts the workflow this long after each completed run.
+		annotations[oam.AnnotationWorkflowRestart] = intervalOf(settings)
+	} else {
+		steps = append(steps, oamv1alpha1.WorkflowStep{WorkflowStepBase: oamv1alpha1.WorkflowStepBase{Name: defkitReviewStep, Type: "suspend"}})
+	}
+	steps = append(steps, oamv1alpha1.WorkflowStep{WorkflowStepBase: oamv1alpha1.WorkflowStepBase{
+		Name: defkitApplyStep, Type: defkitApplyStepType,
+		Inputs: oamv1alpha1.StepInputs{{From: "rendered", ParameterKey: "configMap"}},
+	}})
 	return &v1beta1.Application{
 		TypeMeta: metav1.TypeMeta{APIVersion: v1beta1.SchemeGroupVersion.String(), Kind: v1beta1.ApplicationKind},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: defkitAppPrefix + name, Namespace: types.DefaultKubeVelaNS,
 			// from-inner keeps it out of VelaUX's synced applications.
-			Labels: map[string]string{defkitModuleLabel: name, types.LabelSourceOfTruth: types.FromInner},
+			Labels:      map[string]string{defkitModuleLabel: name, types.LabelSourceOfTruth: types.FromInner},
+			Annotations: annotations,
 		},
 		Spec: v1beta1.ApplicationSpec{
 			Components: []common.ApplicationComponent{},
 			Policies: []v1beta1.AppPolicy{
-				// An update keeps what it no longer renders; a review deletes the ones it picks.
-				// No take-over policy: a review adopts the conflicts it picks, and the
-				// resource keeper refuses to overwrite any other definition it does not own.
-				{Name: "keep-removed-definitions", Type: "garbage-collect", Properties: &runtime.RawExtension{Raw: gc}},
+				{Name: "definition-deletion", Type: "garbage-collect", Properties: &runtime.RawExtension{Raw: gc}},
 			},
-			Workflow: &v1beta1.Workflow{Steps: []oamv1alpha1.WorkflowStep{
-				{WorkflowStepBase: oamv1alpha1.WorkflowStepBase{
-					Name: defkitRenderStep, Type: defkitRenderStepType, Properties: &runtime.RawExtension{Raw: render},
-					Outputs: oamv1alpha1.StepOutputs{{Name: "rendered", ValueFrom: "configMap"}},
-				}},
-				{WorkflowStepBase: oamv1alpha1.WorkflowStepBase{Name: defkitReviewStep, Type: "suspend"}},
-				{WorkflowStepBase: oamv1alpha1.WorkflowStepBase{
-					Name: defkitApplyStep, Type: defkitApplyStepType,
-					Inputs: oamv1alpha1.StepInputs{{From: "rendered", ParameterKey: "configMap"}},
-				}},
-			}},
+			Workflow: &v1beta1.Workflow{Steps: steps},
 		},
 	}
+}
+
+// gcRules are the garbage-collect rules of a module's deletion policy: one per
+// kind and strategy for the overrides, first since the first matching rule
+// wins, then the module's own for every definition kind.
+func gcRules(settings apisv1.DefKitSettings) []interface{} {
+	byRule := map[[2]string][]string{}
+	for id, policy := range settings.Overrides {
+		kind, name, ok := strings.Cut(id, "/")
+		if !ok {
+			continue
+		}
+		key := [2]string{kind, policy}
+		byRule[key] = append(byRule[key], name)
+	}
+	keys := make([][2]string, 0, len(byRule))
+	for k := range byRule {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i][0] != keys[j][0] {
+			return keys[i][0] < keys[j][0]
+		}
+		return keys[i][1] < keys[j][1]
+	})
+	var rules []interface{}
+	for _, k := range keys {
+		names := byRule[k]
+		sort.Strings(names)
+		rules = append(rules, map[string]interface{}{
+			"selector": map[string]interface{}{"resourceTypes": []string{k[0]}, "resourceNames": names},
+			"strategy": gcStrategy(k[1]),
+		})
+	}
+	kinds := make([]string, 0, len(definitionKinds))
+	for k := range definitionKinds {
+		kinds = append(kinds, k)
+	}
+	sort.Strings(kinds)
+	return append(rules, map[string]interface{}{
+		"selector": map[string]interface{}{"resourceTypes": kinds},
+		"strategy": gcStrategy(settings.DeletionPolicy),
+	})
+}
+
+// gcStrategy is a deletion policy as a garbage-collect strategy: retain never
+// deletes; delete deletes on removal from the module and with the module.
+func gcStrategy(policy string) string {
+	if policy == defkitDelete {
+		return "onAppUpdate"
+	}
+	return "never"
+}
+
+// effectivePolicy is a definition's deletion policy: its override, or the module's.
+func effectivePolicy(settings apisv1.DefKitSettings, kind, name string) string {
+	if p, ok := settings.Overrides[kind+"/"+name]; ok {
+		return p
+	}
+	if settings.DeletionPolicy == defkitDelete {
+		return defkitDelete
+	}
+	return defkitRetain
+}
+
+func intervalOf(settings apisv1.DefKitSettings) string {
+	if settings.Interval == "" {
+		return defkitDefaultInterval
+	}
+	return settings.Interval
+}
+
+func validateDefKitSettings(settings apisv1.DefKitSettings) error {
+	valid := func(p string) bool { return p == defkitRetain || p == defkitDelete }
+	if settings.DeletionPolicy != "" && !valid(settings.DeletionPolicy) {
+		return bcode.ErrDefKitInvalidSettings
+	}
+	for _, p := range settings.Overrides {
+		if !valid(p) {
+			return bcode.ErrDefKitInvalidSettings
+		}
+	}
+	if settings.AutoUpdate {
+		d, err := time.ParseDuration(intervalOf(settings))
+		if err != nil || d < time.Minute {
+			return bcode.ErrDefKitInvalidSettings
+		}
+	}
+	return nil
+}
+
+// defkitSettingsOf reads the settings a module was created or updated with.
+func defkitSettingsOf(app *v1beta1.Application) apisv1.DefKitSettings {
+	var settings apisv1.DefKitSettings
+	_ = json.Unmarshal([]byte(app.Annotations[defkitSettingsAnnotation]), &settings)
+	return settings
 }
 
 // defkitSourceOf reads the source back from the render step's properties.

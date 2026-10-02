@@ -73,11 +73,11 @@ func (d *defkit) GetWebServiceRoute() *restful.WebService {
 		Writes(apis.DefKitModuleDetail{}))
 
 	ws.Route(ws.PUT("/{name}").To(d.update).
-		Doc("change a DefKit module's source or options; the new render waits for review").
+		Doc("change a DefKit module's source or settings; the new render waits for review unless it updates itself").
 		Filter(d.RbacService.CheckPerm("definition", "update")).
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Param(name).
-		Reads(apis.DefKitSource{}).
+		Reads(apis.UpdateDefKitModuleRequest{}).
 		Returns(200, "OK", apis.DefKitModule{}).
 		Returns(404, "Not Found", bcode.Bcode{}).
 		Writes(apis.DefKitModule{}))
@@ -144,7 +144,7 @@ func (d *defkit) create(req *restful.Request, res *restful.Response) {
 }
 
 func (d *defkit) update(req *restful.Request, res *restful.Response) {
-	var body apis.DefKitSource
+	var body apis.UpdateDefKitModuleRequest
 	if err := req.ReadEntity(&body); err != nil {
 		bcode.ReturnError(req, res, err)
 		return

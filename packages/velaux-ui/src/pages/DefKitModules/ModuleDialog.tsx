@@ -1,7 +1,7 @@
-import { Button, Checkbox, Dialog, Field, Form, Input, Message } from '@alifd/next';
+import { Button, Checkbox, Dialog, Field, Form, Input, Message, Radio, Switch } from '@alifd/next';
 import React, { useState } from 'react';
 
-import type { DefKitModule } from '@velaux/data';
+import type { DefKitModule, DefKitSettings } from '@velaux/data';
 import { createDefKitModule, updateDefKitModule } from '../../api/defkit';
 import { Translation } from '../../components/Translation';
 import i18n from '../../i18n';
@@ -26,6 +26,9 @@ export const ModuleDialog = (props: { module?: DefKitModule; onClose: () => void
       version: src?.version || '',
       prefix: src?.prefix || '',
       types: src?.types || [],
+      deletionPolicy: module?.settings.deletionPolicy || 'retain',
+      autoUpdate: !!module?.settings.autoUpdate,
+      interval: module?.settings.interval || '10m',
     },
   });
   const [saving, setSaving] = useState(false);
@@ -35,12 +38,24 @@ export const ModuleDialog = (props: { module?: DefKitModule; onClose: () => void
         return;
       }
       const source = parseSource(values.from, values.version, values.prefix, values.types || []);
+      const settings: DefKitSettings = {
+        deletionPolicy: values.deletionPolicy,
+        overrides: module?.settings.overrides,
+        autoUpdate: values.autoUpdate,
+        interval: values.autoUpdate ? values.interval.trim() : undefined,
+      };
       setSaving(true);
-      const call = module ? updateDefKitModule(module.name, source) : createDefKitModule(values.name, source);
+      const call = module
+        ? updateDefKitModule(module.name, source, settings)
+        : createDefKitModule(values.name, source, settings);
       call
         .then((res: any) => {
           if (res) {
-            Message.success(i18n.t('Rendering the module; review it when it is ready').toString());
+            Message.success(
+              i18n
+                .t(values.autoUpdate ? 'Rendering the module; it applies when ready' : 'Rendering the module; review it when it is ready')
+                .toString()
+            );
             props.onDone(module ? module.name : values.name);
           }
         })
@@ -106,6 +121,48 @@ export const ModuleDialog = (props: { module?: DefKitModule; onClose: () => void
             dataSource={typeOptions.map((o) => ({ value: o.value, label: i18n.t(o.label).toString() }))}
           />
         </Form.Item>
+        <Form.Item
+          label={<Translation>Deletion policy</Translation>}
+          help={
+            <Translation>
+              Retain keeps a definition when the module drops it or is uninstalled. Delete removes it with them. A
+              definition can override this.
+            </Translation>
+          }
+        >
+          <Radio.Group
+            {...init('deletionPolicy')}
+            dataSource={[
+              { value: 'retain', label: i18n.t('Retain').toString() },
+              { value: 'delete', label: i18n.t('Delete').toString() },
+            ]}
+          />
+        </Form.Item>
+        <Form.Item
+          label={<Translation>Auto update</Translation>}
+          help={<Translation>Render and apply on a schedule, without review. Definitions it does not own are never taken over.</Translation>}
+        >
+          <Switch {...init('autoUpdate', { valueName: 'checked' })} />
+        </Form.Item>
+        {field.getValue('autoUpdate') && (
+          <Form.Item
+            label={<Translation>Every</Translation>}
+            required
+            help={<Translation>A duration after each run, such as 10m or 1h</Translation>}
+          >
+            <Input
+              {...init('interval', {
+                rules: [
+                  {
+                    pattern: /^\s*([0-9]+(\.[0-9]+)?(h|m|s))+\s*$/,
+                    message: i18n.t('A duration such as 10m or 1h').toString(),
+                  },
+                ],
+              })}
+              placeholder="10m"
+            />
+          </Form.Item>
+        )}
       </Form>
     </Dialog>
   );

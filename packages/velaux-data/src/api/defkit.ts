@@ -9,6 +9,19 @@ export interface DefKitSource {
   types?: string[];
 }
 
+export type DefKitPolicy = 'retain' | 'delete';
+
+// DefKitSettings are how a module is kept: what happens to its definitions
+// when it no longer installs them, and whether it re-renders on its own.
+export interface DefKitSettings {
+  deletionPolicy?: DefKitPolicy;
+  // overrides set single definitions' policy, by Kind/name.
+  overrides?: Record<string, DefKitPolicy>;
+  autoUpdate?: boolean;
+  // interval is a Go duration, 10m when empty.
+  interval?: string;
+}
+
 export interface DefKitMaintainer {
   name: string;
   email?: string;
@@ -30,6 +43,9 @@ export type DefKitPhase = 'rendering' | 'review' | 'applying' | 'applied' | 'fai
 export interface DefKitModule {
   name: string;
   source: DefKitSource;
+  settings: DefKitSettings;
+  // nextUpdate is when an auto-updating module renders next.
+  nextUpdate?: string;
   phase: DefKitPhase;
   message?: string;
   info?: DefKitModuleInfo;
@@ -42,6 +58,8 @@ export interface DefKitDefinition {
   kind: string;
   name: string;
   description?: string;
+  // policy is its deletion policy: its override, or the module's.
+  policy?: DefKitPolicy;
 }
 
 export interface DefKitModuleDetail extends DefKitModule {

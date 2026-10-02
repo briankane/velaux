@@ -66,7 +66,7 @@ func TestDefKitPhase(t *testing.T) {
 		{[]string{"succeeded", "succeeded", "succeeded"}, defkitPhaseApplied},
 		{[]string{"succeeded", "succeeded", "failed"}, defkitPhaseFailed},
 	} {
-		app := defkitApplication("defs", src)
+		app := defkitApplication("defs", src, apisv1.DefKitSettings{})
 		if tc.phases != nil {
 			withSteps(app, tc.phases...)
 		}
@@ -74,7 +74,7 @@ func TestDefKitPhase(t *testing.T) {
 		assert.Equal(t, tc.want, got, "%v", tc.phases)
 	}
 
-	app := withSteps(defkitApplication("defs", src), "succeeded", "succeeded", "succeeded")
+	app := withSteps(defkitApplication("defs", src, apisv1.DefKitSettings{}), "succeeded", "succeeded", "succeeded")
 	app.Generation, app.Status.ObservedGeneration = 2, 1
 	got, _ := defkitPhase(app)
 	assert.Equal(t, defkitPhaseRendering, got, "a spec the controller has not seen yet is a new render")
@@ -82,8 +82,9 @@ func TestDefKitPhase(t *testing.T) {
 
 func TestDefKitSourceRoundTrips(t *testing.T) {
 	src := apisv1.DefKitSource{Git: "https://example.com/defs", Version: "v1", Prefix: "dk-", Types: []string{"trait"}}
-	app := defkitApplication("defs", src)
+	app := defkitApplication("defs", src, apisv1.DefKitSettings{})
 	assert.Equal(t, src, defkitSourceOf(app))
+	assert.Equal(t, apisv1.DefKitSettings{}, defkitSettingsOf(app))
 	assert.Equal(t, "defkit-defs", app.Name)
 	assert.Equal(t, "defs", app.Labels[defkitModuleLabel])
 	assert.Equal(t, types.FromInner, app.Labels[types.LabelSourceOfTruth], "a module is not a service")
@@ -115,7 +116,7 @@ func renderedDefinition(name, description string) map[string]interface{} {
 func reviewFixture(t *testing.T) (*defkitServiceImpl, client.Client) {
 	t.Helper()
 	src := apisv1.DefKitSource{Git: "https://example.com/defs", Version: "main"}
-	app := withSteps(defkitApplication("defs", src), "succeeded", "suspending")
+	app := withSteps(defkitApplication("defs", src, apisv1.DefKitSettings{}), "succeeded", "suspending")
 	owned := map[string]string{oam.LabelAppName: "defkit-defs", oam.LabelAppNamespace: "vela-system", "oam.dev/render-hash": "x"}
 
 	module, _ := json.Marshal(map[string]interface{}{"name": "defs", "version": "v0.0.0-abc", "source": src})
@@ -192,10 +193,6 @@ func TestDefKitApplyPreview(t *testing.T) {
 		Delete: []string{"TraitDefinition/gone", "TraitDefinition/same"},
 	}))
 
-	cm := &corev1.ConfigMap{}
-	require.NoError(t, cli.Get(ctx, client.ObjectKey{Namespace: defkitRenderNamespace, Name: "defkit-defs-abc"}, cm))
-	assert.JSONEq(t, `["TraitDefinition/taken"]`, cm.Data[defkitKeySkip], "a conflict not taken over is skipped")
-
 	err := cli.Get(ctx, client.ObjectKey{Namespace: "vela-system", Name: "gone"}, &v1beta1.TraitDefinition{})
 	assert.True(t, apierrors.IsNotFound(err), "a ticked removed definition is deleted")
 	assert.NoError(t, cli.Get(ctx, client.ObjectKey{Namespace: "vela-system", Name: "same"}, &v1beta1.TraitDefinition{}),
@@ -211,8 +208,6 @@ func TestDefKitApplyPreview(t *testing.T) {
 
 	svc2, cli2 := reviewFixture(t)
 	require.NoError(t, svc2.ApplyPreview(ctx, "defs", apisv1.ApplyDefKitPreviewRequest{TakeOver: []string{"TraitDefinition/taken"}}))
-	require.NoError(t, cli2.Get(ctx, client.ObjectKey{Namespace: defkitRenderNamespace, Name: "defkit-defs-abc"}, cm))
-	assert.JSONEq(t, `[]`, cm.Data[defkitKeySkip], "a conflict taken over is applied")
 	require.NoError(t, cli2.Get(ctx, client.ObjectKey{Namespace: "vela-system", Name: "taken"}, taken))
 	assert.Equal(t, "defkit-defs", taken.Labels[oam.LabelAppName], "a conflict taken over is adopted by the module")
 	assert.Equal(t, "defkit-defs", taken.Labels["owner.oam.dev/name"])
@@ -228,6 +223,99 @@ func TestDefKitApplyNeedsReview(t *testing.T) {
 	withSteps(app, "running")
 	require.NoError(t, cli.Status().Update(ctx, app))
 	assert.Equal(t, bcode.ErrDefKitNotInReview, svc.ApplyPreview(ctx, "defs", apisv1.ApplyDefKitPreviewRequest{}))
+}
+
+func storedGCPolicy(t *testing.T, app *v1beta1.Application) (bool, []map[string]interface{}) {
+	t.Helper()
+	for _, p := range app.Spec.Policies {
+		if p.Type == "garbage-collect" {
+			var gc struct {
+				KeepLegacyResource bool                     `json:"keepLegacyResource"`
+				Rules              []map[string]interface{} `json:"rules"`
+			}
+			require.NoError(t, json.Unmarshal(p.Properties.Raw, &gc))
+			return gc.KeepLegacyResource, gc.Rules
+		}
+	}
+	t.Fatal("no garbage-collect policy")
+	return false, nil
+}
+
+func TestDefKitDeletionPolicy(t *testing.T) {
+	src := apisv1.DefKitSource{Git: "https://example.com/defs"}
+	keep, rules := storedGCPolicy(t, defkitApplication("defs", src, apisv1.DefKitSettings{}))
+	assert.False(t, keep, "the rules decide what outlives an update")
+	require.Len(t, rules, 1)
+	assert.Equal(t, "never", rules[0]["strategy"], "a module retains its definitions by default")
+
+	_, rules = storedGCPolicy(t, defkitApplication("defs", src, apisv1.DefKitSettings{
+		DeletionPolicy: "delete",
+		Overrides:      map[string]string{"TraitDefinition/keep-me": "retain", "TraitDefinition/a": "retain", "PolicyDefinition/b": "delete"},
+	}))
+	require.Len(t, rules, 3)
+	assert.Equal(t, map[string]interface{}{
+		"selector": map[string]interface{}{"resourceTypes": []interface{}{"PolicyDefinition"}, "resourceNames": []interface{}{"b"}},
+		"strategy": "onAppUpdate",
+	}, rules[0], "overrides come first, one rule per kind and strategy, names sorted")
+	assert.Equal(t, map[string]interface{}{
+		"selector": map[string]interface{}{"resourceTypes": []interface{}{"TraitDefinition"}, "resourceNames": []interface{}{"a", "keep-me"}},
+		"strategy": "never",
+	}, rules[1])
+	assert.Equal(t, "onAppUpdate", rules[2]["strategy"], "then the module's own")
+}
+
+func TestDefKitAutoUpdate(t *testing.T) {
+	src := apisv1.DefKitSource{Git: "https://example.com/defs", Version: "main"}
+	manual := defkitApplication("defs", src, apisv1.DefKitSettings{})
+	assert.Empty(t, manual.Annotations[oam.AnnotationWorkflowRestart])
+	assert.Len(t, manual.Spec.Workflow.Steps, 3)
+
+	auto := defkitApplication("defs", src, apisv1.DefKitSettings{AutoUpdate: true})
+	assert.Equal(t, "10m", auto.Annotations[oam.AnnotationWorkflowRestart], "every 10 minutes unless told otherwise")
+	var names []string
+	for _, s := range auto.Spec.Workflow.Steps {
+		names = append(names, s.Name)
+	}
+	assert.Equal(t, []string{defkitRenderStep, defkitApplyStep}, names, "an auto-updating module applies without review")
+
+	auto = defkitApplication("defs", src, apisv1.DefKitSettings{AutoUpdate: true, Interval: "2h"})
+	assert.Equal(t, "2h", auto.Annotations[oam.AnnotationWorkflowRestart])
+	assert.Equal(t, apisv1.DefKitSettings{AutoUpdate: true, Interval: "2h"}, defkitSettingsOf(auto), "settings round-trip")
+
+	for _, bad := range []apisv1.DefKitSettings{
+		{DeletionPolicy: "sometimes"},
+		{Overrides: map[string]string{"TraitDefinition/x": "maybe"}},
+		{AutoUpdate: true, Interval: "soon"},
+		{AutoUpdate: true, Interval: "10s"},
+	} {
+		assert.Equal(t, bcode.ErrDefKitInvalidSettings, validateDefKitSettings(bad), "%+v", bad)
+	}
+	assert.NoError(t, validateDefKitSettings(apisv1.DefKitSettings{DeletionPolicy: "delete", AutoUpdate: true, Interval: "1m"}))
+}
+
+func TestDefKitEffectivePolicy(t *testing.T) {
+	svc, cli := reviewFixture(t)
+	ctx := context.Background()
+	app := &v1beta1.Application{}
+	require.NoError(t, cli.Get(ctx, client.ObjectKey{Namespace: "vela-system", Name: "defkit-defs"}, app))
+	app.Annotations = map[string]string{defkitSettingsAnnotation: `{"deletionPolicy":"delete","overrides":{"TraitDefinition/same":"retain"}}`}
+	require.NoError(t, cli.Update(ctx, app))
+
+	detail, err := svc.DetailModule(ctx, "defs")
+	require.NoError(t, err)
+	got := map[string]string{}
+	for _, d := range detail.Definitions {
+		got[d.Name] = d.Policy
+	}
+	assert.Equal(t, map[string]string{"edited": "delete", "same": "retain", "gone": "delete"}, got)
+
+	preview, err := svc.PreviewModule(ctx, "defs")
+	require.NoError(t, err)
+	for _, item := range preview.Items {
+		if item.Name == "gone" {
+			assert.Equal(t, "delete", item.Policy, "a removal says what applying does with it")
+		}
+	}
 }
 
 func TestDefKitCreateNeedsAddonAndOneSource(t *testing.T) {

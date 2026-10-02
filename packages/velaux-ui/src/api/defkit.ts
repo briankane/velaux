@@ -1,4 +1,4 @@
-import type { DefKitSource } from '@velaux/data';
+import type { DefKitSettings, DefKitSource } from '@velaux/data';
 import { getDomain } from '../utils/common';
 import { defkit } from './productionLink';
 import { get, post, put, rdelete } from './request';
@@ -13,12 +13,12 @@ export function detailDefKitModule(name: string) {
   return get(`${base}/${name}`, {}).then((res) => res);
 }
 
-export function createDefKitModule(name: string, source: DefKitSource) {
-  return post(base, { name, ...source }).then((res) => res);
+export function createDefKitModule(name: string, source: DefKitSource, settings: DefKitSettings) {
+  return post(base, { name, ...source, ...settings }).then((res) => res);
 }
 
-export function updateDefKitModule(name: string, source: DefKitSource) {
-  return put(`${base}/${name}`, source).then((res) => res);
+export function updateDefKitModule(name: string, source: DefKitSource, settings: DefKitSettings) {
+  return put(`${base}/${name}`, { ...source, ...settings }).then((res) => res);
 }
 
 export function deleteDefKitModule(name: string) {

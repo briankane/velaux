@@ -29,6 +29,20 @@ type DefKitSource struct {
 	Types   []string `json:"types,omitempty"`
 }
 
+// DefKitSettings are how a module is kept: what happens to its definitions
+// when it no longer installs them, and whether it re-renders on its own.
+type DefKitSettings struct {
+	// DeletionPolicy is retain (the default) or delete: whether a definition
+	// outlives the module, or its removal from the module.
+	DeletionPolicy string `json:"deletionPolicy,omitempty"`
+	// Overrides set the policy of single definitions, by Kind/name.
+	Overrides map[string]string `json:"overrides,omitempty"`
+	// AutoUpdate re-renders and applies the module every Interval, with no review.
+	AutoUpdate bool `json:"autoUpdate,omitempty"`
+	// Interval is a Go duration, 10m when empty.
+	Interval string `json:"interval,omitempty"`
+}
+
 // DefKitModuleInfo is what a module says about itself in its module.yaml, as
 // its last render read it.
 type DefKitModuleInfo struct {
@@ -48,8 +62,11 @@ type DefKitMaintainer struct {
 
 // DefKitModule is an installed module: an Application of the defkit addon.
 type DefKitModule struct {
-	Name   string       `json:"name"`
-	Source DefKitSource `json:"source"`
+	Name     string         `json:"name"`
+	Source   DefKitSource   `json:"source"`
+	Settings DefKitSettings `json:"settings"`
+	// NextUpdate is when an auto-updating module renders next.
+	NextUpdate *time.Time `json:"nextUpdate,omitempty"`
 	// Phase is rendering, review, applying, applied or failed.
 	Phase   string            `json:"phase"`
 	Message string            `json:"message,omitempty"`
@@ -71,6 +88,8 @@ type DefKitDefinition struct {
 	Kind        string `json:"kind"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
+	// Policy is its deletion policy: its override, or the module's.
+	Policy string `json:"policy,omitempty"`
 }
 
 // DefKitModuleDetail is a module and the definitions it has installed.
@@ -104,11 +123,18 @@ type DefKitPreview struct {
 type CreateDefKitModuleRequest struct {
 	Name string `json:"name" validate:"checkname"`
 	DefKitSource
+	DefKitSettings
+}
+
+// UpdateDefKitModuleRequest changes a module's source or settings.
+type UpdateDefKitModuleRequest struct {
+	DefKitSource
+	DefKitSettings
 }
 
 // ApplyDefKitPreviewRequest applies a module's pending render.
 type ApplyDefKitPreviewRequest struct {
-	// TakeOver are the conflicts to take over, as Kind/name; the rest are skipped.
+	// TakeOver are the conflicts to take over, as Kind/name; the rest are left alone.
 	TakeOver []string `json:"takeOver,omitempty"`
 	// Delete are the removed definitions to delete, as Kind/name; the rest are kept.
 	Delete []string `json:"delete,omitempty"`
