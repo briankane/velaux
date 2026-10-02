@@ -2,6 +2,9 @@ import { expect } from 'chai';
 
 import {
   byHealth,
+  envPhase,
+  phaseLabel,
+  phaseTone,
   componentRatio,
   healthCounts,
   healthOf,
@@ -82,5 +85,21 @@ describe('health filter', () => {
     expect(byHealth(apps, 'healthy').map((a) => a.name)).to.deep.equal(['a', 'b']);
     expect(byHealth(apps, 'undeployed').map((a) => a.name)).to.deep.equal(['d']);
     expect(byHealth(apps, 'all').length).to.equal(4);
+  });
+});
+
+describe('envPhase', () => {
+  it("reads one env's phase, and labels and colours it", () => {
+    const statuses = [
+      { envName: 'prod', status: { status: 'running' } },
+      { envName: 'dev', status: { status: 'workflowFailed' } },
+    ];
+    expect(envPhase(statuses, 'prod')).to.equal('running');
+    expect(envPhase(statuses, 'missing')).to.equal(undefined);
+    expect(phaseLabel('running')).to.equal('Running');
+    expect(phaseLabel(undefined)).to.equal('Init');
+    expect(phaseTone('running')).to.equal('healthy');
+    expect(phaseTone('workflowFailed')).to.equal('failed');
+    expect(phaseTone('rendering')).to.equal('progressing');
   });
 });

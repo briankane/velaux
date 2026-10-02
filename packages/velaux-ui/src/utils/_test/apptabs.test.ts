@@ -1,6 +1,13 @@
 import { expect } from 'chai';
 
-import { addLink, tabRuns, tabsReadOnly, wantsAdd } from '../../layout/Application/components/AppTabs/add';
+import {
+  addLink,
+  orbitViews,
+  statusMode,
+  tabRuns,
+  tabsReadOnly,
+  wantsAdd,
+} from '../../layout/Application/components/AppTabs/add';
 
 describe('configure tabs', () => {
   it('asks a tab for its add dialog through the URL', () => {
@@ -35,5 +42,26 @@ describe('tabRuns', () => {
       { group: 'Configure', keys: ['sources', 'components'] },
       { group: 'Deploy', keys: ['workflows', 'revisions'] },
     ]);
+  });
+});
+
+describe('orbitViews', () => {
+  const base = '/applications/shop/envbinding/prod';
+  const active = (path: string) =>
+    orbitViews(base)
+      .filter((v) => v.active(path))
+      .map((v) => v.key);
+  it('marks exactly the view a path is on', () => {
+    expect(active(`${base}/status`)).to.deep.equal(['resources']);
+    expect(active(`${base}/status/overview`)).to.deep.equal(['overview']);
+    expect(active(`${base}/status/graph`)).to.deep.equal(['graph']);
+    expect(active(`${base}/workflow/records/run-1`)).to.deep.equal(['workflow']);
+    expect(active(`${base}/yaml`)).to.deep.equal(['yaml']);
+  });
+  it('reads the status view back from its URL', () => {
+    expect(statusMode(undefined)).to.equal('resource-graph');
+    expect(statusMode('overview')).to.equal('overview');
+    expect(statusMode('graph')).to.equal('application-graph');
+    expect(statusMode('nonsense')).to.equal('resource-graph');
   });
 });

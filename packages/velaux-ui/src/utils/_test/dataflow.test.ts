@@ -14,7 +14,14 @@ const sources = new Map<string, string>([['cfg', 'source-cfg']]);
 describe('data flow nodes', () => {
   it('puts a flow between a component and every placement of its reader, fed from beside it', () => {
     const nodes = flowNodes(
-      [{ from: { kind: 'component', name: 'db' }, to: { kind: 'component', name: 'web' }, via: 'expression', items: [] }],
+      [
+        {
+          from: { kind: 'component', name: 'db' },
+          to: { kind: 'component', name: 'web' },
+          via: 'expression',
+          items: [],
+        },
+      ],
       placements,
       sources
     );
@@ -26,7 +33,14 @@ describe('data flow nodes', () => {
 
   it('feeds a flow from the placement the read names', () => {
     const nodes = flowNodes(
-      [{ from: { kind: 'component', name: 'db', cluster: 'east' }, to: { kind: 'component', name: 'web' }, via: 'expression', items: [] }],
+      [
+        {
+          from: { kind: 'component', name: 'db', cluster: 'east' },
+          to: { kind: 'component', name: 'web' },
+          via: 'expression',
+          items: [],
+        },
+      ],
       placements,
       sources
     );
@@ -35,7 +49,14 @@ describe('data flow nodes', () => {
 
   it('feeds a source flow from the source node, to the reader placement status names', () => {
     const nodes = flowNodes(
-      [{ from: { kind: 'source', name: 'cfg' }, to: { kind: 'component', name: 'web', cluster: 'local', namespace: 'prod' }, via: 'source', items: [] }],
+      [
+        {
+          from: { kind: 'source', name: 'cfg' },
+          to: { kind: 'component', name: 'web', cluster: 'local', namespace: 'prod' },
+          via: 'source',
+          items: [],
+        },
+      ],
       placements,
       sources
     );
@@ -46,14 +67,28 @@ describe('data flow nodes', () => {
 
   it('leaves out a flow with no producer on the graph', () => {
     expect(
-      flowNodes([{ from: { kind: 'component', name: 'gone' }, to: { kind: 'component', name: 'web' }, via: 'dependsOn', items: [] }], placements, sources)
+      flowNodes(
+        [
+          {
+            from: { kind: 'component', name: 'gone' },
+            to: { kind: 'component', name: 'web' },
+            via: 'dependsOn',
+            items: [],
+          },
+        ],
+        placements,
+        sources
+      )
     ).to.deep.equal([]);
   });
 
   it('renders an item as what was read into which property', () => {
-    expect(flowLine({ read: 'data.host', property: 'env[0].value', value: 'db.internal' })).to.equal('data.host → env[0].value = db.internal');
-    expect(flowLine({ read: 'component.api.output.x', property: 'team', trait: 'labels' })).to.equal('component.api.output.x → team (labels)');
+    expect(flowLine({ read: 'data.host', property: 'env[0].value', value: 'db.internal' })).to.equal(
+      'data.host → env[0].value = db.internal'
+    );
+    expect(flowLine({ read: 'component.api.output.x', property: 'team', trait: 'labels' })).to.equal(
+      'component.api.output.x → team (labels)'
+    );
     expect(flowLine({ read: 'data.port', property: 'port', value: 5432 })).to.equal('data.port → port = 5432');
   });
-
 });

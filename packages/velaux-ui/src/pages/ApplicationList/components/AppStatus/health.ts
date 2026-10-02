@@ -1,4 +1,5 @@
 import type { AppHealth, ApplicationStatusSummary } from '@velaux/data';
+import type { Tone } from '../../../../components/StatusBadge';
 
 // healthLabels names each health as the list shows it.
 export const healthLabels: Record<AppHealth, string> = {
@@ -123,4 +124,37 @@ export function healthCounts(
 // byHealth keeps the applications in a health, or all of them.
 export function byHealth<T extends { status?: ApplicationStatusSummary }>(apps: T[], health: HealthFilter): T[] {
   return health === 'all' ? apps : apps.filter((app) => healthOf(app.status) === health);
+}
+
+// phaseTone is the badge tone of an Application's phase in one env.
+export function phaseTone(phase?: string): Tone {
+  switch (phase) {
+    case undefined:
+    case '':
+      return 'undeployed';
+    case 'running':
+    case 'workflowFinished':
+      return 'healthy';
+    case 'unhealthy':
+      return 'unhealthy';
+    case 'workflowSuspending':
+      return 'suspended';
+    case 'workflowFailed':
+    case 'workflowTerminated':
+      return 'failed';
+  }
+  return 'progressing';
+}
+
+// phaseLabel is an Application's phase as a badge reads it: running is Running.
+export function phaseLabel(phase?: string): string {
+  if (!phase) {
+    return 'Init';
+  }
+  return phase[0].toUpperCase() + phase.slice(1);
+}
+
+// envPhase is the Application's phase in one env.
+export function envPhase(statuses: OrbitStatus[], envName: string): string | undefined {
+  return (statuses || []).find((s) => s.envName === envName)?.status?.status;
 }

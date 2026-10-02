@@ -95,4 +95,3 @@ describe('test definition restrictions', () => {
     assert.deepEqual(usageState('unlimited'), { label: 'No quota', type: 'normal' });
   });
 });
-

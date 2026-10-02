@@ -1,4 +1,4 @@
-import { Table, Loading, Balloon, Button, Message, Dialog, Tag, Tab } from '@alifd/next';
+import { Table, Loading, Balloon, Button, Message, Dialog, Tag } from '@alifd/next';
 import { connect } from 'dva';
 import { Link, routerRedux } from 'dva/router';
 import React from 'react';
@@ -28,6 +28,7 @@ import { handleError } from '../../utils/errors';
 import { locale } from '../../utils/locale';
 import { checkPermission } from '../../utils/permission';
 import { componentStatusKey, hasStatusDetails, traitState, traitStateCircle } from '../../utils/status';
+import { statusMode } from '../../layout/Application/components/AppTabs/add';
 import Header from '../ApplicationInstanceList/components/Header';
 
 import './index.less';
@@ -42,6 +43,7 @@ type Props = {
     params: {
       envName: string;
       appName: string;
+      view?: string;
     };
   };
   location: { pathname: string };
@@ -103,7 +105,7 @@ class ApplicationStatusPage extends React.Component<Props, State> {
       resourceLoading: false,
       endpointLoading: false,
       envName: '',
-      mode: 'resource-graph',
+      mode: statusMode(props.match.params.view),
       resources: [],
     };
   }
@@ -120,6 +122,12 @@ class ApplicationStatusPage extends React.Component<Props, State> {
   componentWillUnmount() {
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
+    }
+  }
+
+  componentDidUpdate(prev: Props) {
+    if (prev.match.params.view !== this.props.match.params.view) {
+      this.onChangeMode(statusMode(this.props.match.params.view));
     }
   }
 
@@ -365,26 +373,21 @@ class ApplicationStatusPage extends React.Component<Props, State> {
             targets={this.getTargets()}
             envName={envName}
             appName={appName}
-            disableStatusShow={true}
             applicationDetail={applicationDetail}
             applicationStatus={applicationStatus}
             components={components}
             updateQuery={(params: { target?: string; component?: string }) => {
               this.updateQuery(params);
             }}
+            extra={<RefreshedAt at={this.state.refreshedAt} />}
             refresh={() => {
               this.loadApplicationStatus();
             }}
             dispatch={this.props.dispatch}
           />
         </Loading>
-        <Tab
-          onChange={this.onChangeMode}
-          defaultActiveKey={mode}
-          shape="capsule"
-          extra={<RefreshedAt at={this.state.refreshedAt} />}
-        >
-          <Tab.Item title={i18n.t('Overview').toString()} key="overview">
+        {mode === 'overview' && (
+          <>
             <Loading visible={loading && resourceLoading} style={{ width: '100%' }}>
               <If condition={applicationStatus}>
                 {applicationStatus && (
@@ -610,8 +613,10 @@ class ApplicationStatusPage extends React.Component<Props, State> {
               </If>
               <If condition={!applicationStatus}>{notDeploy}</If>
             </Loading>
-          </Tab.Item>
-          <Tab.Item title={i18n.t('Resource Graph').toString()} key="resource-graph">
+          </>
+        )}
+        {mode === 'resource-graph' && (
+          <>
             <Loading visible={loading && resourceLoading} style={{ width: '100%' }}>
               <If condition={applicationStatus}>
                 <ApplicationGraph
@@ -624,8 +629,10 @@ class ApplicationStatusPage extends React.Component<Props, State> {
               </If>
             </Loading>
             <If condition={!applicationStatus}>{notDeploy}</If>
-          </Tab.Item>
-          <Tab.Item title={i18n.t('Application Graph').toString()} key="application-graph">
+          </>
+        )}
+        {mode === 'application-graph' && (
+          <>
             <Loading visible={loading && resourceLoading} style={{ width: '100%' }}>
               <If condition={applicationStatus}>
                 <ApplicationGraph
@@ -639,8 +646,8 @@ class ApplicationStatusPage extends React.Component<Props, State> {
               </If>
             </Loading>
             <If condition={!applicationStatus}>{notDeploy}</If>
-          </Tab.Item>
-        </Tab>
+          </>
+        )}
       </div>
     );
   }

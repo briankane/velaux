@@ -33,3 +33,30 @@ export function tabRuns<T extends { group?: string }>(tabs: T[]): Array<{ group?
   });
   return runs;
 }
+
+// orbitViews are one env's views, in one row: its status three ways, then its
+// instances, logs, workflow and YAML. base is the env's path.
+export function orbitViews(
+  base: string
+): Array<{ key: string; label: string; to: string; active: (path: string) => boolean }> {
+  const status = `${base}/status`;
+  const under = (path: string, prefix: string) => path === prefix || path.startsWith(prefix + '/');
+  return [
+    { key: 'overview', label: 'Overview', to: `${status}/overview`, active: (p) => under(p, `${status}/overview`) },
+    { key: 'resources', label: 'Resource Graph', to: status, active: (p) => p === status || p === status + '/' },
+    { key: 'graph', label: 'Application Graph', to: `${status}/graph`, active: (p) => under(p, `${status}/graph`) },
+    { key: 'instances', label: 'Instances', to: `${base}/instances`, active: (p) => under(p, `${base}/instances`) },
+    { key: 'logs', label: 'Logs', to: `${base}/logs`, active: (p) => under(p, `${base}/logs`) },
+    { key: 'workflow', label: 'Workflow', to: `${base}/workflow`, active: (p) => under(p, `${base}/workflow`) },
+    { key: 'yaml', label: 'YAML', to: `${base}/yaml`, active: (p) => under(p, `${base}/yaml`) },
+  ];
+}
+
+// statusMode is the status view a URL names: /status/overview, /status/graph,
+// or the resource graph at /status.
+export function statusMode(view?: string): 'overview' | 'resource-graph' | 'application-graph' {
+  if (view === 'overview') {
+    return 'overview';
+  }
+  return view === 'graph' ? 'application-graph' : 'resource-graph';
+}

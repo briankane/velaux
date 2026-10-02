@@ -9,11 +9,15 @@ import i18n from '../../../../i18n';
 import { Translation } from '../../../../components/Translation';
 import type { OrbitStatus } from '../../../../pages/ApplicationList/components/AppStatus/health';
 import {
+  envPhase,
   healthLabels,
   pausedEnvs,
+  phaseLabel,
+  phaseTone,
   summariseStatuses,
 } from '../../../../pages/ApplicationList/components/AppStatus/health';
-import { addLink, tabRuns, tabsReadOnly } from './add';
+import { addLink, orbitViews, tabRuns, tabsReadOnly } from './add';
+import { orbitSlots } from '../../../../components/OrbitSlot';
 import './index.less';
 
 // A tab may sit in a labelled group; one that can add has a + that opens its
@@ -123,8 +127,8 @@ export const AppTabs = connect((store: any, own: { appName: string }) => ({
   readOnly: tabsReadOnly(store.application.applicationDetail, own.appName),
 }))(AppTabsView);
 
-// OrbitBar heads one env's live view: back to all of them, the env's health,
-// and its views.
+// OrbitBar heads one env's live view: back to all of them, the env's health
+// and phase, and one row of its views.
 const OrbitBarView = (props: {
   appName: string;
   envName: string;
@@ -134,37 +138,45 @@ const OrbitBarView = (props: {
 }) => {
   const { appName, envName, currentPath } = props;
   const binding = props.envbinding?.find((e) => e.name === envName);
-  const env = summariseStatuses(props.applicationAllStatus || []).envs?.find((e) => e.env === envName);
+  const statuses = props.applicationAllStatus || [];
+  const env = summariseStatuses(statuses).envs?.find((e) => e.env === envName);
   const health = env?.health || 'undeployed';
+  const phase = envPhase(statuses, envName);
   const base = `/applications/${appName}/envbinding/${envName}`;
-  const views = [
-    { key: 'status', label: 'Status' },
-    { key: 'instances', label: 'Instances' },
-    { key: 'logs', label: 'Logs' },
-    { key: 'workflow', label: 'Workflow' },
-    { key: 'yaml', label: 'YAML' },
-  ];
   return (
     <div className="orbit-bar">
-      <Link className="orbit-bar-back" to={`/applications/${appName}/orbits`}>
-        <AiOutlineArrowLeft />
-        <Translation>All Environments</Translation>
-      </Link>
-      <span className="orbit-bar-name">{binding?.alias || envName}</span>
-      <StatusBadge tone={health} label={healthLabels[health]} />
-      {pausedEnvs(props.applicationAllStatus || []).includes(envName) && (
-        <StatusBadge tone="suspended" label="Paused" title={i18n.t('Reconciliation paused').toString()} />
-      )}
-      <div className="orbit-bar-views">
-        {views.map((v) => (
+      <div className="orbit-bar-head">
+        <Link className="orbit-bar-back" to={`/applications/${appName}/orbits`}>
+          <AiOutlineArrowLeft />
+          <Translation>All Environments</Translation>
+        </Link>
+        <span className="orbit-bar-name">{binding?.alias || envName}</span>
+        <StatusBadge tone={health} label={healthLabels[health]} />
+        {phase && (
+          <StatusBadge
+            tone={phaseTone(phase)}
+            label={phaseLabel(phase)}
+            title={i18n.t('Application phase').toString()}
+          />
+        )}
+        {pausedEnvs(statuses).includes(envName) && (
+          <StatusBadge tone="suspended" label="Paused" title={i18n.t('Reconciliation paused').toString()} />
+        )}
+        <div className="orbit-bar-filters" id={orbitSlots.filters} />
+      </div>
+      <div className="orbit-bar-tabs" role="tablist">
+        {orbitViews(base).map((v) => (
           <Link
             key={v.key}
-            to={`${base}/${v.key}`}
-            className={`orbit-view ${currentPath.startsWith(`${base}/${v.key}`) ? 'active' : ''}`}
+            role="tab"
+            aria-selected={v.active(currentPath)}
+            to={v.to}
+            className={`orbit-view ${v.active(currentPath) ? 'active' : ''}`}
           >
             <Translation>{v.label}</Translation>
           </Link>
         ))}
+        <div className="orbit-bar-actions" id={orbitSlots.actions} />
       </div>
     </div>
   );

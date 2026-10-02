@@ -168,7 +168,7 @@ export default function Router() {
       />
       <Route
         exact
-        path="/applications/:appName/envbinding/:envName/status"
+        path="/applications/:appName/envbinding/:envName/status/:view?"
         render={(props: any) => {
           return (
             <ApplicationLayout {...props}>

@@ -85,7 +85,10 @@ describe('defkit', () => {
         { name: 'Broken' },
       ])
     ).to.deep.equal([
-      { value: 'https://github.com/kubevela/vela-go-definitions', label: 'KubeVela definitions · https://github.com/kubevela/vela-go-definitions' },
+      {
+        value: 'https://github.com/kubevela/vela-go-definitions',
+        label: 'KubeVela definitions · https://github.com/kubevela/vela-go-definitions',
+      },
       { value: 'github.com/org/defs', label: 'Team defs · github.com/org/defs' },
     ]);
   });
