@@ -1022,6 +1022,22 @@ type ListDefinitionResponse struct {
 	Definitions []*DefinitionBase `json:"definitions"`
 }
 
+// DefinitionRevision is one revision of a definition, as an Application pins it.
+type DefinitionRevision struct {
+	// Revision is the revision's number, which counts up with every change.
+	Revision int64 `json:"revision"`
+	// Version is what follows @ in a type pinned to the revision: v2 for a
+	// numbered revision, v1.2.0 for one the definition's spec.version names.
+	Version    string    `json:"version"`
+	Hash       string    `json:"hash"`
+	CreateTime time.Time `json:"createTime"`
+}
+
+// ListDefinitionRevisionsResponse is a definition's revisions, newest first.
+type ListDefinitionRevisionsResponse struct {
+	Revisions []DefinitionRevision `json:"revisions"`
+}
+
 // DetailDefinitionResponse get definition detail
 type DetailDefinitionResponse struct {
 	DefinitionBase
