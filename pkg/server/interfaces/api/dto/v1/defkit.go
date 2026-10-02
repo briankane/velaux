@@ -169,3 +169,18 @@ type ApplyDefKitPreviewRequest struct {
 	// Delete are the removed definitions to delete, as Kind/name; the rest are kept.
 	Delete []string `json:"delete,omitempty"`
 }
+
+// DefKitRepository is a module source offered when adding one, from the
+// defkit addon's settings.
+type DefKitRepository struct {
+	Name        string `json:"name"`
+	Git         string `json:"git,omitempty"`
+	Ref         string `json:"ref,omitempty"`
+	Version     string `json:"version,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// ListDefKitRepositoriesResponse lists the repositories offered.
+type ListDefKitRepositoriesResponse struct {
+	Repositories []*DefKitRepository `json:"repositories"`
+}

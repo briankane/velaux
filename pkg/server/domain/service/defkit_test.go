@@ -347,6 +347,24 @@ func TestDefKitEffectivePolicy(t *testing.T) {
 	}
 }
 
+func TestDefKitRepositories(t *testing.T) {
+	ctx := context.Background()
+	cli := fake.NewClientBuilder().WithScheme(common2.Scheme).Build()
+	svc := &defkitServiceImpl{KubeClient: cli}
+	repos, err := svc.ListRepositories(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, repos.Repositories, "none offered without the addon's settings")
+
+	require.NoError(t, cli.Create(ctx, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: defkitSettingsConfigMap, Namespace: defkitRenderNamespace},
+		Data:       map[string]string{"repositories": `[{"name":"KubeVela definitions","git":"https://github.com/kubevela/vela-go-definitions","version":"main"}]`},
+	}))
+	repos, err = svc.ListRepositories(ctx)
+	require.NoError(t, err)
+	require.Len(t, repos.Repositories, 1)
+	assert.Equal(t, "https://github.com/kubevela/vela-go-definitions", repos.Repositories[0].Git)
+}
+
 func TestDefKitCreateNeedsAddonAndOneSource(t *testing.T) {
 	ctx := context.Background()
 	cli := fake.NewClientBuilder().WithScheme(common2.Scheme).Build()

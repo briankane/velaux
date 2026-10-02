@@ -1,4 +1,5 @@
 import type {
+  DefKitRepository,
   DefKitItemStatus,
   DefKitPhase,
   DefKitPolicy,
@@ -146,4 +147,12 @@ export function stepTone(phase?: string): Tone {
       return 'progressing';
   }
   return 'neutral';
+}
+
+// repositoryOptions are the built-in repositories as the Source field offers
+// them: the address to fill in, labelled with the repository's name.
+export function repositoryOptions(repos: DefKitRepository[]): Array<{ value: string; label: string }> {
+  return repos
+    .filter((r) => r.git || r.ref)
+    .map((r) => ({ value: (r.git || r.ref) as string, label: `${r.name} · ${r.git || r.ref}` }));
 }

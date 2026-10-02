@@ -5,6 +5,7 @@ import {
   definitionLink,
   durationMs,
   minIntervalMs,
+  repositoryOptions,
   stepTone,
   withOverride,
   groupPreview,
@@ -74,5 +75,18 @@ describe('defkit', () => {
     expect(stepTone('succeeded')).to.equal('healthy');
     expect(stepTone('suspending')).to.equal('suspended');
     expect(stepTone('skipped')).to.equal('neutral');
+  });
+
+  it('offers built-in repositories by name, filling in their address', () => {
+    expect(
+      repositoryOptions([
+        { name: 'KubeVela definitions', git: 'https://github.com/kubevela/vela-go-definitions', version: 'main' },
+        { name: 'Team defs', ref: 'github.com/org/defs' },
+        { name: 'Broken' },
+      ])
+    ).to.deep.equal([
+      { value: 'https://github.com/kubevela/vela-go-definitions', label: 'KubeVela definitions · https://github.com/kubevela/vela-go-definitions' },
+      { value: 'github.com/org/defs', label: 'Team defs · github.com/org/defs' },
+    ]);
   });
 });

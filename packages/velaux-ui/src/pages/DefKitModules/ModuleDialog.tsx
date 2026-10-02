@@ -1,11 +1,11 @@
-import { Button, Checkbox, Dialog, Field, Form, Input, Message, Radio, Switch } from '@alifd/next';
-import React, { useState } from 'react';
+import { Button, Checkbox, Dialog, Field, Form, Input, Message, Radio, Select, Switch } from '@alifd/next';
+import React, { useEffect, useState } from 'react';
 
-import type { DefKitModule, DefKitSettings } from '@velaux/data';
-import { createDefKitModule, updateDefKitModule } from '../../api/defkit';
+import type { DefKitModule, DefKitRepository, DefKitSettings } from '@velaux/data';
+import { createDefKitModule, listDefKitRepositories, updateDefKitModule } from '../../api/defkit';
 import { Translation } from '../../components/Translation';
 import i18n from '../../i18n';
-import { durationMs, minIntervalMs, parseSource } from './defkit';
+import { durationMs, minIntervalMs, parseSource, repositoryOptions } from './defkit';
 
 const typeOptions = [
   { value: 'component', label: 'Components' },
@@ -32,6 +32,18 @@ export const ModuleDialog = (props: { module?: DefKitModule; onClose: () => void
     },
   });
   const [saving, setSaving] = useState(false);
+  const [repos, setRepos] = useState<DefKitRepository[]>([]);
+  useEffect(() => {
+    listDefKitRepositories().then((res: any) => setRepos(res?.repositories || []));
+  }, []);
+  // pickSource fills in the version a built-in repository names, unless one is set.
+  const pickSource = (value: string) => {
+    field.setValue('from', value);
+    const repo = repos.find((r) => (r.git || r.ref) === value);
+    if (repo?.version && !field.getValue('version')) {
+      field.setValue('version', repo.version);
+    }
+  };
   const submit = () => {
     field.validate((errors: any, values: any) => {
       if (errors) {
@@ -99,10 +111,14 @@ export const ModuleDialog = (props: { module?: DefKitModule; onClose: () => void
         <Form.Item
           label={<Translation>Source</Translation>}
           required
-          help={<Translation>A git repository URL, or a Go module path</Translation>}
+          help={<Translation>Pick a built-in repository, or type any git repository URL or Go module path</Translation>}
         >
-          <Input
+          <Select.AutoComplete
             {...init('from', { rules: [{ required: true, message: i18n.t('Say where the module is').toString() }] })}
+            onChange={(value: string) => pickSource(value)}
+            dataSource={repositoryOptions(repos)}
+            hasClear
+            style={{ width: '100%' }}
             placeholder="https://github.com/kubevela/vela-go-definitions"
           />
         </Form.Item>

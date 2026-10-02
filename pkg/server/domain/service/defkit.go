@@ -65,7 +65,9 @@ const (
 	defkitRenderedAt     = "defkit.oam.dev/rendered-at"
 
 	defkitSettingsAnnotation = "defkit.oam.dev/settings"
-	defkitDefaultInterval    = "10m"
+	// defkitSettingsConfigMap is the defkit addon's settings, in its render namespace.
+	defkitSettingsConfigMap = "defkit-settings"
+	defkitDefaultInterval   = "10m"
 	// defkitMinInterval bounds how often a module re-renders: each run is a Job
 	// that downloads and builds the module.
 	defkitMinInterval = 5 * time.Minute
@@ -108,6 +110,7 @@ type DefKitService interface {
 	PreviewModule(ctx context.Context, name string) (*apisv1.DefKitPreview, error)
 	ApplyPreview(ctx context.Context, name string, req apisv1.ApplyDefKitPreviewRequest) error
 	DeleteModule(ctx context.Context, name string) error
+	ListRepositories(ctx context.Context) (*apisv1.ListDefKitRepositoriesResponse, error)
 }
 
 type defkitServiceImpl struct {
@@ -292,6 +295,25 @@ func (s *defkitServiceImpl) adopt(ctx context.Context, app *v1beta1.Application,
 	}
 	obj.SetLabels(labels)
 	return s.KubeClient.Update(ctx, obj)
+}
+
+// ListRepositories are the module sources the defkit addon offers; none
+// without its settings. A module can come from anywhere regardless.
+func (s *defkitServiceImpl) ListRepositories(ctx context.Context) (*apisv1.ListDefKitRepositoriesResponse, error) {
+	resp := &apisv1.ListDefKitRepositoriesResponse{Repositories: []*apisv1.DefKitRepository{}}
+	cm := &corev1.ConfigMap{}
+	if err := s.KubeClient.Get(ctx, client.ObjectKey{Namespace: defkitRenderNamespace, Name: defkitSettingsConfigMap}, cm); err != nil {
+		if apierrors.IsNotFound(err) {
+			return resp, nil
+		}
+		return nil, err
+	}
+	if raw := cm.Data["repositories"]; raw != "" {
+		if err := json.Unmarshal([]byte(raw), &resp.Repositories); err != nil {
+			return nil, fmt.Errorf("read the defkit addon's repositories: %w", err)
+		}
+	}
+	return resp, nil
 }
 
 func (s *defkitServiceImpl) application(ctx context.Context, name string) (*v1beta1.Application, error) {

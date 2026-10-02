@@ -40,6 +40,21 @@ func (p *permRecorder) CheckPerm(string, ...string) func(req *restful.Request, r
 	}
 }
 
+// /defkit/repositories is the list of repositories, not a module named so.
+func TestDefKitRepositoriesRoute(t *testing.T) {
+	d := &defkit{RbacService: &permRecorder{}}
+	ws := d.GetWebServiceRoute()
+	_, route, err := restful.CurlyRouter{}.SelectRoute([]*restful.WebService{ws},
+		httptest.NewRequest(http.MethodGet, versionPrefix+"/defkit/repositories", nil))
+	assert.NoError(t, err)
+	assert.Equal(t, versionPrefix+"/defkit/repositories", route.Path)
+
+	_, route, err = restful.CurlyRouter{}.SelectRoute([]*restful.WebService{ws},
+		httptest.NewRequest(http.MethodGet, versionPrefix+"/defkit/vela-policies", nil))
+	assert.NoError(t, err)
+	assert.Equal(t, versionPrefix+"/defkit/{name}", route.Path, "any other name is a module")
+}
+
 // A permission check reads the user the token names, so the token is checked first.
 func TestDefKitAuthenticatesBeforePermissions(t *testing.T) {
 	perms := &permRecorder{}

@@ -903,5 +903,6 @@
   "A duration after each run, at least 5m, such as 10m or 1h": "每次运行之后的间隔，至少 5m，例如 10m 或 1h",
   "The workflow has not started": "工作流尚未开始",
   "Nothing tracked yet": "尚未跟踪任何资源",
-  "Phase": "阶段"
+  "Phase": "阶段",
+  "Pick a built-in repository, or type any git repository URL or Go module path": "选择内置仓库，或输入任意 Git 仓库地址或 Go 模块路径"
 }

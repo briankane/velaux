@@ -9,6 +9,11 @@ export function listDefKitModules() {
   return get(base, {}).then((res) => res);
 }
 
+// listDefKitRepositories are the module sources the defkit addon offers.
+export function listDefKitRepositories() {
+  return get(`${base}/repositories`, {}).then((res) => res);
+}
+
 export function detailDefKitModule(name: string) {
   return get(`${base}/${name}`, {}).then((res) => res);
 }

@@ -109,3 +109,12 @@ export interface DefKitPreview {
   errors?: string[];
   items: DefKitPreviewItem[];
 }
+
+// DefKitRepository is a module source the defkit addon offers when adding one.
+export interface DefKitRepository {
+  name: string;
+  git?: string;
+  ref?: string;
+  version?: string;
+  description?: string;
+}
