@@ -32,3 +32,19 @@ export interface DefinitionRevision {
 export function versionLabel(r: DefinitionRevision): string {
   return r.version === `v${r.revision}` ? r.version : `${r.version.replace(/^v/, '')} (v${r.revision})`;
 }
+
+// isNamed is whether a revision has a version name of its own, from the
+// definition's spec.version, rather than only its number.
+export function isNamed(r: DefinitionRevision): boolean {
+  return r.version !== `v${r.revision}`;
+}
+
+// latestLabel names following the latest version: the newest revision's
+// version name, where it has one, and its number.
+export function latestLabel(newest?: DefinitionRevision): string {
+  if (!newest) {
+    return 'latest';
+  }
+  const number = `v${newest.revision}`;
+  return isNamed(newest) ? `latest (${newest.version.replace(/^v/, '')} / ${number})` : `latest (${number})`;
+}

@@ -954,8 +954,7 @@
   "All projects": "所有项目",
   "Application created": "应用已创建",
   "Give the application a name": "请输入应用名称",
-  "Latest, follows updates": "最新，随更新变化",
-  "Latest, follows updates (now {{version}})": "最新，随更新变化（当前 {{version}}）",
   "Pinning a version is recommended, so changes to the definition reach this only when you choose.": "建议固定版本，这样定义的变更只在你选择时才会生效。",
-  "Powered by": "技术支持"
+  "Powered by": "技术支持",
+  "Versions": "版本"
 }
