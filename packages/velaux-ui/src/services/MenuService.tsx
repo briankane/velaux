@@ -8,6 +8,7 @@ import {
   AiFillProject,
   AiFillSetting,
   AiOutlineCluster,
+  AiOutlineBarChart,
 } from 'react-icons/ai';
 import {
   BsBoxSeam,
@@ -140,6 +141,17 @@ const defaultWorkspaceMenus: Menu[] = [
     icon: <BsHddNetworkFill></BsHddNetworkFill>,
     label: 'Pipelines',
     permission: { resource: 'project:?/pipeline:*', action: 'list' },
+  },
+  {
+    catalog: 'Operations',
+    workspace: 'continuous-delivery',
+    type: MenuTypes.Workspace,
+    name: 'reports',
+    to: '/reports',
+    relatedRoute: ['/reports'],
+    icon: <AiOutlineBarChart />,
+    label: 'Reports',
+    permission: { resource: 'project:?/application:*', action: 'list' },
   },
   // Items not built yet show what is coming.
   {

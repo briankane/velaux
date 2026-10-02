@@ -21,6 +21,7 @@ import ApplicationWorkflowList from '../../pages/ApplicationWorkflowList';
 import ApplicationWorkflowStatus from '../../pages/ApplicationWorkflowStatus/index';
 import ApplicationWorkflowStudio from '../../pages/ApplicationWorkflowStudio';
 import Clusters from '../../pages/Cluster/index';
+import Reports from '../../pages/Reports';
 import Configs from '../../pages/Configs';
 import Definitions from '../../pages/Definitions';
 import EnvPage from '../../pages/EnvPage';
@@ -373,6 +374,13 @@ export default function Router() {
         path="/roles"
         render={(props: any) => {
           return <Roles {...props} />;
+        }}
+      />
+      <Route
+        exact
+        path="/reports"
+        render={(props: any) => {
+          return <Reports {...props} />;
         }}
       />
       <Route

@@ -1,0 +1,120 @@
+.reports-body {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.reports-catalogue {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 4px;
+  width: 280px;
+}
+
+.reports-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  &:hover {
+    border-color: #cbd5e1;
+  }
+  &.active {
+    border-color: var(--primary-color, #1b58f4);
+    box-shadow: 0 0 0 1px var(--primary-color, #1b58f4);
+  }
+  .reports-item-title {
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .reports-item-description {
+    color: #64748b;
+    font-size: 12px;
+    line-height: 17px;
+  }
+}
+
+.reports-result {
+  flex: 1;
+  min-width: 0;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.reports-result-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  .reports-result-title {
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .reports-result-meta {
+    color: #64748b;
+    font-size: 12px;
+  }
+  .reports-result-actions {
+    display: flex;
+    gap: 8px;
+    svg {
+      margin-right: 4px;
+      vertical-align: -2px;
+    }
+  }
+}
+
+.report-chart {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  .report-chart-title {
+    margin-bottom: 8px;
+    color: #475569;
+    font-weight: 600;
+    font-size: 12px;
+  }
+}
+
+.report-bar {
+  display: grid;
+  grid-template-columns: 180px 1fr 48px;
+  gap: 10px;
+  align-items: center;
+  margin: 4px 0;
+  font-size: 12px;
+  .report-bar-label {
+    overflow: hidden;
+    color: #334155;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .report-bar-track {
+    height: 10px;
+    background: #e2e8f0;
+    border-radius: 5px;
+  }
+  .report-bar-fill {
+    display: block;
+    height: 100%;
+    background: var(--primary-color, #1b58f4);
+    border-radius: 5px;
+  }
+  .report-bar-value {
+    color: #0f172a;
+    font-weight: 600;
+    text-align: right;
+  }
+}

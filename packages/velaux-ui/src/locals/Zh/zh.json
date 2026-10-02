@@ -957,5 +957,12 @@
   "Pinning a version is recommended, so changes to the definition reach this only when you choose.": "建议固定版本，这样定义的变更只在你选择时才会生效。",
   "Powered by": "技术支持",
   "Versions": "版本",
-  "Fix the highlighted properties first": "请先修正标出的属性"
+  "Fix the highlighted properties first": "请先修正标出的属性",
+  "Reports": "报告",
+  "Export CSV": "导出 CSV",
+  "Run again": "重新运行",
+  "rows": "行",
+  "generated": "生成于",
+  "Pick a project in the top bar. Reports run over one project at a time.": "请在顶部栏选择一个项目，报告每次只针对一个项目运行。",
+  "Questions about the picked project, answered from its applications and namespaces.": "关于所选项目的问题，由其应用和命名空间回答。"
 }
