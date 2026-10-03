@@ -419,11 +419,13 @@ export const TreeGraph = (props: TreeGraphProps) => {
 
   // The gap between columns holds a lane for each edge crossing it, with room
   // to leave one column and reach the next.
-  const leastGap = 90;
+  const leastGap = 56;
   let graph = layOut(leastGap);
   let routed = routing(graph);
   const gap =
-    routeDefaults.leadOut + routeDefaults.leadIn + routeDefaults.spacing * 2 * lanesNeeded(routed.nodes, routed.edges);
+    routeDefaults.leadOut +
+    routeDefaults.leadIn +
+    routeDefaults.spacing * (lanesNeeded(routed.nodes, routed.edges) + 1);
   if (gap > leastGap) {
     graph = layOut(gap);
     routed = routing(graph);
