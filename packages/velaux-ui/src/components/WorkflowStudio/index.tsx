@@ -127,7 +127,7 @@ class WorkflowStudio extends React.Component<Props, State> {
     const { steps, adding, showStep, showGroup } = this.state;
     const { definitions, mode = 'StepByStep', subMode = 'DAG' } = this.props;
     return (
-      <div className={classNames('run-studio')}>
+      <div className={classNames('run-studio', 'studio-editor')}>
         <div className="studio">
           <Draggable cancel=".studio-step, .studio-add, .studio-add-step">
             <div className="run-canvas">
