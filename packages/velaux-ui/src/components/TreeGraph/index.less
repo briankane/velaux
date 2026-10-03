@@ -129,6 +129,12 @@
     }
   }
 
+  // Components carry the same blue edge as sources; an unhealthy one's status
+  // border, below, replaces it.
+  .graph-node-component {
+    border-left: 3px solid var(--primary-color);
+  }
+
   .graph-node.error-status {
     border: solid 0.2em var(--danger-color);
   }
