@@ -20,7 +20,7 @@ import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 import { clusterTooltip, resourceTooltip, sourceTooltip, targetTooltip } from './tooltip';
 import { treeNodeKey, getNodeSize, ResourceIcon } from './utils';
 import type { Rect } from './layout';
-import { edgePath, getGraphSize, joinThrough, rectBoundary, shiftIntoView } from './layout';
+import { edgeOffset, edgePath, getGraphSize, joinThrough, placeAt, shiftIntoView, sideRoute } from './layout';
 
 import { Link } from 'dva/router';
 import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
@@ -32,9 +32,6 @@ import { sourcePhaseTone } from '../../pages/ApplicationStatus/components/Applic
 import { flowLabels, flowLine } from '../../pages/ApplicationStatus/components/ApplicationGraph/flows';
 import { BiTransferAlt } from 'react-icons/bi';
 import { HiOutlineNewspaper } from 'react-icons/hi';
-
-// edgeOffset is how far from a laid-out point every edge is drawn.
-const edgeOffset = { x: 40, y: 30 };
 
 type TreeGraphProps = {
   node: TreeNode;
@@ -54,11 +51,7 @@ function renderResourceNode(props: TreeGraphProps, id: string, node: GraphNode) 
         'warning-status': node.resource.healthStatus?.statusCode == 'Progressing',
       })}
       style={{
-        left: node.x,
-        top: node.y,
-        width: node.width,
-        height: node.height,
-        transform: `translate(-80px, 0px)`,
+        ...placeAt(node),
       }}
     >
       <div className={classNames('icon')}>
@@ -97,11 +90,7 @@ function renderAppNode(props: TreeGraphProps, id: string, node: GraphNode) {
       key={id}
       className={classNames('graph-node', 'graph-node-app')}
       style={{
-        left: node.x,
-        top: node.y,
-        width: node.width,
-        height: node.height,
-        transform: `translate(-60px, 0px)`,
+        ...placeAt(node),
       }}
     >
       <div className={classNames('icon')}>
@@ -136,11 +125,7 @@ function renderPodNode(props: TreeGraphProps, id: string, node: GraphNode) {
         'warning-status': node.resource.healthStatus?.statusCode == 'Progressing',
       })}
       style={{
-        left: node.x,
-        top: node.y,
-        width: node.width,
-        height: node.height,
-        transform: `translate(-80px, 0px)`,
+        ...placeAt(node),
       }}
     >
       <div className={classNames('icon')}>
@@ -183,11 +168,7 @@ function renderClusterNode(props: TreeGraphProps, id: string, node: GraphNode) {
     <div
       className={classNames('graph-node', 'graph-node-cluster')}
       style={{
-        left: node.x,
-        top: node.y,
-        width: node.width,
-        height: node.height,
-        transform: `translate(-40px, 0px)`,
+        ...placeAt(node),
       }}
     >
       <div className="icon">
@@ -211,11 +192,7 @@ function renderTargetNode(props: TreeGraphProps, id: string, node: GraphNode) {
     <div
       className={classNames('graph-node', 'graph-node-cluster')}
       style={{
-        left: node.x - 30,
-        top: node.y,
-        width: node.width,
-        height: node.height,
-        transform: `translate(-40px, 0px)`,
+        ...placeAt(node),
       }}
     >
       <div className="icon">
@@ -246,11 +223,7 @@ function renderSourceNode(props: TreeGraphProps, id: string, node: GraphNode) {
         'unused-status': source?.phase === 'Unused',
       })}
       style={{
-        left: node.x,
-        top: node.y,
-        width: node.width,
-        minHeight: node.height,
-        transform: `translate(-80px, 0px)`,
+        ...placeAt(node, true),
       }}
     >
       <div className="icon">
@@ -289,10 +262,7 @@ function renderFlowNode(id: string, node: GraphNode) {
       key={id}
       className={classNames('graph-node', 'graph-node-flow', `flow-${flow.via}`)}
       style={{
-        left: node.x + edgeOffset.x - node.width / 2,
-        top: node.y + edgeOffset.y - node.height / 2,
-        width: node.width,
-        height: node.height,
+        ...placeAt(node),
       }}
     >
       <BiTransferAlt />
@@ -422,8 +392,8 @@ export const TreeGraph = (props: TreeGraphProps) => {
     20
   );
 
-  // An edge runs along the layout's route, its ends moved onto the boxes its
-  // nodes are drawn as, once they are measured. A flow is a label on its
+  // An edge runs along the layout's route, from the right side of its source's
+  // box as drawn to the left side of its target's, once they are measured. A flow is a label on its
   // dependency, not a stop: the edges into and out of it are drawn as one,
   // through its centre.
   const route = (e: { v: string; w: string }) =>
@@ -444,17 +414,10 @@ export const TreeGraph = (props: TreeGraphProps) => {
     routes.forEach(({ from, points }) => {
       const source = rects[from];
       const target = rects[edgeInfo.w];
-      if (points.length >= 2) {
-        if (source) {
-          points[0] = rectBoundary(points[1], source);
-        }
-        if (target) {
-          points[points.length - 1] = rectBoundary(points[points.length - 2], target);
-        }
-      }
+      const drawn = source && target && points.length >= 2 ? sideRoute(points, source, target, 12) : points;
       edges.push({
         key: `${from}-${edgeInfo.v}-${edgeInfo.w}`,
-        path: edgePath(points),
+        path: edgePath(drawn),
         link: !!graph.edge(edgeInfo).link && flow?.flow?.via !== 'dependsOn',
       });
     });

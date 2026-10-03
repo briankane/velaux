@@ -13,6 +13,7 @@ import { BsBox } from 'react-icons/bs';
 import { StatusBadge } from '../StatusBadge';
 
 import { DefinitionLine } from './definition-line';
+import { placeAt } from './layout';
 import { traitState, traitStateCircle } from '../../utils/status';
 import { traitTooltip } from './tooltip';
 import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
@@ -72,14 +73,7 @@ export const ComponentNode = (props: ComponentNodeProps) => {
         'traits-open': hidden.length > 0 && showTrait,
       })}
       style={{
-        // 50 = (nodeWidth - 220)/2
-        left: node.x - 50,
-        top: node.y,
-        width: node.width,
-        // The layout's height is a floor: a card grows to hold its trait rows,
-        // and its edges end on the box as drawn.
-        minHeight: node.height,
-        transform: `translate(-80px, 0px)`,
+        ...placeAt(node, true),
       }}
     >
       {WithBalloon(

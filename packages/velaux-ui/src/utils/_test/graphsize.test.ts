@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { edgePath, getGraphSize, joinThrough, rectBoundary, shiftIntoView } from '../../components/TreeGraph/layout';
+import { edgePath, getGraphSize, joinThrough, shiftIntoView, sideRoute } from '../../components/TreeGraph/layout';
 
 describe('graph size', () => {
   it('reaches the right and bottom edges of the furthest nodes', () => {
@@ -63,22 +63,6 @@ describe('edgePath', () => {
   });
 });
 
-describe('rectBoundary', () => {
-  const rect = { left: 100, top: 100, width: 100, height: 50 };
-  it('meets the side a point approaches from, on the way to the centre', () => {
-    expect(rectBoundary({ x: 0, y: 125 }, rect)).to.deep.equal({ x: 100, y: 125 });
-    expect(rectBoundary({ x: 150, y: 0 }, rect)).to.deep.equal({ x: 150, y: 100 });
-    expect(rectBoundary({ x: 300, y: 125 }, rect)).to.deep.equal({ x: 200, y: 125 });
-  });
-  it('meets the side a diagonal actually crosses', () => {
-    // From (0, 25) toward the centre (150, 125), the top edge is reached first.
-    expect(rectBoundary({ x: 0, y: 25 }, rect)).to.deep.equal({ x: 112.5, y: 100 });
-  });
-  it('leaves a point already inside where it is', () => {
-    expect(rectBoundary({ x: 120, y: 120 }, rect)).to.deep.equal({ x: 120, y: 120 });
-  });
-});
-
 describe('joinThrough', () => {
   it('runs from the first route through the centre into the second, dropping the ends at the box between', () => {
     expect(
@@ -99,6 +83,48 @@ describe('joinThrough', () => {
       { x: 40, y: 0 },
       { x: 100, y: 50 },
       { x: 200, y: 50 },
+    ]);
+  });
+});
+
+describe('sideRoute', () => {
+  const source = { left: 0, top: 0, width: 100, height: 40 };
+  const target = { left: 300, top: 200, width: 100, height: 60 };
+  it("leaves the source's right side and enters the target's left side, at their middles", () => {
+    expect(
+      sideRoute(
+        [
+          { x: 50, y: 40 },
+          { x: 200, y: 120 },
+          { x: 350, y: 200 },
+        ],
+        source,
+        target,
+        12
+      )
+    ).to.deep.equal([
+      { x: 100, y: 20 },
+      { x: 112, y: 20 },
+      { x: 200, y: 120 },
+      { x: 288, y: 230 },
+      { x: 300, y: 230 },
+    ]);
+  });
+  it('keeps every inner point of a long route', () => {
+    const route = sideRoute(
+      [
+        { x: 50, y: 20 },
+        { x: 150, y: 100 },
+        { x: 250, y: 100 },
+        { x: 350, y: 230 },
+      ],
+      source,
+      target,
+      12
+    );
+    expect(route.slice(2, 4)).to.deep.equal([
+      { x: 150, y: 100 },
+      { x: 250, y: 100 },
     ]);
   });
 });

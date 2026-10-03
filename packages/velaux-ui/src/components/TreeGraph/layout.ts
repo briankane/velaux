@@ -75,36 +75,6 @@ export function edgePath(points: Array<{ x: number; y: number }>): string {
 // Rect is a node's box as drawn: its top-left corner and size.
 export type Rect = { left: number; top: number; width: number; height: number };
 
-// rectBoundary is where a line from a point toward a box's centre crosses into
-// the box: where an edge from that point meets the node. A point already
-// inside is left where it is.
-export function rectBoundary(from: { x: number; y: number }, rect: Rect): { x: number; y: number } {
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-  const dx = cx - from.x;
-  const dy = cy - from.y;
-  const inside =
-    from.x >= rect.left && from.x <= rect.left + rect.width && from.y >= rect.top && from.y <= rect.top + rect.height;
-  if (inside || (dx === 0 && dy === 0)) {
-    return from;
-  }
-  // The line enters the box at the latest of the times it crosses into each
-  // pair of opposite sides.
-  const enter = (start: number, delta: number, low: number, high: number) => {
-    if (delta === 0) {
-      return -Infinity;
-    }
-    const t1 = (low - start) / delta;
-    const t2 = (high - start) / delta;
-    return Math.min(t1, t2);
-  };
-  const t = Math.max(
-    enter(from.x, dx, rect.left, rect.left + rect.width),
-    enter(from.y, dy, rect.top, rect.top + rect.height)
-  );
-  return { x: from.x + dx * t, y: from.y + dy * t };
-}
-
 // joinThrough is one route made of two that meet at a box: the first without
 // its last point and the second without its first, joined at the box's centre.
 export function joinThrough(
@@ -113,4 +83,39 @@ export function joinThrough(
   out: Array<{ x: number; y: number }>
 ): Array<{ x: number; y: number }> {
   return [...into.slice(0, -1), centre, ...out.slice(1)];
+}
+
+// sideRoute is an edge's route between two boxes laid out left to right: out
+// of the middle of the source's right side, into the middle of the target's
+// left side, each with a short straight lead, and the layout's inner points
+// between.
+export function sideRoute(
+  points: Array<{ x: number; y: number }>,
+  source: Rect,
+  target: Rect,
+  lead: number
+): Array<{ x: number; y: number }> {
+  const out = { x: source.left + source.width, y: source.top + source.height / 2 };
+  const into = { x: target.left, y: target.top + target.height / 2 };
+  return [out, { x: out.x + lead, y: out.y }, ...points.slice(1, -1), { x: into.x - lead, y: into.y }, into];
+}
+
+// edgeOffset is where the graph draws the layout's origin: room for the app
+// node's badge above and to the left.
+export const edgeOffset = { x: 40, y: 30 };
+
+// placeAt is where a node is drawn: the box the layout gave it, centred on its
+// point, so the layout's routes clear it. A box that grows keeps its top, its
+// height a floor.
+export function placeAt(
+  node: { x: number; y: number; width: number; height: number },
+  grow?: boolean
+): { left: number; top: number; width: number; height?: number; minHeight?: number; margin: number } {
+  const box = {
+    left: node.x + edgeOffset.x - node.width / 2,
+    top: node.y + edgeOffset.y - node.height / 2,
+    width: node.width,
+    margin: 0,
+  };
+  return grow ? { ...box, minHeight: node.height } : { ...box, height: node.height };
 }
