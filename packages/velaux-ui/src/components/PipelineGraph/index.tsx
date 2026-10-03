@@ -32,7 +32,7 @@ const margin = 20;
 const cardHeight = 90;
 
 type LaidStep = { width: number; height: number; x: number; y: number };
-type LaidEdge = { points?: Array<{ x: number; y: number }> };
+type LaidEdge = { points?: Array<{ x: number; y: number }>; weight?: number; minlen?: number };
 type Laid = dagre.graphlib.Graph<LaidStep, LaidEdge>;
 
 // graphCount numbers each graph drawn, so its arrowhead's id is its own.
@@ -61,21 +61,39 @@ const PipelineGraph = (props: PipelineGraphProps) => {
   });
 
   const edges = stepEdges(steps, spec, mode);
+  // A hidden root, lightly tied to every step, pulls each step to the earliest
+  // column it can start in: dagre otherwise breaks a tie toward the latest.
+  const root = '\u0000root';
   const layOut = (ranksep: number) => {
     const g: Laid = new dagre.graphlib.Graph<LaidStep, LaidEdge>();
     g.setGraph({ rankdir: 'LR', nodesep: 24, ranksep });
-    steps.forEach((s) => g.setNode(s.name, { width: stepWidth, height: heights[s.name] || cardHeight, x: 0, y: 0 }));
-    edges.forEach((e) => g.setEdge(e.from, e.to, {}));
+    g.setNode(root, { width: 0, height: 0, x: 0, y: 0 });
+    steps.forEach((s) => {
+      g.setNode(s.name, { width: stepWidth, height: heights[s.name] || cardHeight, x: 0, y: 0 });
+      g.setEdge(root, s.name, { weight: 1, minlen: 1 });
+    });
+    edges.forEach((e) => g.setEdge(e.from, e.to, { weight: 100 }));
     dagre.layout(g);
-    // Everything moves in by the margin, edge points with the nodes.
+    g.removeNode(root);
+    // Everything moves so the first step sits at the margin, edge points with
+    // the nodes.
+    let minX = Infinity;
+    let minY = Infinity;
     g.nodes().forEach((k) => {
-      g.node(k).x += margin;
-      g.node(k).y += margin;
+      minX = Math.min(minX, g.node(k).x - g.node(k).width / 2);
+      minY = Math.min(minY, g.node(k).y - g.node(k).height / 2);
+    });
+    g.edges().forEach((e) => (g.edge(e).points || []).forEach((p) => (minY = Math.min(minY, p.y))));
+    const dx = margin - minX;
+    const dy = margin - minY;
+    g.nodes().forEach((k) => {
+      g.node(k).x += dx;
+      g.node(k).y += dy;
     });
     g.edges().forEach((e) =>
       (g.edge(e).points || []).forEach((p) => {
-        p.x += margin;
-        p.y += margin;
+        p.x += dx;
+        p.y += dy;
       })
     );
     return g;
