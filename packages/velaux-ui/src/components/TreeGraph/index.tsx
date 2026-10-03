@@ -28,7 +28,7 @@ import { lanesNeeded, orthoPath, routeDefaults, routeEdges } from './orthogonal'
 import { Link } from 'dva/router';
 import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
 import { FaEllipsisV } from 'react-icons/fa';
-import { BsBox, BsDatabase } from 'react-icons/bs';
+import { BsArrowReturnRight, BsBox, BsDatabase, BsGearWideConnected } from 'react-icons/bs';
 
 import { splitType } from '../../utils/definitionVersion';
 import { StatusBadge } from '../StatusBadge';
@@ -48,25 +48,36 @@ type TreeGraphProps = {
 };
 
 // ResourceOriginLine names the component that applied a resource and, under
-// it, the component's type or the trait that applied it; its revision on
-// hover.
+// it, the component's type; or, for a resource a trait applied, the trait,
+// leading on from the component it is attached to. The revision either
+// resolves to shows on hover.
 const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => {
   const kind = origin.trait ? 'trait' : 'component';
   const type = origin.trait || origin.type;
   const label = useInUseLabel(kind, type);
   return (
     <div className="resource-origin">
-      <BsBox />
-      <div className="resource-origin-text">
+      <div className="resource-origin-row">
+        <BsBox />
         <span className="resource-origin-component" title={origin.component}>
           {origin.component}
         </span>
-        {type && (
-          <span className="resource-origin-type" title={label}>
-            {origin.trait ? i18n.t('{{trait}} trait', { trait: origin.trait }) : splitType(type).name}
-          </span>
-        )}
       </div>
+      {origin.trait ? (
+        <div className="resource-origin-row resource-origin-trait">
+          <BsArrowReturnRight className="resource-origin-lead" />
+          <BsGearWideConnected />
+          <span className="resource-origin-type" title={label}>
+            {origin.trait}
+          </span>
+        </div>
+      ) : (
+        type && (
+          <span className="resource-origin-type resource-origin-under" title={label}>
+            {splitType(type).name}
+          </span>
+        )
+      )}
     </div>
   );
 };
