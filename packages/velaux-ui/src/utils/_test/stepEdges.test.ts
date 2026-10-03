@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { runMode, stepEdges } from '../../components/PipelineGraph/dependencies';
+import { groupMode, groupOpensItself, runMode, stepEdges } from '../../components/PipelineGraph/dependencies';
 
 const names = (...n: string[]) => n.map((name) => ({ name }));
 const pairs = (edges: Array<{ from: string; to: string }>) => edges.map((e) => `${e.from}>${e.to}`).sort();
@@ -40,5 +40,26 @@ describe('stepEdges', () => {
   it('ignores dependencies on steps the run does not have', () => {
     const spec = [{ name: 'b', dependsOn: ['gone'] }];
     expect(stepEdges(names('b'), spec, 'DAG')).to.deep.equal([]);
+  });
+});
+
+describe('groupMode', () => {
+  it('prefers the group own mode, then the run sub-mode, then the workflow sub-mode', () => {
+    expect(groupMode('StepByStep', 'DAG-DAG', 'DAG')).to.equal('StepByStep');
+    expect(groupMode(undefined, 'StepByStep-StepByStep', 'DAG')).to.equal('StepByStep');
+    expect(groupMode(undefined, undefined, 'StepByStep')).to.equal('StepByStep');
+    expect(groupMode()).to.equal('DAG');
+  });
+});
+
+describe('groupOpensItself', () => {
+  it('opens a group whose sub-steps need attention', () => {
+    expect(groupOpensItself({ subSteps: [{ phase: 'succeeded' }, { phase: 'suspending' }] })).to.equal(true);
+    expect(groupOpensItself({ subSteps: [{ phase: 'failed' }] })).to.equal(true);
+    expect(groupOpensItself({ subSteps: [{ phase: 'running' }] })).to.equal(true);
+  });
+  it('leaves a settled or unstarted group closed', () => {
+    expect(groupOpensItself({ subSteps: [{ phase: 'succeeded' }, {}] })).to.equal(false);
+    expect(groupOpensItself({})).to.equal(false);
   });
 });

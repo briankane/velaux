@@ -71,3 +71,18 @@ export function stepEdges(steps: Array<{ name: string }>, spec: SpecStep[] | und
   });
   return edges;
 }
+
+// groupMode is the mode a step group's sub-steps run in: the group's own, else
+// the second half of the run's mode, else the workflow's sub-mode, else
+// KubeVela's DAG.
+export function groupMode(own?: string, recordMode?: string, workflowSubMode?: string): 'StepByStep' | 'DAG' {
+  const mode = own || recordMode?.split('-')[1] || workflowSubMode;
+  return mode === 'StepByStep' ? 'StepByStep' : 'DAG';
+}
+
+// groupOpensItself is whether a step group is drawn open before anyone opens
+// it: a sub-step is waiting, running or has failed.
+export function groupOpensItself(group: { subSteps?: Array<{ phase?: string }> }): boolean {
+  const attention = ['suspending', 'running', 'executing', 'failed', 'terminated', 'stopped'];
+  return (group.subSteps || []).some((s) => !!s.phase && attention.includes(s.phase));
+}

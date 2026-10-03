@@ -9,22 +9,30 @@ import type { RouteEdge, RouteNode } from '../TreeGraph/orthogonal';
 import { lanesNeeded, orthoPath, routeDefaults, routeEdges } from '../TreeGraph/orthogonal';
 import { Step } from './components/step';
 import type { SpecStep } from './dependencies';
-import { stepEdges } from './dependencies';
+import { groupMode, groupOpensItself, stepEdges } from './dependencies';
 import { stepReached } from './status';
 
-type PipelineGraphProps = {
+type GroupSpec = SpecStep & { mode?: string; subSteps?: SpecStep[] };
+
+type StepGraphProps = {
   name?: string;
   steps?: WorkflowStepStatus[];
-  // spec and mode are the workflow the run follows, which its edges come from.
-  spec?: SpecStep[];
+  // spec and mode are the workflow the run follows, which its edges come from;
+  // subMode is how a group's sub-steps run unless the group names its own.
+  spec?: GroupSpec[];
   mode: 'StepByStep' | 'DAG';
-  zoom: number;
+  subMode?: 'StepByStep' | 'DAG';
   // selected is the id of the step whose details are open.
   selected?: string;
   // actions are drawn under a step waiting for approval.
   actions?: (step: WorkflowStepStatus) => React.ReactNode;
   onNodeClick: (step: WorkflowStepStatus) => void;
+  // onResize tells the graph drawing this one, inside an open group, that it
+  // changed size.
+  onResize?: () => void;
 };
+
+type PipelineGraphProps = StepGraphProps & { zoom: number };
 
 const stepWidth = 270;
 const margin = 20;
@@ -38,25 +46,32 @@ type Laid = dagre.graphlib.Graph<LaidStep, LaidEdge>;
 // graphCount numbers each graph drawn, so its arrowhead's id is its own.
 let graphCount = 0;
 
-// PipelineGraph draws a run's steps left to right by what they wait on: a step
-// sits right of every step it depends on, and steps that do not wait on each
-// other share a column.
-const PipelineGraph = (props: PipelineGraphProps) => {
-  const { steps = [], spec, mode, zoom, name, selected, actions, onNodeClick } = props;
+// StepGraph draws steps left to right by what they wait on: a step sits right
+// of every step it depends on, and steps that do not wait on each other share a
+// column. An open step group draws its sub-steps the same way, inside it.
+const StepGraph = (props: StepGraphProps) => {
+  const { steps = [], spec, mode, subMode = 'DAG', name, selected, actions, onNodeClick, onResize } = props;
   const [markerId] = React.useState(() => `pipeline-${++graphCount}`);
-  // heights are the cards as drawn: a group or a waiting step grows.
-  const [heights, setHeights] = React.useState<Record<string, number>>({});
+  // sizes are the cards as drawn: a waiting step or an open group grows.
+  const [sizes, setSizes] = React.useState<Record<string, { width: number; height: number }>>({});
+  // opened holds the groups someone opened or closed; the rest follow
+  // groupOpensItself.
+  const [opened, setOpened] = React.useState<Record<string, boolean>>({});
+  const [, setNestedResizes] = React.useState(0);
   const container = React.useRef<HTMLDivElement>(null);
-  // Measured after every render, as a card's height follows its step's state;
-  // it settles once the heights stop changing.
+  // Measured after every render, as a card's size follows its step's state; it
+  // settles once the sizes stop changing.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useLayoutEffect(() => {
-    const measured: Record<string, number> = {};
-    container.current?.querySelectorAll<HTMLElement>('[data-step-key]').forEach((el) => {
-      measured[el.dataset.stepKey || ''] = el.offsetHeight;
+    const measured: Record<string, { width: number; height: number }> = {};
+    Array.from(container.current?.children || []).forEach((child) => {
+      const el = child as HTMLElement;
+      if (el.dataset.stepKey) {
+        measured[el.dataset.stepKey] = { width: el.offsetWidth, height: el.offsetHeight };
+      }
     });
-    if (JSON.stringify(measured) !== JSON.stringify(heights)) {
-      setHeights(measured);
+    if (JSON.stringify(measured) !== JSON.stringify(sizes)) {
+      setSizes(measured);
     }
   });
 
@@ -69,7 +84,12 @@ const PipelineGraph = (props: PipelineGraphProps) => {
     g.setGraph({ rankdir: 'LR', nodesep: 24, ranksep });
     g.setNode(root, { width: 0, height: 0, x: 0, y: 0 });
     steps.forEach((s) => {
-      g.setNode(s.name, { width: stepWidth, height: heights[s.name] || cardHeight, x: 0, y: 0 });
+      g.setNode(s.name, {
+        width: sizes[s.name]?.width || stepWidth,
+        height: sizes[s.name]?.height || cardHeight,
+        x: 0,
+        y: 0,
+      });
       g.setEdge(root, s.name, { weight: 1, minlen: 1 });
     });
     edges.forEach((e) => g.setEdge(e.from, e.to, { weight: 100 }));
@@ -140,69 +160,95 @@ const PipelineGraph = (props: PipelineGraphProps) => {
   graph.nodes().forEach((k) => {
     const n = graph.node(k);
     size.width = Math.max(size.width, n.x + n.width / 2 + margin);
-    size.height = Math.max(size.height, n.y + (heights[k] || n.height) / 2 + margin);
+    size.height = Math.max(size.height, n.y + n.height / 2 + margin);
   });
   const byName = new Map(steps.map((s) => [s.name, s]));
+  const specOf = new Map((spec || []).map((s) => [s.name, s]));
+  React.useEffect(() => {
+    onResize && onResize();
+  }, [size.width, size.height, onResize]);
+  const nestedResized = React.useCallback(() => setNestedResizes((n) => n + 1), []);
 
   return (
-    <Draggable>
-      <div
-        ref={container}
-        className="workflow-graph"
-        style={{ transform: `scale(${zoom})`, width: size.width, height: size.height }}
-      >
-        <svg className="workflow-connectors" width={size.width} height={size.height}>
-          <defs>
-            <marker
-              id={markerId}
-              viewBox="0 0 10 10"
-              refX="9"
-              refY="5"
-              markerWidth="7"
-              markerHeight="7"
-              orient="auto-start-reverse"
-            >
-              <path d="M 0 0 L 10 5 L 0 10 z" className="workflow-connector-head" />
-            </marker>
-          </defs>
-          {edges.map((e) => {
-            const target = byName.get(e.to);
-            return (
-              <path
-                key={`${e.from}->${e.to}`}
-                className={target && stepReached(target) ? 'workflow-connector reached' : 'workflow-connector'}
-                data-from={e.from}
-                data-to={e.to}
-                fill="none"
-                markerEnd={`url(#${markerId})`}
-                d={orthoPath(routes[`${e.from}->${e.to}`] || [], 6)}
-              />
-            );
-          })}
-        </svg>
-        {steps.map((step) => {
-          const n = graph.node(step.name);
+    <div ref={container} className="workflow-graph" style={{ width: size.width, height: size.height }}>
+      <svg className="workflow-connectors" width={size.width} height={size.height}>
+        <defs>
+          <marker
+            id={markerId}
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" className="workflow-connector-head" />
+          </marker>
+        </defs>
+        {edges.map((e) => {
+          const target = byName.get(e.to);
           return (
-            <div
-              key={name + step.name}
-              className="workflow-step"
-              data-step-key={step.name}
-              style={{ left: n.x - n.width / 2, top: n.y - (heights[step.name] || cardHeight) / 2, width: stepWidth }}
-            >
-              <Step
-                step={step}
-                width={stepWidth}
-                group={step.type == 'step-group'}
-                selected={selected}
-                actions={actions}
-                onNodeClick={onNodeClick}
-              />
-            </div>
+            <path
+              key={`${e.from}->${e.to}`}
+              className={target && stepReached(target) ? 'workflow-connector reached' : 'workflow-connector'}
+              data-from={e.from}
+              data-to={e.to}
+              fill="none"
+              markerEnd={`url(#${markerId})`}
+              d={orthoPath(routes[`${e.from}->${e.to}`] || [], 6)}
+            />
           );
         })}
-      </div>
-    </Draggable>
+      </svg>
+      {steps.map((step) => {
+        const n = graph.node(step.name);
+        const group = step.type == 'step-group';
+        const open = group && (opened[step.name] ?? groupOpensItself(step));
+        const groupSpec = specOf.get(step.name);
+        return (
+          <div
+            key={name + step.name}
+            className="workflow-step"
+            data-step-key={step.name}
+            style={{ left: n.x - n.width / 2, top: n.y - n.height / 2 }}
+          >
+            <Step
+              step={step}
+              width={stepWidth}
+              group={group}
+              open={open}
+              onToggle={() => setOpened({ ...opened, [step.name]: !open })}
+              selected={selected}
+              actions={actions}
+              onNodeClick={onNodeClick}
+            >
+              {open && (
+                <StepGraph
+                  name={`${name}/${step.name}`}
+                  steps={step.subSteps}
+                  spec={groupSpec?.subSteps}
+                  mode={groupMode(groupSpec?.mode, undefined, subMode)}
+                  selected={selected}
+                  actions={actions}
+                  onNodeClick={onNodeClick}
+                  onResize={nestedResized}
+                />
+              )}
+            </Step>
+          </div>
+        );
+      })}
+    </div>
   );
 };
+
+// PipelineGraph is a run's steps on a canvas that drags and zooms.
+const PipelineGraph = (props: PipelineGraphProps) => (
+  <Draggable>
+    <div className="workflow-canvas" style={{ transform: `scale(${props.zoom})` }}>
+      <StepGraph {...props} />
+    </div>
+  </Draggable>
+);
 
 export default PipelineGraph;

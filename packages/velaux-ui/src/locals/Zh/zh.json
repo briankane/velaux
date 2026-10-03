@@ -967,5 +967,10 @@
   "Not started": "未开始",
   "Approve": "批准",
   "Step approved": "步骤已批准",
-  "Approve this step and continue the workflow": "批准此步骤并继续工作流"
+  "Approve this step and continue the workflow": "批准此步骤并继续工作流",
+  "Group": "分组",
+  "step": "个步骤",
+  "steps": "个步骤",
+  "Show the steps as a list": "以列表显示步骤",
+  "Show the steps as a graph": "以图显示步骤"
 }

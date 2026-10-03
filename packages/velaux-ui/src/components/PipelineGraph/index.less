@@ -1,9 +1,12 @@
 // Steps are cards laid out by what they wait on, joined left to right; a card's
 // left edge and badge are its status, in the badge's tone.
-.workflow-graph {
-  position: relative;
+.workflow-canvas {
   transform-origin: left top;
   cursor: grab;
+}
+
+.workflow-graph {
+  position: relative;
 
   .workflow-step {
     position: absolute;
@@ -20,9 +23,7 @@
     border-radius: 8px;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
     cursor: pointer;
-    transition:
-      border-color 0.2s linear,
-      box-shadow 0.2s linear;
+    transition: border-color 0.2s linear, box-shadow 0.2s linear;
     &:hover {
       border-color: #cbd5e1;
       border-left-color: var(--tone);
@@ -33,12 +34,58 @@
       border-left-color: var(--tone);
       box-shadow: 0 0 0 1px var(--primary-color);
     }
+    // A group is a container, not a step: tinted, dashed, and tagged.
     &.group {
+      background: #f8fafc;
+      border: 1px dashed #94a3b8;
+      border-left: 3px solid var(--tone);
+      box-shadow: none;
       cursor: default;
+      &:hover {
+        border-color: #94a3b8;
+        border-left-color: var(--tone);
+        box-shadow: none;
+      }
     }
     &.pending .step-name {
       color: #64748b;
     }
+  }
+
+  .step-group-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .step-group-tag {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    padding: 1px 6px;
+    color: #475569;
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: #e2e8f0;
+    border-radius: 4px;
+  }
+  .step-group-toggle {
+    display: inline-flex;
+    padding: 2px;
+    color: #64748b;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    &:hover {
+      color: var(--primary-color);
+      background: #e2e8f0;
+    }
+  }
+  .step-group-body {
+    margin: 8px -6px -6px -5px;
   }
 
   .step-name {
