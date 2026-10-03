@@ -49,3 +49,25 @@ export function shiftIntoView(
     })
   );
 }
+
+// edgePath is an SVG path through an edge's points, its bends rounded: each
+// inner point is a curve's control, from the middle of the segment before it
+// to the middle of the one after, so the path still ends on the last point.
+export function edgePath(points: Array<{ x: number; y: number }>): string {
+  if (points.length < 2) {
+    return '';
+  }
+  const mid = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  });
+  const parts = [`M ${points[0].x} ${points[0].y}`];
+  for (let i = 1; i < points.length - 1; i++) {
+    const before = mid(points[i - 1], points[i]);
+    const after = mid(points[i], points[i + 1]);
+    parts.push(`L ${before.x} ${before.y}`, `Q ${points[i].x} ${points[i].y} ${after.x} ${after.y}`);
+  }
+  const last = points[points.length - 1];
+  parts.push(`L ${last.x} ${last.y}`);
+  return parts.join(' ');
+}

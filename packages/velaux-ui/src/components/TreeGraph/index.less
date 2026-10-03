@@ -161,26 +161,36 @@
   .graph-node.unused-status {
     opacity: 0.6;
   }
-  .graph-edge.graph-edge-link .graph-edge-line {
-    border-top: 2px dotted var(--primary-color);
+  // Edges are one SVG layer under the nodes: smoothed paths whose dashes flow
+  // from source to target, and arrowheads that turn with the line.
+  .graph-edges {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    overflow: visible;
+    pointer-events: none;
   }
-  .graph-edge {
-    .graph-edge-line {
-      position: absolute;
-      z-index: -1;
-      border-top: 1px dashed #666;
-      transition: all 0.2s linear;
-
-      &:last-child {
-        &::after {
-          position: absolute;
-          top: -10px;
-          color: #a3a3a3;
-          font-size: 10px;
-          transform: rotate(180deg);
-          content: '\25BA';
-        }
-      }
+  .graph-edge-path {
+    fill: none;
+    stroke: #94a3b8;
+    stroke-width: 1.5;
+    stroke-dasharray: 6 5;
+    animation: graph-edge-flow 0.9s linear infinite;
+    &.graph-edge-link {
+      stroke: var(--primary-color, #1b58f4);
+      stroke-width: 1.75;
+    }
+  }
+  .graph-edge-head {
+    fill: #94a3b8;
+    &.graph-edge-head-link {
+      fill: var(--primary-color, #1b58f4);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .graph-edge-path {
+      animation: none;
     }
   }
   .line {
@@ -239,5 +249,16 @@
   font-family: Menlo, Monaco, monospace;
   li {
     word-break: break-all;
+  }
+}
+
+// A dash pattern of 11 moves one pattern length forward, so the dashes march
+// toward the arrowhead.
+@keyframes graph-edge-flow {
+  from {
+    stroke-dashoffset: 11;
+  }
+  to {
+    stroke-dashoffset: 0;
   }
 }

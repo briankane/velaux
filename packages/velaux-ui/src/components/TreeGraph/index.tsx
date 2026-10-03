@@ -15,11 +15,11 @@ import classNames from 'classnames';
 import { If } from '../If';
 
 import { ComponentNode } from './component-node';
-import type { GraphNode, TreeNode, GraphEdge, Line } from './interface';
+import type { GraphNode, TreeNode, GraphEdge } from './interface';
 import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 import { clusterTooltip, resourceTooltip, sourceTooltip, targetTooltip } from './tooltip';
 import { treeNodeKey, getNodeSize, ResourceIcon } from './utils';
-import { getGraphSize, shiftIntoView } from './layout';
+import { edgePath, getGraphSize, shiftIntoView } from './layout';
 
 import { Link } from 'dva/router';
 import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
@@ -360,7 +360,11 @@ function setLinks(graph: dagre.graphlib.Graph<GraphNode, GraphEdge>, node: TreeN
   node.detached?.forEach((sub) => setLinks(graph, sub));
 }
 
+// graphCount numbers each graph drawn, so its arrowheads' ids are its own.
+let graphCount = 0;
+
 export const TreeGraph = (props: TreeGraphProps) => {
+  const [markerId] = React.useState(() => `graph-${++graphCount}`);
   // init the graph
   const graph = new dagre.graphlib.Graph<GraphNode, GraphEdge>();
   graph.setGraph({
@@ -379,24 +383,13 @@ export const TreeGraph = (props: TreeGraphProps) => {
     20
   );
 
-  const edges: Array<{ from: string; to: string; lines: Line[]; link?: boolean }> = [];
+  const edges: Array<{ from: string; to: string; path: string; link?: boolean }> = [];
   graph.edges().forEach((edgeInfo) => {
     const edge = graph.edge(edgeInfo);
-    const lines: Line[] = [];
-    if (edge.points && edge.points.length > 1) {
-      for (let i = 1; i < edge.points.length; i++) {
-        lines.push({
-          x1: edge.points[i - 1].x,
-          y1: edge.points[i - 1].y,
-          x2: edge.points[i].x,
-          y2: edge.points[i].y,
-        });
-      }
-    }
     edges.push({
       from: edgeInfo.v,
       to: edgeInfo.w,
-      lines: lines,
+      path: edgePath((edge.points || []).map((p) => ({ x: p.x + edgeOffset.x, y: p.y + edgeOffset.y }))),
       link: !!edge.link,
     });
   });
@@ -414,6 +407,40 @@ export const TreeGraph = (props: TreeGraphProps) => {
         transform: `scale(${props.zoom})`,
       }}
     >
+      <svg className="graph-edges" width={size.width + 500} height={size.height + 150} aria-hidden="true">
+        <defs>
+          <marker
+            id={`${markerId}-edge`}
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" className="graph-edge-head" />
+          </marker>
+          <marker
+            id={`${markerId}-link`}
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" className="graph-edge-head graph-edge-head-link" />
+          </marker>
+        </defs>
+        {edges.map((edge) => (
+          <path
+            key={`${edge.from}-${edge.to}`}
+            d={edge.path}
+            className={classNames('graph-edge-path', { 'graph-edge-link': edge.link })}
+            markerEnd={`url(#${markerId}-${edge.link ? 'link' : 'edge'})`}
+          />
+        ))}
+      </svg>
       {graphNodes.map((key) => {
         const node = graph.node(key);
         const nodeType = node.nodeType;
@@ -436,29 +463,6 @@ export const TreeGraph = (props: TreeGraphProps) => {
             return <React.Fragment key={key}>{renderResourceNode(props, key, node)}</React.Fragment>;
         }
       })}
-
-      {edges.map((edge) => (
-        <div key={`${edge.from}-${edge.to}`} className={classNames('graph-edge', { 'graph-edge-link': edge.link })}>
-          {edge.lines.map((line) => {
-            const distance = Math.sqrt(Math.pow(line.x1 - line.x2, 2) + Math.pow(line.y1 - line.y2, 2));
-            const xMid = (line.x1 + line.x2) / 2;
-            const yMid = (line.y1 + line.y2) / 2;
-            const angle = (Math.atan2(line.y1 - line.y2, line.x1 - line.x2) * 180) / Math.PI;
-            return (
-              <div
-                className="graph-edge-line"
-                key={'line' + line.x2 + line.y2}
-                style={{
-                  width: distance,
-                  left: xMid - distance / 2,
-                  top: yMid,
-                  transform: `translate(${edgeOffset.x}px, ${edgeOffset.y}px) rotate(${angle}deg)`,
-                }}
-              />
-            );
-          })}
-        </div>
-      ))}
     </div>
   );
 };

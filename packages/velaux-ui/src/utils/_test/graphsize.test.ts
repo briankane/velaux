@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { getGraphSize, shiftIntoView } from '../../components/TreeGraph/layout';
+import { edgePath, getGraphSize, shiftIntoView } from '../../components/TreeGraph/layout';
 
 describe('graph size', () => {
   it('reaches the right and bottom edges of the furthest nodes', () => {
@@ -36,5 +36,24 @@ describe('shiftIntoView', () => {
     shiftIntoView(nodes, [points], 20);
     expect(nodes[0]).to.deep.equal({ x: 10, y: 37, width: 100, height: 40 });
     expect(points[0]).to.deep.equal({ x: 60, y: 37 });
+  });
+});
+
+describe('edgePath', () => {
+  it('runs straight between two points', () => {
+    expect(edgePath([{ x: 0, y: 0 }, { x: 100, y: 0 }])).to.equal('M 0 0 L 100 0');
+  });
+  it('rounds each bend through its midpoints, ending on the last point', () => {
+    expect(
+      edgePath([
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 100 },
+      ])
+    ).to.equal('M 0 0 L 50 0 Q 100 0 100 50 L 100 100');
+  });
+  it('draws nothing for fewer than two points', () => {
+    expect(edgePath([{ x: 1, y: 1 }])).to.equal('');
+    expect(edgePath([])).to.equal('');
   });
 });
