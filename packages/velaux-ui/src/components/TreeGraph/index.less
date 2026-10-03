@@ -16,7 +16,11 @@
     border-radius: 8px;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
     cursor: pointer;
-    transition: all 0.2s linear;
+    // Only the hover eases: a node moves in step with its edges, which are
+    // drawn where it lands.
+    transition:
+      border-color 0.2s linear,
+      box-shadow 0.2s linear;
     &:hover {
       border-color: #cbd5e1;
       box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
