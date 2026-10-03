@@ -1,21 +1,12 @@
 import { splitType } from '../../utils/definitionVersion';
 import type { ApplicationSourceStatus, ResourceTreeNode, SourceConsumer } from '@velaux/data';
 import type { StatusTooltipProps } from '../StatusTooltip';
+import type { ResourceOrigin } from './interface';
 import { summaryEntries } from '../../utils/status';
-
-// Deployer is the component that applied a resource, its type, and the trait
-// that did where one did, each with the revision its definition resolves to.
-export interface Deployer {
-  component: string;
-  type?: string;
-  componentRevision?: string;
-  trait?: string;
-  traitRevision?: string;
-}
 
 // resourceTooltip summarises a resource on the graph: what and where it is, its
 // health, and for a pod how it is running.
-export function resourceTooltip(resource: ResourceTreeNode, deployer?: Deployer): StatusTooltipProps {
+export function resourceTooltip(resource: ResourceTreeNode): StatusTooltipProps {
   const code = resource.healthStatus?.statusCode;
   const info = resource.additionalInfo || {};
   const text = (v: unknown) => (v === undefined || v === null || v === '' ? undefined : String(v));
@@ -29,11 +20,6 @@ export function resourceTooltip(resource: ResourceTreeNode, deployer?: Deployer)
       ['API Version', resource.apiVersion],
       ['Namespace', resource.namespace],
       ['Cluster', resource.cluster],
-      ['Component', deployer?.component],
-      ['Type', deployer?.type ? splitType(deployer.type).name : undefined],
-      ['Revision', deployer?.type ? deployer.componentRevision : undefined],
-      ['Trait', deployer?.trait],
-      ['Trait Revision', deployer?.trait ? deployer.traitRevision : undefined],
       ['Status', pod ? text(info.Status) : undefined],
       ['Ready', pod ? text(info.Ready) : undefined],
       ['Restarts', pod ? text(info.Restarts) : undefined],
@@ -97,5 +83,27 @@ export function sourceTooltip(source: ApplicationSourceStatus, elsewhere: Source
       ['Also read by', elsewhere.map((c) => `${c.name} (${c.definitionKind})`).join(', ') || undefined],
     ]),
     message: source.message || (source.resolutions || []).find((r) => r.message)?.message,
+  };
+}
+
+// componentOriginTooltip describes the component that deployed a resource:
+// its type, and the revision its definition resolves to.
+export function componentOriginTooltip(origin: ResourceOrigin, revision: string): StatusTooltipProps {
+  return {
+    title: origin.component,
+    summary: summaryEntries([
+      ['Type', origin.type ? splitType(origin.type).name : undefined],
+      ['Revision', origin.type ? revision : undefined],
+    ]),
+  };
+}
+
+// traitOriginTooltip describes the trait that deployed a resource, on the
+// component it is attached to, with the revision its definition resolves to.
+export function traitOriginTooltip(origin: ResourceOrigin, revision: string): StatusTooltipProps {
+  return {
+    title: origin.trait || '',
+    on: origin.component,
+    summary: summaryEntries([['Revision', revision]]),
   };
 }

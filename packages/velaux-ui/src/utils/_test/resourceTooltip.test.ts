@@ -1,37 +1,31 @@
 import { expect } from 'chai';
 
-import { resourceTooltip } from '../../components/TreeGraph/tooltip';
+import { componentOriginTooltip, resourceTooltip, traitOriginTooltip } from '../../components/TreeGraph/tooltip';
 
-describe('resourceTooltip', () => {
-  const resource = { name: 'storefront-web', kind: 'HorizontalPodAutoscaler', namespace: 'shop-prod' };
-  const entry = (props: ReturnType<typeof resourceTooltip>, key: string) =>
-    props.summary?.find((e) => e.key === key)?.value;
+const entry = (props: { summary?: Array<{ key: string; value: string }> }, key: string) =>
+  props.summary?.find((e) => e.key === key)?.value;
 
-  it('names the component that deployed a resource, its type and revision', () => {
-    const props = resourceTooltip(resource, {
-      component: 'storefront-web',
-      type: 'webapp@v1.1.0',
-      componentRevision: 'latest (1.1.0 / v5)',
-    });
-    expect(entry(props, 'Component')).to.equal('storefront-web');
+describe('origin tooltips', () => {
+  const origin = { component: 'storefront-web', type: 'webapp@v1.1.0', trait: 'cpuscaler' };
+
+  it('describes the component alone: its type and revision', () => {
+    const props = componentOriginTooltip(origin, 'latest (1.1.0 / v5)');
+    expect(props.title).to.equal('storefront-web');
     expect(entry(props, 'Type')).to.equal('webapp');
     expect(entry(props, 'Revision')).to.equal('latest (1.1.0 / v5)');
     expect(entry(props, 'Trait')).to.equal(undefined);
   });
 
-  it('names the trait that deployed it, and its revision', () => {
-    const props = resourceTooltip(resource, {
-      component: 'storefront-web',
-      type: 'webapp',
-      componentRevision: 'latest (1.1.0 / v5)',
-      trait: 'cpuscaler',
-      traitRevision: 'latest (v3)',
-    });
-    expect(entry(props, 'Trait')).to.equal('cpuscaler');
-    expect(entry(props, 'Trait Revision')).to.equal('latest (v3)');
+  it('describes the trait, on its component, with its revision', () => {
+    const props = traitOriginTooltip(origin, 'latest (v3)');
+    expect(props.title).to.equal('cpuscaler');
+    expect(props.on).to.equal('storefront-web');
+    expect(entry(props, 'Revision')).to.equal('latest (v3)');
+    expect(entry(props, 'Type')).to.equal(undefined);
   });
 
-  it('says nothing of a deployer for a resource no component applied', () => {
-    expect(entry(resourceTooltip(resource), 'Component')).to.equal(undefined);
+  it("keeps a resource's own tooltip to the resource", () => {
+    const props = resourceTooltip({ name: 'storefront-web', kind: 'HorizontalPodAutoscaler' });
+    expect(entry(props, 'Component')).to.equal(undefined);
   });
 });

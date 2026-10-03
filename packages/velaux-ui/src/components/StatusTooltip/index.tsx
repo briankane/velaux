@@ -25,6 +25,8 @@ export interface TooltipSection {
 
 export interface StatusTooltipProps {
   title: string;
+  // on is what the titled thing is attached to, shown under the title.
+  on?: string;
   healthy?: boolean;
   // pending is a trait waiting for its workload, shown in place of its health.
   pending?: boolean;
@@ -62,7 +64,14 @@ export const StatusTooltip = (props: StatusTooltipProps) => {
   return (
     <div className="status-tooltip">
       <div className="status-tooltip-header">
-        <span className="status-tooltip-title">{props.title}</span>
+        <span className="status-tooltip-heading">
+          <span className="status-tooltip-title">{props.title}</span>
+          {props.on && (
+            <span className="status-tooltip-on">
+              <Translation>on</Translation> {props.on}
+            </span>
+          )}
+        </span>
         {props.pending || props.progressing ? (
           <span className="status-tooltip-health pending">
             <span className="circle circle-pending" />

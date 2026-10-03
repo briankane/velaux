@@ -17,7 +17,15 @@ import { If } from '../If';
 import { ComponentNode } from './component-node';
 import type { GraphNode, TreeNode, GraphEdge, ResourceOrigin } from './interface';
 import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
-import { clusterTooltip, resourceTooltip, sourceTooltip, targetTooltip } from './tooltip';
+import type { StatusTooltipProps } from '../StatusTooltip';
+import {
+  clusterTooltip,
+  componentOriginTooltip,
+  resourceTooltip,
+  traitOriginTooltip,
+  sourceTooltip,
+  targetTooltip,
+} from './tooltip';
 import { podTone } from './pods';
 import { treeNodeKey, getNodeSize, ResourceIcon } from './utils';
 import type { Rect } from './layout';
@@ -46,33 +54,47 @@ type TreeGraphProps = {
   onResourceDetailClick: (resource: ResourceTreeNode) => void;
 };
 
-// ResourceOriginLine names the component that applied a resource and, for a
-// resource a trait applied, the trait, leading on from it.
-const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => (
-  <div className="resource-origin">
-    <div className="resource-origin-row">
-      <BsBox />
-      <span className="resource-origin-component">{origin.component}</span>
-    </div>
-    {origin.trait && (
-      <div className="resource-origin-row resource-origin-trait">
-        <BsArrowReturnRight className="resource-origin-lead" />
-        <BsGearWideConnected />
-        <span className="resource-origin-type">{origin.trait}</span>
-      </div>
-    )}
-  </div>
+// hoverCard shows a tooltip over the element it wraps.
+const hoverCard = (trigger: React.ReactElement, card: StatusTooltipProps) => (
+  <Balloon trigger={trigger} closable={false} popupClassName={statusTooltipPopupClass}>
+    <StatusTooltip {...card} />
+  </Balloon>
 );
 
-// ResourceHover is a resource's hover: its status, and the component and
-// trait that deployed it with the revisions their definitions resolve to.
-const ResourceHover = ({ resource, origin }: { resource: GraphNode['resource']; origin?: ResourceOrigin }) => {
-  const componentRevision = useInUseLabel('component', origin?.type);
-  const traitRevision = useInUseLabel('trait', origin?.trait);
-  return <StatusTooltip {...resourceTooltip(resource, origin && { ...origin, componentRevision, traitRevision })} />;
+// ResourceOriginLine names the component that applied a resource and, for a
+// resource a trait applied, the trait, leading on from it. Each has a hover
+// card of its own: the component's type and revision, the trait's revision.
+const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => {
+  const componentRevision = useInUseLabel('component', origin.type);
+  const traitRevision = useInUseLabel('trait', origin.trait);
+  return (
+    <div className="resource-origin">
+      {hoverCard(
+        <div className="resource-origin-row">
+          <BsBox />
+          <span className="resource-origin-component">{origin.component}</span>
+        </div>,
+        componentOriginTooltip(origin, componentRevision)
+      )}
+      {origin.trait &&
+        hoverCard(
+          <div className="resource-origin-row resource-origin-trait">
+            <BsArrowReturnRight className="resource-origin-lead" />
+            <BsGearWideConnected />
+            <span className="resource-origin-type">{origin.trait}</span>
+          </div>,
+          traitOriginTooltip(origin, traitRevision)
+        )}
+    </div>
+  );
 };
 
+// renderResourceNode is a resource: its icon, name and kind, and the component
+// that applied it. With a component named, the resource's hover card is on its
+// icon and name, so the component and trait lines can have their own.
 function renderResourceNode(props: TreeGraphProps, id: string, node: GraphNode) {
+  const card = resourceTooltip(node.resource);
+  const ownCard = (trigger: React.ReactElement) => (node.origin ? hoverCard(trigger, card) : trigger);
   const graphNode = (
     <div
       key={id}
@@ -84,12 +106,18 @@ function renderResourceNode(props: TreeGraphProps, id: string, node: GraphNode) 
         ...placeAt(node),
       }}
     >
-      <div className={classNames('icon')}>
-        <ResourceIcon kind={node.resource.kind || ''} />
-      </div>
+      {ownCard(
+        <div className={classNames('icon')}>
+          <ResourceIcon kind={node.resource.kind || ''} />
+        </div>
+      )}
       <div className={classNames('name')}>
-        <div>{node.resource.name}</div>
-        <div className="kind">{node.resource.kind}</div>
+        {ownCard(
+          <div>
+            <div>{node.resource.name}</div>
+            <div className="kind">{node.resource.kind}</div>
+          </div>
+        )}
         {node.origin && <ResourceOriginLine origin={node.origin} />}
       </div>
       <div className={classNames('actions')}>
@@ -108,11 +136,7 @@ function renderResourceNode(props: TreeGraphProps, id: string, node: GraphNode) 
       </If>
     </div>
   );
-  return (
-    <Balloon trigger={graphNode} closable={false} popupClassName={statusTooltipPopupClass}>
-      <ResourceHover resource={node.resource} origin={node.origin} />
-    </Balloon>
-  );
+  return node.origin ? graphNode : hoverCard(graphNode, card);
 }
 
 function renderAppNode(props: TreeGraphProps, id: string, node: GraphNode) {

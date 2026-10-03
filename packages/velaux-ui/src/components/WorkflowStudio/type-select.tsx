@@ -3,7 +3,7 @@ import _ from 'lodash';
 import React from 'react';
 
 import i18n from '../../i18n';
-import type { DefinitionBase , WorkflowStepBase } from '@velaux/data';
+import type { DefinitionBase, WorkflowStepBase } from '@velaux/data';
 import { checkName, showAlias } from '../../utils/common';
 import { locale } from '../../utils/locale';
 import { isUsable } from '../../utils/restrictions';

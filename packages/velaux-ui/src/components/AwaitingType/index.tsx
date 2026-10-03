@@ -24,4 +24,3 @@ export const AwaitingType = (props: { ready: boolean; children: React.ReactNode 
     </div>
   );
 };
-
