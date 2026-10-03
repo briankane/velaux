@@ -104,4 +104,3 @@ export function usageState(state: NamespaceUsage['state']): {
       return { label: 'No quota', type: 'normal' };
   }
 }
-

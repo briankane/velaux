@@ -41,7 +41,12 @@ describe('shiftIntoView', () => {
 
 describe('edgePath', () => {
   it('runs straight between two points', () => {
-    expect(edgePath([{ x: 0, y: 0 }, { x: 100, y: 0 }])).to.equal('M 0 0 L 100 0');
+    expect(
+      edgePath([
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+      ])
+    ).to.equal('M 0 0 L 100 0');
   });
   it('rounds each bend through its midpoints, ending on the last point', () => {
     expect(

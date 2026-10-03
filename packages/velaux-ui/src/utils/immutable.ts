@@ -7,7 +7,7 @@ export function immutableLocked(
   param: UIParam,
   mode: 'new' | 'edit',
   deployed: boolean | undefined,
-  stored: any,
+  stored: any
 ): boolean {
   if (!param.validate?.immutable || mode != 'edit' || deployed === false) {
     return false;

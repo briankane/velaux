@@ -35,7 +35,12 @@ function readers(to: DataFlowEnd, placed: Placed[]): Placed[] {
 // producerKey is where a flow's data comes from for one reader: a source's node,
 // or the producing component at the placement the read names, else beside the
 // reader.
-function producerKey(from: DataFlowEnd, reader: Placed, placed: Placed[], sources: Map<string, string>): string | undefined {
+function producerKey(
+  from: DataFlowEnd,
+  reader: Placed,
+  placed: Placed[],
+  sources: Map<string, string>
+): string | undefined {
   if (from.kind === 'source') {
     return sources.get(from.name);
   }
@@ -49,7 +54,11 @@ function producerKey(from: DataFlowEnd, reader: Placed, placed: Placed[], source
 
 // flowNodes are a node per flow and reader placement, each fed by its producer
 // and feeding its reader. sources maps a source binding's name to its node key.
-export function flowNodes(flows: DataFlow[], placements: Map<string, string>, sources: Map<string, string>): TreeNode[] {
+export function flowNodes(
+  flows: DataFlow[],
+  placements: Map<string, string>,
+  sources: Map<string, string>
+): TreeNode[] {
   const placed = placedComponents(placements);
   const nodes: TreeNode[] = [];
   flows.forEach((flow) => {

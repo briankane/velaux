@@ -129,15 +129,12 @@
     }
   }
 
-  // A component's left edge is its health, in its health badge's colours.
-  .graph-node-component {
-    border-left: 3px solid #16a34a;
+  // A component's or source's left edge is its status, in its badge's tone.
+  .graph-node.graph-node-edge {
+    border-left: 3px solid var(--tone);
     .icon {
       color: var(--primary-color);
       font-size: 18px;
-    }
-    &.health-unhealthy {
-      border-left-color: #ea580c;
     }
   }
 
@@ -148,16 +145,6 @@
     border: solid 0.2em var(--warning-color);
   }
 
-  .graph-node-source {
-    border-left: 3px solid var(--primary-color);
-    .icon {
-      color: var(--primary-color);
-      font-size: 18px;
-    }
-    .source-phase {
-      color: #64748b;
-    }
-  }
   // A flow is a label riding its edge: a small pill over the line, not a box.
   .graph-node-flow {
     z-index: 1;

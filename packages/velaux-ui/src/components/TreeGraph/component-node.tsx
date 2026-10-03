@@ -11,6 +11,8 @@ import type { TraitStatus } from '@velaux/data';
 import { BsBox } from 'react-icons/bs';
 
 import { StatusBadge } from '../StatusBadge';
+
+import { DefinitionLine } from './definition-line';
 import { traitState, traitStateCircle } from '../../utils/status';
 import { traitTooltip } from './tooltip';
 import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
@@ -64,8 +66,9 @@ export const ComponentNode = (props: ComponentNodeProps) => {
   return (
     <div
       className={classNames('graph-node', 'graph-node-resource', 'graph-node-component', {
-        'health-healthy': !!node.resource.service?.healthy,
-        'health-unhealthy': !node.resource.service?.healthy,
+        'graph-node-edge': true,
+        'tone-healthy': !!node.resource.service?.healthy,
+        'tone-unhealthy': !node.resource.service?.healthy,
         'traits-open': hidden.length > 0 && showTrait,
       })}
       style={{
@@ -95,7 +98,7 @@ export const ComponentNode = (props: ComponentNodeProps) => {
                 <StatusBadge tone="unhealthy" label="Unhealthy" />
               )}
             </div>
-            <div className="kind">{node.resource.component?.componentType}</div>
+            <DefinitionLine kind="component" type={node.resource.component?.componentType} />
           </div>
         )}
         {shown.length > 0 && (

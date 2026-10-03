@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import { isUsable } from './restrictions';
 
-import type { ComponentDefinitionsBase,Endpoint  } from '@velaux/data';
+import type { ComponentDefinitionsBase, Endpoint } from '@velaux/data';
 
 type SelectGroupType = Array<{
   label: string;
@@ -42,21 +42,11 @@ export function quantityToScalar(quantity: string): number | bigint {
     case 'Gi':
       return BigInt(quantity.substr(0, quantity.length - 2)) * BigInt(1024 * 1024 * 1024);
     case 'Ti':
-      return (
-        BigInt(quantity.substr(0, quantity.length - 2)) * BigInt(1024 * 1024 * 1024) * BigInt(1024)
-      );
+      return BigInt(quantity.substr(0, quantity.length - 2)) * BigInt(1024 * 1024 * 1024) * BigInt(1024);
     case 'Pi':
-      return (
-        BigInt(quantity.substr(0, quantity.length - 2)) *
-        BigInt(1024 * 1024 * 1024) *
-        BigInt(1024 * 1024)
-      );
+      return BigInt(quantity.substr(0, quantity.length - 2)) * BigInt(1024 * 1024 * 1024) * BigInt(1024 * 1024);
     case 'Ei':
-      return (
-        BigInt(quantity.substr(0, quantity.length - 2)) *
-        BigInt(1024 * 1024 * 1024) *
-        BigInt(1024 * 1024 * 1024)
-      );
+      return BigInt(quantity.substr(0, quantity.length - 2)) * BigInt(1024 * 1024 * 1024) * BigInt(1024 * 1024 * 1024);
     default:
       throw new Error(`Unknown suffix: ${suffix}`);
   }
@@ -136,9 +126,7 @@ export function getValue(key: string, value: any): any {
   return value[key];
 }
 
-export function getSelectLabel(
-  data: Array<{ name: string; alias?: string }>,
-): Array<{ label: string; value: string }> {
+export function getSelectLabel(data: Array<{ name: string; alias?: string }>): Array<{ label: string; value: string }> {
   return (data || []).map((item: { name: string; alias?: string }) => {
     return { label: item.alias || item.name, value: item.name };
   });
@@ -194,8 +182,8 @@ export function getBrowserNameAndVersion() {
 }
 
 export function downloadStringFile(content: string, filename: string) {
-  const element = document.createElement("a");
-  const file = new Blob([content], {type: 'text/plain'});
+  const element = document.createElement('a');
+  const file = new Blob([content], { type: 'text/plain' });
   element.href = URL.createObjectURL(file);
   element.download = filename;
   document.body.appendChild(element);

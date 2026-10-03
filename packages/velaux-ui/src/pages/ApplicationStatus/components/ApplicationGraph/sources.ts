@@ -1,3 +1,4 @@
+import type { Tone } from '../../../../components/StatusBadge';
 import type { ApplicationSourceStatus, SourceConsumer } from '@velaux/data';
 
 import type { DependencyItem } from '../../../../utils/dependencies';
@@ -90,16 +91,15 @@ export function sourceReads(
   return items;
 }
 
-// sourcePhaseClass is a source node's status class: a failed source as an
-// error, a stale one as a warning.
-export function sourcePhaseClass(phase?: string): string {
+// sourcePhaseTone is the status colour of a source's phase.
+export function sourcePhaseTone(phase?: string): Tone {
   switch (phase) {
-    case 'Failed':
-      return 'error-status';
+    case 'Resolved':
+      return 'healthy';
     case 'Stale':
-      return 'warning-status';
-    case 'Unused':
-      return 'unused-status';
+      return 'suspended';
+    case 'Failed':
+      return 'failed';
   }
-  return '';
+  return 'neutral';
 }

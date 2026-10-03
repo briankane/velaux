@@ -26,7 +26,9 @@ import { Link } from 'dva/router';
 import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
 import { FaEllipsisV } from 'react-icons/fa';
 import { BsDatabase } from 'react-icons/bs';
-import { sourcePhaseClass } from '../../pages/ApplicationStatus/components/ApplicationGraph/sources';
+import { StatusBadge } from '../StatusBadge';
+import { DefinitionLine } from './definition-line';
+import { sourcePhaseTone } from '../../pages/ApplicationStatus/components/ApplicationGraph/sources';
 import { flowLabels, flowLine } from '../../pages/ApplicationStatus/components/ApplicationGraph/flows';
 import { BiTransferAlt } from 'react-icons/bi';
 import { HiOutlineNewspaper } from 'react-icons/hi';
@@ -232,30 +234,35 @@ function renderTargetNode(props: TreeGraphProps, id: string, node: GraphNode) {
   );
 }
 
-// renderSourceNode is a spec.sources binding: its name, the SourceDefinition
-// resolving it, and its phase as the node's status.
+// renderSourceNode is a spec.sources binding, drawn like a component: its
+// name and phase, then the SourceDefinition resolving it and its revision.
 function renderSourceNode(props: TreeGraphProps, id: string, node: GraphNode) {
   const source = node.source;
+  const tone = sourcePhaseTone(source?.phase);
   const graphNode = (
     <div
       key={id}
-      className={classNames('graph-node', 'graph-node-source', sourcePhaseClass(source?.phase))}
+      className={classNames('graph-node', 'graph-node-source', 'graph-node-edge', `tone-${tone}`, {
+        'unused-status': source?.phase === 'Unused',
+      })}
       style={{
         left: node.x,
         top: node.y,
         width: node.width,
-        height: node.height,
+        minHeight: node.height,
         transform: `translate(-80px, 0px)`,
       }}
     >
       <div className="icon">
         <BsDatabase />
       </div>
-      <div className={classNames('name')}>
-        <div>{node.resource.name}</div>
-        <div className="kind">
-          {source?.type || 'Source'}
-          {source?.phase && <span className="source-phase"> · {i18n.t(source.phase)}</span>}
+      <div className="component-node-body">
+        <div className="name">
+          <div className="component-node-title">
+            <span className="component-node-name">{node.resource.name}</span>
+            <StatusBadge tone={tone} label={i18n.t(source?.phase || 'Pending')} />
+          </div>
+          <DefinitionLine kind="source" type={source?.type} />
         </div>
       </div>
     </div>

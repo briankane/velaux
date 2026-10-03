@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import {
   placementKey,
   sourceLinks,
-  sourcePhaseClass,
+  sourcePhaseTone,
   sourceReads,
 } from '../../pages/ApplicationStatus/components/ApplicationGraph/sources';
 
@@ -54,9 +54,11 @@ describe('source graph', () => {
     expect(items[1].inferred).to.equal('Read by its labels trait');
   });
 
-  it('marks a failed or stale source', () => {
-    expect(sourcePhaseClass('Failed')).to.equal('error-status');
-    expect(sourcePhaseClass('Stale')).to.equal('warning-status');
-    expect(sourcePhaseClass('Resolved')).to.equal('');
+  it('colours a source by its phase', () => {
+    expect(sourcePhaseTone('Resolved')).to.equal('healthy');
+    expect(sourcePhaseTone('Stale')).to.equal('suspended');
+    expect(sourcePhaseTone('Failed')).to.equal('failed');
+    expect(sourcePhaseTone('Unused')).to.equal('neutral');
+    expect(sourcePhaseTone(undefined)).to.equal('neutral');
   });
 });

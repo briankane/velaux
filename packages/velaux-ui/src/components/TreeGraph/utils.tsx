@@ -123,8 +123,8 @@ export function getNodeSize(node: TreeNode): { width: number; height: number } {
     height = 40;
   }
   if (node.nodeType == 'source') {
-    width = 220;
-    height = 48;
+    width = 280;
+    height = 64;
   }
   if (node.nodeType == 'flow') {
     width = 44;
