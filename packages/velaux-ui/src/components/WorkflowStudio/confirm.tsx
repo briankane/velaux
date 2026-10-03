@@ -4,6 +4,7 @@ import React from 'react';
 import type { WorkflowMode, WorkflowStep } from '@velaux/data';
 
 import i18n from '../../i18n';
+import { locale } from '../../utils/locale';
 import { forwardWaitsIn } from '../PipelineGraph/dependencies';
 
 // confirmOrderedSave saves, after asking first when a step that runs in order
@@ -32,5 +33,6 @@ export function confirmOrderedSave(steps: WorkflowStep[], mode: WorkflowMode, su
       </div>
     ),
     onOk: save,
+    locale: locale().Dialog,
   });
 }
