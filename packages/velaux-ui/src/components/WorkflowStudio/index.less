@@ -25,25 +25,59 @@
     align-items: center;
     justify-content: space-between;
   }
+  // A card's moves and Delete show while it is hovered.
   .studio-step-tools {
     display: inline-flex;
     flex: none;
     gap: 2px;
     align-items: center;
+    opacity: 0;
+    transition: opacity 0.15s linear;
   }
-  .studio-step-add,
-  .studio-step-menu {
+  .studio-step:hover > .studio-step-head > .studio-step-tools,
+  .studio-step.group:hover > .step-group-head > .studio-step-tools {
+    opacity: 1;
+  }
+  .studio-tool {
     display: inline-flex;
-    flex: none;
-    padding: 2px 4px;
+    padding: 2px;
     color: #64748b;
+    font-size: 15px;
     background: none;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    &:hover {
+    &:hover:not(:disabled) {
       color: var(--primary-color);
       background: #e2e8f0;
+    }
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+  }
+  // The + sits on the middle of a card's right edge, above the lines.
+  .studio-step-add {
+    position: absolute;
+    top: 50%;
+    right: -11px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    color: #fff;
+    font-size: 12px;
+    background: #16a34a;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
+    transform: translateY(-50%);
+    cursor: pointer;
+    &:hover {
+      background: #15803d;
     }
   }
   .studio-warning {
@@ -69,6 +103,9 @@
     width: 120px;
   }
   .studio-add-step {
+    svg {
+      color: #16a34a;
+    }
     display: inline-flex;
     gap: 6px;
     align-items: center;
@@ -90,10 +127,29 @@
   }
 }
 
+.studio-add-menu {
+  .next-menu-item-inner {
+    display: flex;
+    align-items: center;
+  }
+  .studio-add-icon {
+    display: inline-flex;
+    width: 16px;
+    margin-right: 8px;
+    color: #16a34a;
+  }
+  .next-disabled .studio-add-icon {
+    color: inherit;
+  }
+}
 .studio-add-note {
   margin-left: 8px;
-  color: #94a3b8;
-  font-size: 11px;
+  padding: 0 5px;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 16px;
+  background: #f1f5f9;
+  border-radius: 8px;
 }
 
 .def-items {

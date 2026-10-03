@@ -1,7 +1,17 @@
 import { Dropdown, Menu, Select } from '@alifd/next';
 import classNames from 'classnames';
 import React from 'react';
-import { BsCollection, BsPlusLg, BsThreeDots } from 'react-icons/bs';
+import {
+  BsArrowLeftShort,
+  BsArrowRepeat,
+  BsArrowRightShort,
+  BsBoxArrowInRight,
+  BsCollection,
+  BsDiagram2,
+  BsPlusLg,
+  BsSquare,
+  BsTrash3,
+} from 'react-icons/bs';
 
 import type { WorkflowMode, WorkflowStep, WorkflowStepBase } from '@velaux/data';
 
@@ -38,72 +48,50 @@ const modeOptions = () => [
 
 const label = (step: { alias?: string; name: string }) => step.alias || step.name;
 
-// StepMenu is a card's Edit and Delete.
-// StepMenu is a card's Edit and Delete and, where steps run in order, its
-// moves, each offered only where it keeps the step after what it waits on.
-const StepMenu = (props: {
-  onEdit: () => void;
+// StepTools are a card's moves (where steps run in order, each offered only
+// where it keeps the step after what it waits on) and Delete, shown on hover.
+const StepTools = (props: {
   onDelete: () => void;
   onMove?: (delta: -1 | 1) => void;
   earlier?: boolean;
   later?: boolean;
-}) => (
-  <Dropdown
-    triggerType="click"
-    trigger={
-      <button
-        type="button"
-        className="studio-step-menu"
-        title={i18n.t('Step actions').toString()}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <BsThreeDots />
-      </button>
-    }
-  >
-    <Menu
-      onItemClick={(key: string) => {
-        if (key === 'delete') {
-          props.onDelete();
-        } else if (key === 'earlier' || key === 'later') {
-          props.onMove && props.onMove(key === 'earlier' ? -1 : 1);
-        } else {
-          props.onEdit();
-        }
+}) => {
+  const tool = (title: string, icon: React.ReactNode, onClick: () => void, disabled?: boolean) => (
+    <button
+      type="button"
+      className="studio-tool"
+      title={i18n.t(title).toString()}
+      disabled={disabled}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
       }}
-      onClick={(event: React.MouseEvent) => event.stopPropagation()}
     >
-      <Menu.Item key="edit">
-        <Translation>Edit</Translation>
-      </Menu.Item>
-      {props.onMove && (
-        <Menu.Item key="earlier" disabled={!props.earlier}>
-          <Translation>Move earlier</Translation>
-        </Menu.Item>
-      )}
-      {props.onMove && (
-        <Menu.Item key="later" disabled={!props.later}>
-          <Translation>Move later</Translation>
-        </Menu.Item>
-      )}
-      <Menu.Item key="delete">
-        <Translation>Delete</Translation>
-      </Menu.Item>
-    </Menu>
-  </Dropdown>
-);
+      {icon}
+    </button>
+  );
+  return (
+    <span className="studio-step-tools">
+      {props.onMove && tool('Move earlier', <BsArrowLeftShort />, () => props.onMove!(-1), !props.earlier)}
+      {props.onMove && tool('Move later', <BsArrowRightShort />, () => props.onMove!(1), !props.later)}
+      {tool('Delete', <BsTrash3 />, props.onDelete)}
+    </span>
+  );
+};
 
-type AddItem = { key: string; label: string; disabled?: boolean; note?: string };
+type AddItem = { key: string; label: string; icon: React.ReactNode; disabled?: boolean; note?: string };
 
-// AddMenu is a + that opens the things that can be added from where it sits.
+// AddMenu opens the things that can be added from where it sits.
 const AddMenu = (props: { items: AddItem[]; onPick: (key: string) => void; children: React.ReactNode }) => (
   <Dropdown triggerType="click" trigger={props.children}>
     <Menu
+      className="studio-add-menu"
       onItemClick={(key: string) => props.onPick(key)}
       onClick={(event: React.MouseEvent) => event.stopPropagation()}
     >
       {props.items.map((item) => (
         <Menu.Item key={item.key} disabled={item.disabled}>
+          <span className="studio-add-icon">{item.icon}</span>
           <Translation>{item.label}</Translation>
           {item.note && (
             <span className="studio-add-note">
@@ -117,9 +105,9 @@ const AddMenu = (props: { items: AddItem[]; onPick: (key: string) => void; child
 );
 
 // StudioGraph draws a workflow's steps for editing, laid out by what they wait
-// on as a run is. In order, a + on each line inserts a step there; in
-// parallel, a + on a card adds a step that waits on it. A group holds its own
-// steps the same way, in its own mode.
+// on as a run is. Each card's + adds after it; clicking a card edits it, and
+// hovering shows its moves and Delete. A group holds its own steps the same
+// way, in its own mode.
 export const StudioGraph = (props: StudioGraphProps) => {
   const { steps, mode, subMode, group, onAdd, onEdit, onDelete, onGroupMode, onMove, onResize } = props;
   const [, setNestedResizes] = React.useState(0);
@@ -128,27 +116,28 @@ export const StudioGraph = (props: StudioGraphProps) => {
   // In order, a step waiting on a later one would wait for ever.
   const forward = mode === 'StepByStep' ? forwardWaits(steps) : [];
   const isForward = (from: string, to: string) => forward.some((f) => f.step === to && f.waitsOn === from);
-  const menu = (step: WorkflowStep, index: number) => (
-    <StepMenu
-      onEdit={() => onEdit(step, group)}
+  const tools = (step: WorkflowStep, index: number) => (
+    <StepTools
       onDelete={() => onDelete(step.name, group)}
       onMove={mode === 'StepByStep' ? (delta) => onMove(step.name, group, delta) : undefined}
       earlier={canMove(steps, index, -1)}
       later={canMove(steps, index, 1)}
     />
   );
-  // afterItems are what can follow a step: in its own list, so no group inside a
-  // group, and a branch only where steps run in parallel.
-  const afterItems: AddItem[] = [
-    { key: 'step', label: 'New step after' },
-    ...(mode === 'DAG' ? [{ key: 'branch', label: 'New branch from here' }] : []),
-    ...(group ? [] : [{ key: 'group', label: 'New group after' }]),
-    { key: 'loop', label: 'New loop after', disabled: true, note: 'Coming soon' },
+  // addItems are what can follow a step in its own list: a branch only where
+  // steps run in parallel, and no group inside a group.
+  const addItems: AddItem[] = [
+    { key: 'step', label: 'New Step', icon: <BsSquare /> },
+    { key: 'branch', label: 'New Branch', icon: <BsDiagram2 />, disabled: mode !== 'DAG' },
+    { key: 'group', label: 'New Group', icon: <BsCollection />, disabled: !!group },
+    { key: 'loop', label: 'New Loop', icon: <BsArrowRepeat />, disabled: true, note: 'Soon' },
   ];
   const addAfter = (step: WorkflowStep) => (
     <AddMenu
       items={
-        step.type === 'step-group' ? [{ key: 'inside', label: 'New step in this group' }, ...afterItems] : afterItems
+        step.type === 'step-group'
+          ? [{ key: 'inside', label: 'Step in Group', icon: <BsBoxArrowInRight /> }, ...addItems]
+          : addItems
       }
       onPick={(key) => {
         if (key === 'inside') {
@@ -161,7 +150,7 @@ export const StudioGraph = (props: StudioGraphProps) => {
       <button
         type="button"
         className="studio-step-add"
-        title={i18n.t('Add').toString()}
+        title={i18n.t('Add after this step').toString()}
         onClick={(event) => event.stopPropagation()}
       >
         <BsPlusLg />
@@ -202,22 +191,14 @@ export const StudioGraph = (props: StudioGraphProps) => {
                       <BsCollection />
                       <Translation>Group</Translation>
                     </span>
-                    <span className="studio-step-tools">
-                      {addAfter(step)}
-                      {menu(step, index)}
-                    </span>
+                    {tools(step, index)}
                   </div>
                 )}
                 <div className="studio-step-head">
                   <div className="step-name" title={label(step)}>
                     {label(step)}
                   </div>
-                  {!isGroup && (
-                    <span className="studio-step-tools">
-                      {addAfter(step)}
-                      {menu(step, index)}
-                    </span>
-                  )}
+                  {!isGroup && tools(step, index)}
                 </div>
                 <div className="step-meta">
                   {isGroup ? (
@@ -271,16 +252,13 @@ export const StudioGraph = (props: StudioGraphProps) => {
                   </div>
                 )}
               </div>
+              {addAfter(step)}
             </div>
           );
         })}
       </div>
       <AddMenu
-        items={[
-          { key: 'step', label: 'New step' },
-          ...(group ? [] : [{ key: 'group', label: 'New group' }]),
-          { key: 'loop', label: 'New loop', disabled: true, note: 'Coming soon' },
-        ]}
+        items={addItems.filter((item) => item.key !== 'branch')}
         onPick={(key) => key !== 'loop' && onAdd({ kind: key === 'group' ? 'group' : 'step', group })}
       >
         <button type="button" className="studio-add-step" onClick={(event) => event.stopPropagation()}>
