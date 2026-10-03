@@ -86,3 +86,91 @@ export function groupOpensItself(group: { subSteps?: Array<{ phase?: string }> }
   const attention = ['suspending', 'running', 'executing', 'failed', 'terminated', 'stopped'];
   return (group.subSteps || []).some((s) => !!s.phase && attention.includes(s.phase));
 }
+
+// waitsOn names the steps in the same list a step waits on: those in its
+// dependsOn and those whose outputs feed its inputs.
+function waitsOn(steps: SpecStep[]): Map<string, Set<string>> {
+  const known = new Set(steps.map((s) => s.name));
+  const producer = new Map<string, string>();
+  steps.forEach((s) => (s.outputs || []).forEach((o) => producer.set(o.name, s.name)));
+  const waits = new Map<string, Set<string>>();
+  steps.forEach((s) => {
+    const deps = new Set<string>();
+    (s.dependsOn || []).forEach((d) => deps.add(d));
+    (s.inputs || []).forEach((input) => {
+      const from = producer.get(input.from);
+      if (from) {
+        deps.add(from);
+      }
+    });
+    deps.delete(s.name);
+    waits.set(s.name, new Set(Array.from(deps).filter((d) => known.has(d))));
+  });
+  return waits;
+}
+
+// orderByDependencies orders steps so each comes after every step it waits
+// on, keeping the list order wherever that allows. Steps caught in a cycle
+// keep their list order, after the rest.
+export function orderByDependencies<T extends SpecStep>(steps: T[]): T[] {
+  const waits = waitsOn(steps);
+  const placed = new Set<string>();
+  const ordered: T[] = [];
+  let progress = true;
+  while (progress) {
+    progress = false;
+    const next = steps.find(
+      (s) => !placed.has(s.name) && Array.from(waits.get(s.name) || []).every((d) => placed.has(d))
+    );
+    if (next) {
+      placed.add(next.name);
+      ordered.push(next);
+      progress = true;
+    }
+  }
+  return [...ordered, ...steps.filter((s) => !placed.has(s.name))];
+}
+
+// forwardWaits are the steps that wait on a step listed after them: in order,
+// such a step waits for ever, as the steps run in list order.
+export function forwardWaits(steps: SpecStep[]): Array<{ step: string; waitsOn: string }> {
+  const waits = waitsOn(steps);
+  const index = new Map(steps.map((s, i) => [s.name, i]));
+  const found: Array<{ step: string; waitsOn: string }> = [];
+  steps.forEach((s, i) => {
+    (waits.get(s.name) || new Set<string>()).forEach((d) => {
+      if ((index.get(d) ?? -1) > i) {
+        found.push({ step: s.name, waitsOn: d });
+      }
+    });
+  });
+  return found;
+}
+
+// forwardWaitsIn are a workflow's forward waits: at the top level when its
+// steps run in order, and in each group whose steps do.
+export function forwardWaitsIn(
+  steps: Array<SpecStep & { type?: string; mode?: string; subSteps?: SpecStep[] }>,
+  mode: string,
+  subMode: string
+): Array<{ step: string; waitsOn: string }> {
+  const found = mode === 'StepByStep' ? forwardWaits(steps) : [];
+  steps.forEach((s) => {
+    if (s.type === 'step-group' && groupMode(s.mode, undefined, subMode) === 'StepByStep') {
+      found.push(...forwardWaits(s.subSteps || []));
+    }
+  });
+  return found;
+}
+
+// canMove is whether the step at index can swap places with its neighbour by
+// delta (-1 earlier, 1 later) without coming before a step it waits on.
+export function canMove(steps: SpecStep[], index: number, delta: -1 | 1): boolean {
+  const other = index + delta;
+  if (other < 0 || other >= steps.length) {
+    return false;
+  }
+  const waits = waitsOn(steps);
+  const [first, second] = delta < 0 ? [steps[other], steps[index]] : [steps[index], steps[other]];
+  return !(waits.get(second.name) || new Set<string>()).has(first.name);
+}

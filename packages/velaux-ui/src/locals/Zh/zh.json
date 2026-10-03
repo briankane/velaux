@@ -983,5 +983,13 @@
   "Add a step after this one": "在此步骤之后添加步骤",
   "Add a step": "添加步骤",
   "Add a step to this group": "向此分组添加步骤",
-  "How the steps in this group run": "此分组内步骤的执行方式"
+  "How the steps in this group run": "此分组内步骤的执行方式",
+  "Move earlier": "前移",
+  "Move later": "后移",
+  "Waits on": "等待",
+  "which runs after it, so this run would never finish": "它在此步骤之后执行，因此本次运行永远不会完成",
+  "This run would never finish": "本次运行永远不会完成",
+  "These steps run in order but wait on a step that runs after them": "这些步骤按顺序执行，但等待在其之后执行的步骤",
+  "waits on": "等待",
+  "Save anyway?": "仍要保存吗？"
 }

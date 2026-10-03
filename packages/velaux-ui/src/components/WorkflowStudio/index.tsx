@@ -8,6 +8,7 @@ import type { Dispatch } from 'redux';
 import { WorkflowEditContext } from '../../context';
 import type { DefinitionBase, WorkflowMode, WorkflowStep, WorkflowStepBase } from '@velaux/data';
 
+import { orderByDependencies } from '../PipelineGraph/dependencies';
 import type { AddAt } from './graph';
 import { StudioGraph } from './graph';
 import StepForm from './step-form';
@@ -45,8 +46,24 @@ class WorkflowStudio extends React.Component<Props, State> {
   }
 
   componentDidUpdate(prevProps: Readonly<Props>) {
-    if (prevProps.steps != this.props.steps) {
+    const toOrder = (from?: WorkflowMode, to?: WorkflowMode) => from !== 'StepByStep' && to === 'StepByStep';
+    const ordersTop = toOrder(prevProps.mode, this.props.mode);
+    const ordersGroups = toOrder(prevProps.subMode, this.props.subMode);
+    if (prevProps.steps != this.props.steps && !ordersTop && !ordersGroups) {
       this.setState({ steps: _.cloneDeep(this.props.steps || []) });
+      return;
+    }
+    if (ordersTop || ordersGroups) {
+      // Steps switched to run in order are ordered so none waits on a later one.
+      let steps = ordersTop ? orderByDependencies(this.state.steps) : this.state.steps;
+      if (ordersGroups) {
+        steps = steps.map((s) =>
+          s.type === 'step-group' && !s.mode ? { ...s, subSteps: orderByDependencies(s.subSteps || []) } : s
+        );
+      }
+      if (!_.isEqual(steps, this.state.steps)) {
+        this.setState({ steps }, this.onChange);
+      }
     }
   }
 
@@ -119,7 +136,24 @@ class WorkflowStudio extends React.Component<Props, State> {
   };
 
   onGroupMode = (group: string, mode: WorkflowMode) => {
-    const steps = this.state.steps.map((s) => (s.name === group ? { ...s, mode } : s));
+    const steps = this.state.steps.map((s) =>
+      s.name === group
+        ? { ...s, mode, subSteps: mode === 'StepByStep' ? orderByDependencies(s.subSteps || []) : s.subSteps }
+        : s
+    );
+    this.setState({ steps }, this.onChange);
+  };
+
+  onMove = (name: string, group: string | undefined, delta: -1 | 1) => {
+    const swap = <T extends { name: string }>(list: T[]): T[] => {
+      const i = list.findIndex((s) => s.name === name);
+      const next = [...list];
+      [next[i], next[i + delta]] = [next[i + delta], next[i]];
+      return next;
+    };
+    const steps = group
+      ? this.state.steps.map((s) => (s.name === group ? { ...s, subSteps: swap(s.subSteps || []) } : s))
+      : swap(this.state.steps);
     this.setState({ steps }, this.onChange);
   };
 
@@ -139,6 +173,7 @@ class WorkflowStudio extends React.Component<Props, State> {
                 onEdit={(step, group) => this.setState({ showStep: step, showGroup: group })}
                 onDelete={this.onDeleteStep}
                 onGroupMode={this.onGroupMode}
+                onMove={this.onMove}
               />
             </div>
           </Draggable>

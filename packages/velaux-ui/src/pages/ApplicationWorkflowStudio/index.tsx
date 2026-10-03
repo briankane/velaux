@@ -9,6 +9,7 @@ import Item from '../../components/Item';
 import { Translation } from '../../components/Translation';
 import { WorkflowPrompt } from '../../components/WorkflowPrompt';
 import WorkflowStudio from '../../components/WorkflowStudio';
+import { confirmOrderedSave } from '../../components/WorkflowStudio/confirm';
 import { WorkflowContext } from '../../context';
 import type { WorkflowData } from '../../context/index';
 import { deployNamespaces } from '../../utils/restrictions';
@@ -300,7 +301,12 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
                     dataSource={WorkflowModeOptions}
                   />
                 </Form.Item>
-                <Button disabled={!changed} loading={saveLoading} type="primary" onClick={this.onSave}>
+                <Button
+                  disabled={!changed}
+                  loading={saveLoading}
+                  type="primary"
+                  onClick={() => confirmOrderedSave(this.state.steps || [], mode, subMode, this.onSave)}
+                >
                   <Translation>Save</Translation>
                 </Button>
               </div>

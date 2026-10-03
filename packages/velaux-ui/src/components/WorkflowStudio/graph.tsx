@@ -7,7 +7,7 @@ import type { WorkflowMode, WorkflowStep, WorkflowStepBase } from '@velaux/data'
 
 import i18n from '../../i18n';
 import { locale } from '../../utils/locale';
-import { stepEdges } from '../PipelineGraph/dependencies';
+import { canMove, forwardWaits, stepEdges } from '../PipelineGraph/dependencies';
 import { StepEdges, stepWidth, useStepLayout } from '../PipelineGraph/layout';
 import { Translation } from '../Translation';
 import '../PipelineGraph/index.less';
@@ -27,6 +27,7 @@ type StudioGraphProps = {
   onEdit: (step: WorkflowStepBase, group?: string) => void;
   onDelete: (name: string, group?: string) => void;
   onGroupMode: (group: string, mode: WorkflowMode) => void;
+  onMove: (name: string, group: string | undefined, delta: -1 | 1) => void;
   onResize?: () => void;
 };
 
@@ -38,7 +39,15 @@ const modeOptions = () => [
 const label = (step: { alias?: string; name: string }) => step.alias || step.name;
 
 // StepMenu is a card's Edit and Delete.
-const StepMenu = (props: { onEdit: () => void; onDelete: () => void }) => (
+// StepMenu is a card's Edit and Delete and, where steps run in order, its
+// moves, each offered only where it keeps the step after what it waits on.
+const StepMenu = (props: {
+  onEdit: () => void;
+  onDelete: () => void;
+  onMove?: (delta: -1 | 1) => void;
+  earlier?: boolean;
+  later?: boolean;
+}) => (
   <Dropdown
     triggerType="click"
     trigger={
@@ -53,12 +62,30 @@ const StepMenu = (props: { onEdit: () => void; onDelete: () => void }) => (
     }
   >
     <Menu
-      onItemClick={(key: string) => (key === 'delete' ? props.onDelete() : props.onEdit())}
+      onItemClick={(key: string) => {
+        if (key === 'delete') {
+          props.onDelete();
+        } else if (key === 'earlier' || key === 'later') {
+          props.onMove && props.onMove(key === 'earlier' ? -1 : 1);
+        } else {
+          props.onEdit();
+        }
+      }}
       onClick={(event: React.MouseEvent) => event.stopPropagation()}
     >
       <Menu.Item key="edit">
         <Translation>Edit</Translation>
       </Menu.Item>
+      {props.onMove && (
+        <Menu.Item key="earlier" disabled={!props.earlier}>
+          <Translation>Move earlier</Translation>
+        </Menu.Item>
+      )}
+      {props.onMove && (
+        <Menu.Item key="later" disabled={!props.later}>
+          <Translation>Move later</Translation>
+        </Menu.Item>
+      )}
       <Menu.Item key="delete">
         <Translation>Delete</Translation>
       </Menu.Item>
@@ -86,10 +113,22 @@ const AddButton = (props: { title: string; style?: React.CSSProperties; onClick:
 // parallel, a + on a card adds a step that waits on it. A group holds its own
 // steps the same way, in its own mode.
 export const StudioGraph = (props: StudioGraphProps) => {
-  const { steps, mode, subMode, group, onAdd, onEdit, onDelete, onGroupMode, onResize } = props;
+  const { steps, mode, subMode, group, onAdd, onEdit, onDelete, onGroupMode, onMove, onResize } = props;
   const [, setNestedResizes] = React.useState(0);
   const nestedResized = React.useCallback(() => setNestedResizes((n) => n + 1), []);
   const edges = stepEdges(steps, steps, mode);
+  // In order, a step waiting on a later one would wait for ever.
+  const forward = mode === 'StepByStep' ? forwardWaits(steps) : [];
+  const isForward = (from: string, to: string) => forward.some((f) => f.step === to && f.waitsOn === from);
+  const menu = (step: WorkflowStep, index: number) => (
+    <StepMenu
+      onEdit={() => onEdit(step, group)}
+      onDelete={() => onDelete(step.name, group)}
+      onMove={mode === 'StepByStep' ? (delta) => onMove(step.name, group, delta) : undefined}
+      earlier={canMove(steps, index, -1)}
+      later={canMove(steps, index, 1)}
+    />
+  );
   const layout = useStepLayout(
     steps.map((s) => s.name),
     edges,
@@ -99,8 +138,12 @@ export const StudioGraph = (props: StudioGraphProps) => {
   return (
     <div className="studio-graph">
       <div ref={layout.container} className="run-graph" style={layout.size}>
-        <StepEdges layout={layout} edges={edges} className={() => 'workflow-connector reached'} />
-        {steps.map((step) => {
+        <StepEdges
+          layout={layout}
+          edges={edges}
+          className={(e) => (isForward(e.from, e.to) ? 'workflow-connector forward' : 'workflow-connector reached')}
+        />
+        {steps.map((step, index) => {
           const isGroup = step.type === 'step-group';
           const ownMode: WorkflowMode = (step.mode as WorkflowMode) || subMode;
           return (
@@ -119,16 +162,14 @@ export const StudioGraph = (props: StudioGraphProps) => {
                       <BsCollection />
                       <Translation>Group</Translation>
                     </span>
-                    <StepMenu onEdit={() => onEdit(step, group)} onDelete={() => onDelete(step.name, group)} />
+                    {menu(step, index)}
                   </div>
                 )}
                 <div className="studio-step-head">
                   <div className="step-name" title={label(step)}>
                     {label(step)}
                   </div>
-                  {!isGroup && (
-                    <StepMenu onEdit={() => onEdit(step, group)} onDelete={() => onDelete(step.name, group)} />
-                  )}
+                  {!isGroup && menu(step, index)}
                 </div>
                 <div className="step-meta">
                   {isGroup ? (
@@ -151,6 +192,15 @@ export const StudioGraph = (props: StudioGraphProps) => {
                     <span className="step-type">{step.type}</span>
                   )}
                 </div>
+                {forward
+                  .filter((f) => f.step === step.name)
+                  .map((f) => (
+                    <div key={f.waitsOn} className="studio-warning">
+                      {i18n.t('Waits on').toString()}{' '}
+                      {label(steps.find((x) => x.name === f.waitsOn) || { name: f.waitsOn })},{' '}
+                      {i18n.t('which runs after it, so this run would never finish').toString()}
+                    </div>
+                  ))}
                 {!isGroup && step.description && (
                   <div className="step-caption" title={step.description}>
                     {step.description}
@@ -167,6 +217,7 @@ export const StudioGraph = (props: StudioGraphProps) => {
                       onEdit={onEdit}
                       onDelete={onDelete}
                       onGroupMode={onGroupMode}
+                      onMove={onMove}
                       onResize={nestedResized}
                     />
                   </div>

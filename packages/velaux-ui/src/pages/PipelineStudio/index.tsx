@@ -15,6 +15,7 @@ import RunPipeline from '../../components/RunPipeline';
 import { Translation } from '../../components/Translation';
 import { WorkflowPrompt } from '../../components/WorkflowPrompt';
 import WorkflowStudio from '../../components/WorkflowStudio';
+import { confirmOrderedSave } from '../../components/WorkflowStudio/confirm';
 import { WorkflowYAML } from '../../components/WorkflowYAML';
 import { WorkflowContext } from '../../context';
 import i18n from '../../i18n';
@@ -137,7 +138,7 @@ class PipelineStudio extends React.Component<Props, State> {
   };
 
   render() {
-    const { pipeline, definitions, changed, saveLoading, mode, subMode, editMode, showRunPipeline } = this.state;
+    const { pipeline, definitions, changed, saveLoading, mode, subMode, editMode, showRunPipeline, steps } = this.state;
     const { dispatch } = this.props;
     const {
       params: { projectName },
@@ -241,7 +242,12 @@ class PipelineStudio extends React.Component<Props, State> {
                     dataSource={WorkflowModeOptions}
                   />
                 </Form.Item>
-                <Button disabled={!changed} loading={saveLoading} type="primary" onClick={this.onSave}>
+                <Button
+                  disabled={!changed}
+                  loading={saveLoading}
+                  type="primary"
+                  onClick={() => confirmOrderedSave(this.state.steps || [], mode, subMode, this.onSave)}
+                >
                   <Translation>Save</Translation>
                 </Button>
               </Col>
@@ -266,7 +272,7 @@ class PipelineStudio extends React.Component<Props, State> {
                 mode={mode}
                 subMode={subMode}
                 definitions={definitions}
-                steps={_.cloneDeep(pipeline.spec.steps)}
+                steps={steps || pipeline.spec.steps}
                 onChange={this.onChange}
               />
             </WorkflowContext.Provider>

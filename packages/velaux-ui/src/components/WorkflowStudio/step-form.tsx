@@ -109,14 +109,11 @@ class StepForm extends Component<Props, State> {
     const { init } = this.field;
     const { Row, Col } = Grid;
     const FormItem = Form.Item;
-    const { onClose, isSubStep } = this.props;
+    const { onClose } = this.props;
     const { definitionDetail, propertiesMode } = this.state;
     const validator = (rule: Rule, value: any, callback: (error?: string) => void) => {
       this.uiSchemaRef.current?.validate(callback);
     };
-
-    const { workflow } = this.context;
-    const mode = isSubStep ? workflow.subMode : workflow.mode;
 
     const groupStep = this.field.getValue('type') == 'step-group';
     return (
@@ -200,15 +197,13 @@ class StepForm extends Component<Props, State> {
             hasToggleIcon
             required
           >
-            {mode === 'DAG' && (
-              <Row>
-                <Col span={24} style={{ padding: '0 8px' }}>
-                  <Form.Item label={<Translation>DependsOn</Translation>}>
-                    <StepSelect disabled={false} {...init('dependsOn')} />
-                  </Form.Item>
-                </Col>
-              </Row>
-            )}
+            <Row>
+              <Col span={24} style={{ padding: '0 8px' }}>
+                <Form.Item label={<Translation>DependsOn</Translation>}>
+                  <StepSelect disabled={false} {...init('dependsOn')} />
+                </Form.Item>
+              </Col>
+            </Row>
             <Row wrap>
               <Col span={24} style={{ padding: '0 8px' }}>
                 <FormItem
