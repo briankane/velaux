@@ -33,9 +33,11 @@ export interface RouteOptions {
   leadIn: number;
   // stub is how far above or below a box a spilled port's edge turns.
   stub: number;
+  // minRun is the shortest run between two turns.
+  minRun: number;
 }
 
-export const routeDefaults: RouteOptions = { spacing: 8, leadOut: 10, leadIn: 18, stub: 10 };
+export const routeDefaults: RouteOptions = { spacing: 8, leadOut: 14, leadIn: 18, stub: 14, minRun: 14 };
 
 // Port is where an edge meets a box: the points from the box's side to where
 // the edge runs level, and that height.
@@ -182,6 +184,7 @@ export function routeEdges(
     return given.length === skipped ? given : new Array(skipped).fill(centreY(byKey.get(e.from)!.box));
   };
 
+  const siblings = new Map<string, { outs: Port[]; ins: Port[] }>();
   const outPorts = new Map<string, Port>();
   const inPorts = new Map<string, Port>();
   nodes.forEach((n) => {
@@ -192,8 +195,52 @@ export function routeEdges(
       const passes = passesOf(e);
       return passes[passes.length - 1] ?? centreY(byKey.get(e.from)!.box);
     });
-    sidePorts(n.box, heading, true, o).forEach((p, i) => outPorts.set(outs[i].key, p));
-    sidePorts(n.box, coming, false, o).forEach((p, i) => inPorts.set(ins[i].key, p));
+    const outSide = sidePorts(n.box, heading, true, o);
+    const inSide = sidePorts(n.box, coming, false, o);
+    outSide.forEach((p, i) => outPorts.set(outs[i].key, p));
+    inSide.forEach((p, i) => inPorts.set(ins[i].key, p));
+    siblings.set(n.key, { outs: outSide, ins: inSide });
+  });
+
+  // A step between a port and where its edge next runs level, too short to
+  // turn twice in, is straightened: a port on a side moves level with the
+  // run, if that height is on the side, clear of its other ports, and passes
+  // none of them.
+  const levelWith = (port: Port, y: number, b: Box, others: Port[]): boolean => {
+    if (port.points.length !== 1 || y < b.top + o.spacing / 2 || y > b.top + b.height - o.spacing / 2) {
+      return false;
+    }
+    const [lo, hi] = [Math.min(port.level, y), Math.max(port.level, y)];
+    const blocked = others.some(
+      (other) => other !== port && (Math.abs(other.level - y) < o.spacing || (other.level > lo && other.level < hi))
+    );
+    if (blocked) {
+      return false;
+    }
+    port.points = [{ x: port.points[0].x, y }];
+    port.level = y;
+    return true;
+  };
+  const tooShort = (a: number, b: number) => a !== b && Math.abs(a - b) < o.minRun;
+  forward.forEach((e) => {
+    const out = outPorts.get(e.key)!;
+    const into = inPorts.get(e.key)!;
+    const from = byKey.get(e.from)!;
+    const to = byKey.get(e.to)!;
+    const passes = passesOf(e);
+    if (passes.length === 0) {
+      if (tooShort(out.level, into.level)) {
+        levelWith(into, out.level, to.box, siblings.get(e.to)!.ins) ||
+          levelWith(out, into.level, from.box, siblings.get(e.from)!.outs);
+      }
+      return;
+    }
+    if (tooShort(out.level, passes[0])) {
+      levelWith(out, passes[0], from.box, siblings.get(e.from)!.outs);
+    }
+    if (tooShort(passes[passes.length - 1], into.level)) {
+      levelWith(into, passes[passes.length - 1], to.box, siblings.get(e.to)!.ins);
+    }
   });
 
   const plans: Plan[] = forward.map((edge) => {

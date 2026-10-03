@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 
 import type { Point, RouteEdge, RouteNode } from '../../components/TreeGraph/orthogonal';
-import { lanesNeeded, orthoPath, routeEdges } from '../../components/TreeGraph/orthogonal';
+import { lanesNeeded, orthoPath, routeDefaults, routeEdges } from '../../components/TreeGraph/orthogonal';
 
 const box = (left: number, top: number, width = 100, height = 40) => ({ left, top, width, height });
 
@@ -46,7 +46,41 @@ function noOverlaps(routes: Record<string, Point[]>): boolean {
   return true;
 }
 
+// shortestTurn is the shortest run between two turns: every run but a route's
+// first and last, which meet a box.
+function shortestTurn(routes: Record<string, Point[]>): number {
+  let least = Infinity;
+  Object.values(routes).forEach((r) =>
+    segments(r)
+      .slice(1, -1)
+      .forEach(([a, b]) => (least = Math.min(least, Math.abs(a.x - b.x) + Math.abs(a.y - b.y))))
+  );
+  return least;
+}
+
 describe('orthogonal edge routing', () => {
+  it('straightens a step too short to turn twice in, moving a port level with the other', () => {
+    const nodes: RouteNode[] = [
+      { key: 'a', box: box(0, 0), column: 0 },
+      { key: 'b', box: box(200, 6), column: 1 },
+    ];
+    const routes = routeEdges(nodes, [{ key: 'ab', from: 'a', to: 'b' }]);
+    expect(routes.ab).to.deep.equal([
+      { x: 100, y: 20 },
+      { x: 200, y: 20 },
+    ]);
+  });
+
+  it('runs at least the minimum between any two turns', () => {
+    const nodes: RouteNode[] = [{ key: 'rs', box: box(0, 300, 100, 40), column: 0 }];
+    const edges: RouteEdge[] = [];
+    for (let i = 0; i < 8; i++) {
+      nodes.push({ key: `pod${i}`, box: box(200, i * 90 + 3), column: 1 });
+      edges.push({ key: `e${i}`, from: 'rs', to: `pod${i}` });
+    }
+    expect(shortestTurn(routeEdges(nodes, edges))).to.be.at.least(routeDefaults.minRun);
+  });
+
   it("runs out of the source's right side, turns in the gap, and into the target's left side", () => {
     const nodes: RouteNode[] = [
       { key: 'a', box: box(0, 0), column: 0 },
