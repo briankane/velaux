@@ -60,23 +60,31 @@ function CollapsibleSection(props: TooltipSection) {
 const kstatusDocs = 'https://github.com/kubernetes-sigs/cli-utils/blob/master/pkg/kstatus/README.md';
 
 // HealthSource shows a health badge and, where VelaUX read the health with
-// kstatus, says so on hover with a link to the project.
+// kstatus, a small circled k after it whose hover says so, with a link to the
+// project.
 const HealthSource = (props: { source?: 'kstatus'; children: React.ReactNode }) => {
   if (props.source !== 'kstatus') {
     return <>{props.children}</>;
   }
   return (
-    <Balloon
-      trigger={<span className="status-tooltip-health-source">{props.children}</span>}
-      closable={false}
-      align="t"
-      popupClassName="status-tooltip-source-popup"
-    >
-      <Translation>Based on</Translation>{' '}
-      <a href={kstatusDocs} target="_blank" rel="noopener noreferrer">
-        kstatus
-      </a>
-    </Balloon>
+    <span className="status-tooltip-health-source">
+      {props.children}
+      <Balloon
+        trigger={
+          <span className="status-tooltip-source-mark" aria-label="kstatus">
+            k
+          </span>
+        }
+        closable={false}
+        align="t"
+        popupClassName="status-tooltip-source-popup"
+      >
+        <Translation>Based on</Translation>{' '}
+        <a href={kstatusDocs} target="_blank" rel="noopener noreferrer">
+          kstatus
+        </a>
+      </Balloon>
+    </span>
   );
 };
 
