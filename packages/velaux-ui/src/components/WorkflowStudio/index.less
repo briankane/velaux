@@ -258,6 +258,39 @@
       border: 1px dashed #16a34a;
     }
   }
+  // A group in the preview: a larger box with its tag and two small steps.
+  .pv-group {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 130px;
+    padding: 4px 8px 6px;
+    line-height: 16px;
+    .pv-group-tag {
+      display: inline-flex;
+      gap: 3px;
+      align-items: center;
+      color: #16a34a;
+      font-weight: 600;
+      font-size: 9px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .pv-subs {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-top: 2px;
+    }
+    .pv-sub {
+      width: 80%;
+      height: 9px;
+      background: #fff;
+      border: 1px solid #86efac;
+      border-left: 2px solid #16a34a;
+      border-radius: 2px;
+    }
+  }
   .pv-more {
     color: #64748b;
     font-size: 11px;

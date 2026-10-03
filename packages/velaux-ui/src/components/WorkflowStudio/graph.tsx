@@ -137,8 +137,9 @@ const AddMenu = (props: {
 };
 
 // PreviewTree draws a small tree: root, then each node as a chip, a node's
-// children nested under it; added marks the chip that would be new.
-type PreviewNode = { label: string; added?: boolean; children?: PreviewNode[] };
+// children nested under it; added marks the chip that would be new, and a
+// group is drawn as a box holding a couple of small steps.
+type PreviewNode = { label: string; added?: boolean; group?: boolean; children?: PreviewNode[] };
 const PreviewTree = (props: { root: string; nodes: PreviewNode[]; caption: string }) => {
   const shown = (nodes: PreviewNode[]) => {
     const limit = 4;
@@ -147,9 +148,23 @@ const PreviewTree = (props: { root: string; nodes: PreviewNode[]; caption: strin
       <ul className="pv-tree">
         {nodes.slice(0, limit).map((n) => (
           <li key={n.label}>
-            <span className={classNames('pv-chip', { added: n.added })}>
-              <Translation>{n.label}</Translation>
-            </span>
+            {n.group ? (
+              <span className={classNames('pv-chip', 'pv-group', { added: n.added })}>
+                <span className="pv-group-tag">
+                  <BsCollection />
+                  <Translation>Group</Translation>
+                </span>
+                <Translation>{n.label}</Translation>
+                <span className="pv-subs">
+                  <span className="pv-sub" />
+                  <span className="pv-sub" />
+                </span>
+              </span>
+            ) : (
+              <span className={classNames('pv-chip', { added: n.added })}>
+                <Translation>{n.label}</Translation>
+              </span>
+            )}
             {n.children && n.children.length > 0 && shown(n.children)}
           </li>
         ))}
@@ -209,6 +224,7 @@ export const StudioGraph = (props: StudioGraphProps) => {
     const added: PreviewNode = {
       label: key === 'group' ? 'New group' : 'New step',
       added: true,
+      group: key === 'group',
       children: moved.map((n) => ({ label: labelOf(n) })),
     };
     const kept = stay.map((n) => ({ label: labelOf(n) }));
