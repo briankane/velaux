@@ -20,7 +20,9 @@ import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 import { clusterTooltip, resourceTooltip, sourceTooltip, targetTooltip } from './tooltip';
 import { treeNodeKey, getNodeSize, ResourceIcon } from './utils';
 import type { Rect } from './layout';
-import { edgeOffset, flowPath, getGraphSize, innerPoints, placeAt, shiftIntoView, sideRoute } from './layout';
+import { edgeOffset, getGraphSize, placeAt, shiftIntoView } from './layout';
+import type { RouteEdge, RouteNode } from './orthogonal';
+import { lanesNeeded, orthoPath, routeDefaults, routeEdges } from './orthogonal';
 
 import { Link } from 'dva/router';
 import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
@@ -374,36 +376,62 @@ export const TreeGraph = (props: TreeGraphProps) => {
     }
   });
 
-  // init the graph
-  const graph = new dagre.graphlib.Graph<GraphNode, GraphEdge>();
-  graph.setGraph({
-    nodesep: props.nodesep,
-    // Room between columns for edges to curve from one row to another.
-    ranksep: 90,
-    rankdir: 'LR',
-  });
-
-  // set node and make layout; links join nodes across the tree once every
-  // node is in it
-  setNode(graph, props.node);
-  setLinks(graph, props.node);
-  dagre.layout(graph);
-  shiftIntoView(
-    graph.nodes().map((id) => graph.node(id)),
-    graph.edges().map((e) => graph.edge(e).points || []),
-    20
-  );
-
-  // An edge leaves the right side of its source's box and enters the left side
-  // of its target's, as drawn once measured, else as laid out. A flow is a
-  // label on its dependency, not a stop: the edges into and out of it are
-  // drawn as one, through its centre.
-  const route = (e: { v: string; w: string }) =>
-    (graph.edge(e).points || []).map((p) => ({ x: p.x + edgeOffset.x, y: p.y + edgeOffset.y }));
-  const boxOf = (key: string): Rect => {
-    const { left, top, width, height, minHeight } = placeAt(graph.node(key));
-    return rects[key] || { left, top, width, height: height ?? minHeight ?? 0 };
+  // layOut places every node in columns, left to right, with the given gap
+  // between columns.
+  const layOut = (ranksep: number) => {
+    const laid = new dagre.graphlib.Graph<GraphNode, GraphEdge>();
+    laid.setGraph({ nodesep: props.nodesep, ranksep, rankdir: 'LR' });
+    // links join nodes across the tree once every node is in it
+    setNode(laid, props.node);
+    setLinks(laid, props.node);
+    dagre.layout(laid);
+    shiftIntoView(
+      laid.nodes().map((id) => laid.node(id)),
+      laid.edges().map((e) => laid.edge(e).points || []),
+      20
+    );
+    return laid;
   };
+
+  // routing is what the edge router needs from a layout: every node's box, as
+  // drawn once measured, else as laid out, and its column; and every edge, with
+  // the heights the layout kept for it across the columns it skips.
+  const routing = (laid: dagre.graphlib.Graph<GraphNode, GraphEdge>) => {
+    const centres = Array.from(new Set(laid.nodes().map((k) => Math.round(laid.node(k).x)))).sort((x, y) => x - y);
+    const columnOf = (key: string) => centres.indexOf(Math.round(laid.node(key).x));
+    const nodes: RouteNode[] = laid.nodes().map((key) => {
+      const { left, top, width, height, minHeight } = placeAt(laid.node(key));
+      return { key, column: columnOf(key), box: rects[key] || { left, top, width, height: height ?? minHeight ?? 0 } };
+    });
+    const edges: RouteEdge[] = laid.edges().map((e) => {
+      const points = laid.edge(e).points || [];
+      const passes: number[] = [];
+      for (let c = columnOf(e.v) + 1; c < columnOf(e.w); c++) {
+        const nearest = points.reduce((best, p) =>
+          Math.abs(p.x - centres[c]) < Math.abs(best.x - centres[c]) ? p : best
+        );
+        passes.push(nearest.y + edgeOffset.y);
+      }
+      return { key: `${e.v}->${e.w}`, from: e.v, to: e.w, passes };
+    });
+    return { nodes, edges };
+  };
+
+  // The gap between columns holds a lane for each edge crossing it, with room
+  // to leave one column and reach the next.
+  const leastGap = 90;
+  let graph = layOut(leastGap);
+  let routed = routing(graph);
+  const gap =
+    routeDefaults.leadOut + routeDefaults.leadIn + routeDefaults.spacing * 2 * lanesNeeded(routed.nodes, routed.edges);
+  if (gap > leastGap) {
+    graph = layOut(gap);
+    routed = routing(graph);
+  }
+  const routes = routeEdges(routed.nodes, routed.edges);
+
+  // A flow is a label on its dependency, not a stop: the edges into and out of
+  // it are drawn as one, straight through it.
   const flowAt = (key: string) => (graph.node(key)?.nodeType === 'flow' ? graph.node(key) : undefined);
   const edges: Array<{ key: string; path: string; link?: boolean }> = [];
   graph.edges().forEach((edgeInfo) => {
@@ -411,20 +439,16 @@ export const TreeGraph = (props: TreeGraphProps) => {
       return;
     }
     const flow = flowAt(edgeInfo.v);
-    const routes: Array<{ from: string; through: Array<{ x: number; y: number }> }> = flow
+    const legs = flow
       ? ((graph.inEdges(edgeInfo.v) || []) as unknown as Array<{ v: string; w: string }>).map((into) => ({
           from: into.v,
-          through: [
-            ...innerPoints(route(into)),
-            { x: flow.x + edgeOffset.x, y: flow.y + edgeOffset.y },
-            ...innerPoints(route(edgeInfo)),
-          ],
+          points: [...(routes[`${into.v}->${into.w}`] || []), ...(routes[`${edgeInfo.v}->${edgeInfo.w}`] || [])],
         }))
-      : [{ from: edgeInfo.v, through: innerPoints(route(edgeInfo)) }];
-    routes.forEach(({ from, through }) => {
+      : [{ from: edgeInfo.v, points: routes[`${edgeInfo.v}->${edgeInfo.w}`] || [] }];
+    legs.forEach(({ from, points }) => {
       edges.push({
         key: `${from}-${edgeInfo.v}-${edgeInfo.w}`,
-        path: flowPath(sideRoute(boxOf(from), boxOf(edgeInfo.w), through)),
+        path: orthoPath(points, 6),
         link: !!graph.edge(edgeInfo).link && flow?.flow?.via !== 'dependsOn',
       });
     });

@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { flowPath, getGraphSize, innerPoints, shiftIntoView, sideRoute } from '../../components/TreeGraph/layout';
+import { getGraphSize, shiftIntoView } from '../../components/TreeGraph/layout';
 
 describe('graph size', () => {
   it('reaches the right and bottom edges of the furthest nodes', () => {
@@ -36,67 +36,5 @@ describe('shiftIntoView', () => {
     shiftIntoView(nodes, [points], 20);
     expect(nodes[0]).to.deep.equal({ x: 10, y: 37, width: 100, height: 40 });
     expect(points[0]).to.deep.equal({ x: 60, y: 37 });
-  });
-});
-
-describe('innerPoints', () => {
-  it('drops the one midpoint a route between neighbouring columns has', () => {
-    expect(
-      innerPoints([
-        { x: 50, y: 40 },
-        { x: 200, y: 120 },
-        { x: 350, y: 200 },
-      ])
-    ).to.deep.equal([]);
-  });
-  it('keeps the inner points of a route long enough to pass other columns', () => {
-    expect(
-      innerPoints([
-        { x: 50, y: 20 },
-        { x: 150, y: 100 },
-        { x: 250, y: 100 },
-        { x: 350, y: 230 },
-      ])
-    ).to.deep.equal([
-      { x: 150, y: 100 },
-      { x: 250, y: 100 },
-    ]);
-  });
-});
-
-describe('sideRoute', () => {
-  it("runs from the source's right middle, through the inner points, to the target's left middle", () => {
-    expect(
-      sideRoute({ left: 0, top: 0, width: 100, height: 40 }, { left: 300, top: 200, width: 100, height: 60 }, [
-        { x: 200, y: 100 },
-      ])
-    ).to.deep.equal([
-      { x: 100, y: 20 },
-      { x: 200, y: 100 },
-      { x: 300, y: 230 },
-    ]);
-  });
-});
-
-describe('flowPath', () => {
-  it('curves between two points, level where it leaves and where it arrives', () => {
-    expect(
-      flowPath([
-        { x: 0, y: 0 },
-        { x: 100, y: 50 },
-      ])
-    ).to.equal('M 0 0 C 50 0 50 50 100 50');
-  });
-  it('curves through each inner point in turn', () => {
-    expect(
-      flowPath([
-        { x: 0, y: 0 },
-        { x: 100, y: 50 },
-        { x: 300, y: 50 },
-      ])
-    ).to.equal('M 0 0 C 50 0 50 50 100 50 C 200 50 200 50 300 50');
-  });
-  it('draws nothing for fewer than two points', () => {
-    expect(flowPath([])).to.equal('');
   });
 });
