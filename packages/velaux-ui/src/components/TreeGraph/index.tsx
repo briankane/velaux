@@ -396,10 +396,7 @@ export const TreeGraph = (props: TreeGraphProps) => {
       setRects(measured);
     }
   });
-    if (JSON.stringify(measured) !== JSON.stringify(rects)) {
-      setRects(measured);
-    }
-  });
+
   // init the graph
   const graph = new dagre.graphlib.Graph<GraphNode, GraphEdge>();
   graph.setGraph({
