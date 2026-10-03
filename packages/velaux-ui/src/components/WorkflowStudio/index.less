@@ -59,7 +59,8 @@
     }
   }
   // A card's Inline and Branch sit inside it, stacked on the middle of its
-  // right side, joined by a +. Quiet until the card is hovered.
+  // right side, each a grey circle, with a + just to their left joining them.
+  // Quiet until the card is hovered.
   .studio-add-pair {
     position: absolute;
     top: 50%;
@@ -67,11 +68,8 @@
     z-index: 2;
     display: inline-flex;
     flex-direction: column;
+    gap: 4px;
     align-items: center;
-    width: 24px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
     transform: translateY(-50%);
   }
   .studio-add-half {
@@ -83,9 +81,9 @@
     padding: 0;
     color: #94a3b8;
     font-size: 13px;
-    background: none;
+    background: #f1f5f9;
     border: none;
-    border-radius: 11px;
+    border-radius: 50%;
     cursor: pointer;
     transition:
       color 0.15s linear,
@@ -100,30 +98,28 @@
     }
     &:disabled {
       color: #cbd5e1;
+      background: #f8fafc;
       cursor: default;
     }
   }
   .studio-add-join {
+    position: absolute;
+    top: 50%;
+    left: -13px;
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 14px;
-    height: 14px;
-    margin: -1px 0;
-    color: #fff;
+    color: #94a3b8;
     font-size: 14px;
-    background: #94a3b8;
-    border-radius: 50%;
-    transition: background 0.15s linear;
+    transform: translateY(-50%);
+    transition: color 0.15s linear;
   }
   // A card inside a group lights its own pair, not the group's.
   .workflow-step:hover:not(:has(.workflow-step:hover)) > .studio-add-pair {
-    border-color: #bbf7d0;
-    .studio-add-half:not(:disabled) {
+    .studio-add-half:not(:disabled):not(:hover):not(.open) {
       color: #16a34a;
+      background: #dcfce7;
     }
     .studio-add-join {
-      background: #16a34a;
+      color: #16a34a;
     }
   }
   .studio-warning {
