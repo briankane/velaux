@@ -129,10 +129,12 @@
     }
   }
 
-  // Components carry the same blue edge as sources; an unhealthy one's status
-  // border, below, replaces it.
+  // A component's left edge is its health, in its health badge's colours.
   .graph-node-component {
-    border-left: 3px solid var(--primary-color);
+    border-left: 3px solid #16a34a;
+    &.health-unhealthy {
+      border-left-color: #ea580c;
+    }
   }
 
   .graph-node.error-status {

@@ -62,7 +62,8 @@ export const ComponentNode = (props: ComponentNodeProps) => {
   return (
     <div
       className={classNames('graph-node', 'graph-node-resource', 'graph-node-component', {
-        'warning-status': !node.resource.service?.healthy,
+        'health-healthy': !!node.resource.service?.healthy,
+        'health-unhealthy': !node.resource.service?.healthy,
         'traits-open': hidden.length > 0 && showTrait,
       })}
       style={{
