@@ -234,6 +234,35 @@ describe('backward edges', () => {
       segments(routes['b->a']).forEach((other) => expect(overlapping(one, other)).to.equal(false))
     );
   });
+  it('nests loops into the same step so none crosses another', () => {
+    // cross is whether a horizontal and a vertical run meet inside both.
+    const cross = ([a1, a2]: [Point, Point], [b1, b2]: [Point, Point]) => {
+      const [h, v] =
+        a1.y === a2.y
+          ? [
+              [a1, a2],
+              [b1, b2],
+            ]
+          : [
+              [b1, b2],
+              [a1, a2],
+            ];
+      if (h[0].y !== h[1].y || v[0].x !== v[1].x) {
+        return false;
+      }
+      const inside = (n: number, p: number, q: number) => n > Math.min(p, q) && n < Math.max(p, q);
+      return inside(v[0].x, h[0].x, h[1].x) && inside(h[0].y, v[0].y, v[1].y);
+    };
+    const routes = routeEdges(nodes, [
+      { key: 'c->a', from: 'c', to: 'a' },
+      { key: 'b->a', from: 'b', to: 'a' },
+    ]);
+    segments(routes['c->a']).forEach((one) =>
+      segments(routes['b->a']).forEach((other) =>
+        expect(cross(one, other), `${JSON.stringify(one)} x ${JSON.stringify(other)}`).to.equal(false)
+      )
+    );
+  });
 });
 
 describe('orthoPath', () => {

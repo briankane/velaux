@@ -183,6 +183,9 @@ export function routeEdges(
   const apart = o.spacing * 2;
   const outs = new Map<string, number>();
   const ins = new Map<string, number>();
+  // Loops are laid nearest source first: a farther one runs deeper and wider
+  // round it, so loops nest rather than cross.
+  backward.sort((x, y) => x.a.left - y.a.left || x.b.left - y.b.left);
   backward.forEach((e, i) => {
     const out = outs.get(e.from) || 0;
     const into = ins.get(e.to) || 0;
