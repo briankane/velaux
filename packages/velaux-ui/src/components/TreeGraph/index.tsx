@@ -20,7 +20,7 @@ import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 import { clusterTooltip, resourceTooltip, sourceTooltip, targetTooltip } from './tooltip';
 import { treeNodeKey, getNodeSize, ResourceIcon } from './utils';
 import type { Rect } from './layout';
-import { edgeOffset, edgePath, getGraphSize, joinThrough, placeAt, shiftIntoView, sideRoute } from './layout';
+import { edgeOffset, flowPath, getGraphSize, innerPoints, placeAt, shiftIntoView, sideRoute } from './layout';
 
 import { Link } from 'dva/router';
 import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
@@ -378,6 +378,8 @@ export const TreeGraph = (props: TreeGraphProps) => {
   const graph = new dagre.graphlib.Graph<GraphNode, GraphEdge>();
   graph.setGraph({
     nodesep: props.nodesep,
+    // Room between columns for edges to curve from one row to another.
+    ranksep: 90,
     rankdir: 'LR',
   });
 
@@ -392,12 +394,16 @@ export const TreeGraph = (props: TreeGraphProps) => {
     20
   );
 
-  // An edge runs along the layout's route, from the right side of its source's
-  // box as drawn to the left side of its target's, once they are measured. A flow is a label on its
-  // dependency, not a stop: the edges into and out of it are drawn as one,
-  // through its centre.
+  // An edge leaves the right side of its source's box and enters the left side
+  // of its target's, as drawn once measured, else as laid out. A flow is a
+  // label on its dependency, not a stop: the edges into and out of it are
+  // drawn as one, through its centre.
   const route = (e: { v: string; w: string }) =>
     (graph.edge(e).points || []).map((p) => ({ x: p.x + edgeOffset.x, y: p.y + edgeOffset.y }));
+  const boxOf = (key: string): Rect => {
+    const { left, top, width, height, minHeight } = placeAt(graph.node(key));
+    return rects[key] || { left, top, width, height: height ?? minHeight ?? 0 };
+  };
   const flowAt = (key: string) => (graph.node(key)?.nodeType === 'flow' ? graph.node(key) : undefined);
   const edges: Array<{ key: string; path: string; link?: boolean }> = [];
   graph.edges().forEach((edgeInfo) => {
@@ -405,19 +411,20 @@ export const TreeGraph = (props: TreeGraphProps) => {
       return;
     }
     const flow = flowAt(edgeInfo.v);
-    const routes: Array<{ from: string; points: Array<{ x: number; y: number }> }> = flow
+    const routes: Array<{ from: string; through: Array<{ x: number; y: number }> }> = flow
       ? ((graph.inEdges(edgeInfo.v) || []) as unknown as Array<{ v: string; w: string }>).map((into) => ({
           from: into.v,
-          points: joinThrough(route(into), { x: flow.x + edgeOffset.x, y: flow.y + edgeOffset.y }, route(edgeInfo)),
+          through: [
+            ...innerPoints(route(into)),
+            { x: flow.x + edgeOffset.x, y: flow.y + edgeOffset.y },
+            ...innerPoints(route(edgeInfo)),
+          ],
         }))
-      : [{ from: edgeInfo.v, points: route(edgeInfo) }];
-    routes.forEach(({ from, points }) => {
-      const source = rects[from];
-      const target = rects[edgeInfo.w];
-      const drawn = source && target && points.length >= 2 ? sideRoute(points, source, target, 12) : points;
+      : [{ from: edgeInfo.v, through: innerPoints(route(edgeInfo)) }];
+    routes.forEach(({ from, through }) => {
       edges.push({
         key: `${from}-${edgeInfo.v}-${edgeInfo.w}`,
-        path: edgePath(drawn),
+        path: flowPath(sideRoute(boxOf(from), boxOf(edgeInfo.w), through)),
         link: !!graph.edge(edgeInfo).link && flow?.flow?.via !== 'dependsOn',
       });
     });

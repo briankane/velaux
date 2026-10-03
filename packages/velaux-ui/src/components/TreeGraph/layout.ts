@@ -50,55 +50,8 @@ export function shiftIntoView(
   );
 }
 
-// edgePath is an SVG path through an edge's points, its bends rounded: each
-// inner point is a curve's control, from the middle of the segment before it
-// to the middle of the one after, so the path still ends on the last point.
-export function edgePath(points: Array<{ x: number; y: number }>): string {
-  if (points.length < 2) {
-    return '';
-  }
-  const mid = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
-    x: (a.x + b.x) / 2,
-    y: (a.y + b.y) / 2,
-  });
-  const parts = [`M ${points[0].x} ${points[0].y}`];
-  for (let i = 1; i < points.length - 1; i++) {
-    const before = mid(points[i - 1], points[i]);
-    const after = mid(points[i], points[i + 1]);
-    parts.push(`L ${before.x} ${before.y}`, `Q ${points[i].x} ${points[i].y} ${after.x} ${after.y}`);
-  }
-  const last = points[points.length - 1];
-  parts.push(`L ${last.x} ${last.y}`);
-  return parts.join(' ');
-}
-
 // Rect is a node's box as drawn: its top-left corner and size.
 export type Rect = { left: number; top: number; width: number; height: number };
-
-// joinThrough is one route made of two that meet at a box: the first without
-// its last point and the second without its first, joined at the box's centre.
-export function joinThrough(
-  into: Array<{ x: number; y: number }>,
-  centre: { x: number; y: number },
-  out: Array<{ x: number; y: number }>
-): Array<{ x: number; y: number }> {
-  return [...into.slice(0, -1), centre, ...out.slice(1)];
-}
-
-// sideRoute is an edge's route between two boxes laid out left to right: out
-// of the middle of the source's right side, into the middle of the target's
-// left side, each with a short straight lead, and the layout's inner points
-// between.
-export function sideRoute(
-  points: Array<{ x: number; y: number }>,
-  source: Rect,
-  target: Rect,
-  lead: number
-): Array<{ x: number; y: number }> {
-  const out = { x: source.left + source.width, y: source.top + source.height / 2 };
-  const into = { x: target.left, y: target.top + target.height / 2 };
-  return [out, { x: out.x + lead, y: out.y }, ...points.slice(1, -1), { x: into.x - lead, y: into.y }, into];
-}
 
 // edgeOffset is where the graph draws the layout's origin: room for the app
 // node's badge above and to the left.
@@ -118,4 +71,43 @@ export function placeAt(
     margin: 0,
   };
   return grow ? { ...box, minHeight: node.height } : { ...box, height: node.height };
+}
+
+// innerPoints are the points a route needs between its ends: none for a route
+// between neighbouring columns, whose one midpoint only bends it, and every
+// inner point of a longer one, which keep it clear of the columns it passes.
+export function innerPoints(route: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> {
+  return route.length > 3 ? route.slice(1, -1) : [];
+}
+
+// sideRoute is an edge's route between two boxes laid out left to right: out
+// of the middle of the source's right side, through the given points, into
+// the middle of the target's left side.
+export function sideRoute(
+  source: Rect,
+  target: Rect,
+  through: Array<{ x: number; y: number }>
+): Array<{ x: number; y: number }> {
+  return [
+    { x: source.left + source.width, y: source.top + source.height / 2 },
+    ...through,
+    { x: target.left, y: target.top + target.height / 2 },
+  ];
+}
+
+// flowPath is an SVG path through a route's points, each step a curve that
+// leaves one point level and arrives at the next level, so edges flow left
+// to right.
+export function flowPath(points: Array<{ x: number; y: number }>): string {
+  if (points.length < 2) {
+    return '';
+  }
+  const parts = [`M ${points[0].x} ${points[0].y}`];
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const bend = (b.x - a.x) / 2;
+    parts.push(`C ${a.x + bend} ${a.y} ${b.x - bend} ${b.y} ${b.x} ${b.y}`);
+  }
+  return parts.join(' ');
 }

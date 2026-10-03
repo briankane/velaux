@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { edgePath, getGraphSize, joinThrough, shiftIntoView, sideRoute } from '../../components/TreeGraph/layout';
+import { flowPath, getGraphSize, innerPoints, shiftIntoView, sideRoute } from '../../components/TreeGraph/layout';
 
 describe('graph size', () => {
   it('reaches the right and bottom edges of the furthest nodes', () => {
@@ -39,92 +39,64 @@ describe('shiftIntoView', () => {
   });
 });
 
-describe('edgePath', () => {
-  it('runs straight between two points', () => {
+describe('innerPoints', () => {
+  it('drops the one midpoint a route between neighbouring columns has', () => {
     expect(
-      edgePath([
-        { x: 0, y: 0 },
-        { x: 100, y: 0 },
+      innerPoints([
+        { x: 50, y: 40 },
+        { x: 200, y: 120 },
+        { x: 350, y: 200 },
       ])
-    ).to.equal('M 0 0 L 100 0');
+    ).to.deep.equal([]);
   });
-  it('rounds each bend through its midpoints, ending on the last point', () => {
+  it('keeps the inner points of a route long enough to pass other columns', () => {
     expect(
-      edgePath([
-        { x: 0, y: 0 },
-        { x: 100, y: 0 },
-        { x: 100, y: 100 },
+      innerPoints([
+        { x: 50, y: 20 },
+        { x: 150, y: 100 },
+        { x: 250, y: 100 },
+        { x: 350, y: 230 },
       ])
-    ).to.equal('M 0 0 L 50 0 Q 100 0 100 50 L 100 100');
-  });
-  it('draws nothing for fewer than two points', () => {
-    expect(edgePath([{ x: 1, y: 1 }])).to.equal('');
-    expect(edgePath([])).to.equal('');
-  });
-});
-
-describe('joinThrough', () => {
-  it('runs from the first route through the centre into the second, dropping the ends at the box between', () => {
-    expect(
-      joinThrough(
-        [
-          { x: 0, y: 0 },
-          { x: 40, y: 0 },
-          { x: 90, y: 50 },
-        ],
-        { x: 100, y: 50 },
-        [
-          { x: 110, y: 50 },
-          { x: 200, y: 50 },
-        ]
-      )
     ).to.deep.equal([
-      { x: 0, y: 0 },
-      { x: 40, y: 0 },
-      { x: 100, y: 50 },
-      { x: 200, y: 50 },
+      { x: 150, y: 100 },
+      { x: 250, y: 100 },
     ]);
   });
 });
 
 describe('sideRoute', () => {
-  const source = { left: 0, top: 0, width: 100, height: 40 };
-  const target = { left: 300, top: 200, width: 100, height: 60 };
-  it("leaves the source's right side and enters the target's left side, at their middles", () => {
+  it("runs from the source's right middle, through the inner points, to the target's left middle", () => {
     expect(
-      sideRoute(
-        [
-          { x: 50, y: 40 },
-          { x: 200, y: 120 },
-          { x: 350, y: 200 },
-        ],
-        source,
-        target,
-        12
-      )
+      sideRoute({ left: 0, top: 0, width: 100, height: 40 }, { left: 300, top: 200, width: 100, height: 60 }, [
+        { x: 200, y: 100 },
+      ])
     ).to.deep.equal([
       { x: 100, y: 20 },
-      { x: 112, y: 20 },
-      { x: 200, y: 120 },
-      { x: 288, y: 230 },
+      { x: 200, y: 100 },
       { x: 300, y: 230 },
     ]);
   });
-  it('keeps every inner point of a long route', () => {
-    const route = sideRoute(
-      [
-        { x: 50, y: 20 },
-        { x: 150, y: 100 },
-        { x: 250, y: 100 },
-        { x: 350, y: 230 },
-      ],
-      source,
-      target,
-      12
-    );
-    expect(route.slice(2, 4)).to.deep.equal([
-      { x: 150, y: 100 },
-      { x: 250, y: 100 },
-    ]);
+});
+
+describe('flowPath', () => {
+  it('curves between two points, level where it leaves and where it arrives', () => {
+    expect(
+      flowPath([
+        { x: 0, y: 0 },
+        { x: 100, y: 50 },
+      ])
+    ).to.equal('M 0 0 C 50 0 50 50 100 50');
+  });
+  it('curves through each inner point in turn', () => {
+    expect(
+      flowPath([
+        { x: 0, y: 0 },
+        { x: 100, y: 50 },
+        { x: 300, y: 50 },
+      ])
+    ).to.equal('M 0 0 C 50 0 50 50 100 50 C 200 50 200 50 300 50');
+  });
+  it('draws nothing for fewer than two points', () => {
+    expect(flowPath([])).to.equal('');
   });
 });
