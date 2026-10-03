@@ -38,7 +38,8 @@ import i18n from '../../../../i18n';
 import { convertAny, momentDate, timeDiff } from '../../../../utils/common';
 import { locale } from '../../../../utils/locale';
 import { StatusBadge } from '../../../../components/StatusBadge';
-import { generatedStepProperties, recordStatus } from './status';
+import { generatedStepProperties } from './status';
+import { recordStatus, stepStatus as stepBadge } from '../../../../components/PipelineGraph/status';
 import { HiOutlineRefresh } from 'react-icons/hi';
 import { AiOutlineClose } from 'react-icons/ai';
 
@@ -424,6 +425,7 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
               <PipelineGraph
                 name={`${showRecord?.name}`}
                 zoom={zoom}
+                selected={showDetail ? stepStatus?.id : undefined}
                 onNodeClick={this.onStepClick}
                 steps={showRecord?.steps}
               />
@@ -434,10 +436,7 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
               <div className="wf-step-head">
                 <span className="wf-step-name">{stepStatus?.alias || stepStatus?.name || stepStatus?.id}</span>
                 {stepStatus && (
-                  <StatusBadge
-                    tone={recordStatus(stepStatus.phase).tone}
-                    label={recordStatus(stepStatus.phase).label}
-                  />
+                  <StatusBadge tone={stepBadge(stepStatus).tone} label={stepBadge(stepStatus).label} />
                 )}
                 <Button
                   className="wf-step-close"

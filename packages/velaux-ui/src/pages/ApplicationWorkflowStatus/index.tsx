@@ -24,7 +24,7 @@ import { beautifyTime } from '../../utils/common';
 import { locale } from '../../utils/locale';
 
 import ApplicationWorkflowRecord from './components/WorkflowRecord';
-import { recordStatus } from './components/WorkflowRecord/status';
+import { recordStatus } from '../../components/PipelineGraph/status';
 import './index.less';
 import { LoginUserInfo } from '@velaux/data';
 

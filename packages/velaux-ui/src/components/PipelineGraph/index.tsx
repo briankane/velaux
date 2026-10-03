@@ -5,11 +5,14 @@ import type { WorkflowStepStatus } from '@velaux/data';
 
 import './index.less';
 import { Step } from './components/step';
+import { stepReached } from './status';
 
 type PipelineGraphProps = {
   name?: string;
   steps?: WorkflowStepStatus[];
   zoom: number;
+  // selected is the id of the step whose details are open.
+  selected?: string;
   onNodeClick: (step: WorkflowStepStatus) => void;
 };
 
@@ -22,12 +25,12 @@ class PipelineGraph extends React.Component<PipelineGraphProps, State> {
   constructor(props: PipelineGraphProps) {
     super(props);
     this.state = {
-      stepWidth: 260,
-      stepInterval: 56,
+      stepWidth: 270,
+      stepInterval: 48,
     };
   }
 
-  renderConnector(index: number, total: number, from: string, to: string) {
+  renderConnector(index: number, total: number, from: string, to: string, reached: boolean) {
     const { stepInterval, stepWidth } = this.state;
     const startPoint = stepWidth + (index - 1) * (stepWidth + stepInterval);
     const endPoint = startPoint + stepInterval;
@@ -35,18 +38,18 @@ class PipelineGraph extends React.Component<PipelineGraphProps, State> {
     return (
       <svg key={from + to} className="workflow-connectors" width={width} height={300}>
         <path
-          className="workflow-connector"
+          className={reached ? 'workflow-connector reached' : 'workflow-connector'}
           data-from={'step-' + from}
           data-to={'step-' + to}
           fill="none"
-          d={`M ${startPoint} 38 H ${endPoint}`}
+          d={`M ${startPoint} 40 H ${endPoint}`}
         />
       </svg>
     );
   }
 
   render() {
-    const { steps, zoom, name } = this.props;
+    const { steps, zoom, name, selected } = this.props;
     return (
       <Draggable>
         <div
@@ -59,7 +62,7 @@ class PipelineGraph extends React.Component<PipelineGraphProps, State> {
             steps.length > 1 &&
             steps.map((step, i: number) => {
               if (i < steps.length - 1) {
-                return this.renderConnector(i + 1, steps.length, step.id, steps[i + 1].id);
+                return this.renderConnector(i + 1, steps.length, step.id, steps[i + 1].id, stepReached(steps[i + 1]));
               }
               return;
             })}
@@ -71,6 +74,7 @@ class PipelineGraph extends React.Component<PipelineGraphProps, State> {
                   probeState={this.state}
                   step={step}
                   group={step.type == 'step-group'}
+                  selected={selected}
                   output={i < steps.length - 1}
                   input={i !== 0}
                   onNodeClick={this.props.onNodeClick}

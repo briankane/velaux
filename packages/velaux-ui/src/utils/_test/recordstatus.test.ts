@@ -1,9 +1,7 @@
 import { expect } from 'chai';
 
-import {
-  generatedStepProperties,
-  recordStatus,
-} from '../../pages/ApplicationWorkflowStatus/components/WorkflowRecord/status';
+import { recordStatus } from '../../components/PipelineGraph/status';
+import { generatedStepProperties } from '../../pages/ApplicationWorkflowStatus/components/WorkflowRecord/status';
 
 describe('recordStatus', () => {
   it('gives each phase a badge tone and label', () => {

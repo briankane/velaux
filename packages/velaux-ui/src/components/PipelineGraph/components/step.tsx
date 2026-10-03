@@ -1,11 +1,12 @@
 import classNames from 'classnames';
-import React, { useState } from 'react';
+import React from 'react';
 
 import type { WorkflowStepStatus } from '@velaux/data';
 import { timeDiff } from '../../../utils/common';
-import { If } from '../../If';
+import { StatusBadge } from '../../StatusBadge';
+import { Translation } from '../../Translation';
 
-import { renderStepStatusIcon } from './step-icon';
+import { stepCaption, stepStatus } from '../status';
 
 export interface StepProps {
   step: WorkflowStepStatus;
@@ -16,19 +17,27 @@ export interface StepProps {
     stepInterval: number;
   };
   group: boolean;
+  selected?: string;
   onNodeClick: (step: WorkflowStepStatus) => void;
 }
 
+const label = (step: { alias?: string; name?: string; id?: string }) => step.alias || step.name || step.id;
+
+// Step is a step as a card: name and status, its type, then when it ran or why
+// it failed. A step group lists its sub-steps as rows, each selectable.
 export const Step = (props: StepProps) => {
-  const { step, output, input, onNodeClick, group } = props;
+  const { step, output, input, onNodeClick, group, selected } = props;
   const { stepWidth, stepInterval } = props.probeState;
-  const [isActive, setActive] = useState(false);
+  const status = stepStatus(step);
+  const caption = stepCaption(step);
   return (
     <div
-      className={classNames('step', { active: isActive }, { group: group })}
-      onMouseEnter={() => setActive(true)}
-      onMouseLeave={() => setActive(false)}
-      style={{ marginRight: stepInterval + 'px' }}
+      className={classNames('step', `tone-${status.tone}`, {
+        group: group,
+        selected: !group && selected === step.id,
+        pending: !step.phase,
+      })}
+      style={{ marginRight: stepInterval + 'px', width: stepWidth + 'px' }}
       onClick={(event) => {
         if (!group) {
           onNodeClick(props.step);
@@ -36,42 +45,49 @@ export const Step = (props: StepProps) => {
         }
       }}
     >
-      <If condition={group}>
-        <div className="step-title">{step.name || step.id}</div>
-        <div className="groups" style={{ width: stepWidth + 'px', minHeight: '70px' }}>
-          {step.subSteps?.map((subStep, index) => {
-            return (
-              <div
-                className="step-status"
-                key={'step-' + (subStep.id || subStep.name) + index}
-                onClick={(event) => {
-                  onNodeClick(subStep);
-                  event.stopPropagation();
-                }}
-              >
-                <div>{renderStepStatusIcon(subStep)}</div>
-                <div className="step-name">{subStep.alias || subStep.name || subStep.id}</div>
-                <div>{timeDiff(subStep.firstExecuteTime, subStep.lastExecuteTime)}</div>
-              </div>
-            );
-          })}
+      <div className="step-head">
+        <span className="step-name" title={label(step)}>
+          {label(step)}
+        </span>
+        <StatusBadge tone={status.tone} label={status.label} />
+      </div>
+      <div className="step-type">
+        {step.type}
+        {group && step.subSteps && (
+          <span>
+            {' · '}
+            {step.subSteps.length} <Translation>steps</Translation>
+          </span>
+        )}
+      </div>
+      {!group && caption.text && (
+        <div className={classNames('step-caption', { error: caption.error })} title={caption.text}>
+          {caption.text}
         </div>
-      </If>
-      <If condition={!group}>
-        <div className="groups" style={{ width: stepWidth + 'px' }}>
-          <div className="step-status">
-            <div>{renderStepStatusIcon(step)}</div>
-            <div className="step-name">{step.alias || step.name || step.id}</div>
-            <div className="">{timeDiff(step.firstExecuteTime, step.lastExecuteTime)}</div>
-          </div>
+      )}
+      {group && (
+        <div className="step-subs">
+          {step.subSteps?.map((subStep, index) => (
+            <div
+              className={classNames('step-sub', { selected: selected === subStep.id })}
+              key={'step-' + (subStep.id || subStep.name) + index}
+              title={stepCaption(subStep).text || undefined}
+              onClick={(event) => {
+                onNodeClick(subStep);
+                event.stopPropagation();
+              }}
+            >
+              <span className={`step-sub-dot tone-${stepStatus(subStep).tone}`} title={stepStatus(subStep).label} />
+              <span className="step-sub-name">{label(subStep)}</span>
+              <span className="step-sub-time">
+                {subStep.firstExecuteTime ? timeDiff(subStep.firstExecuteTime, subStep.lastExecuteTime) : '-'}
+              </span>
+            </div>
+          ))}
         </div>
-      </If>
-      <If condition={output}>
-        <div className="workflow-step-port workflow-step-port-output step-circle" />
-      </If>
-      <If condition={input}>
-        <div className="workflow-step-port workflow-step-port-input step-circle" />
-      </If>
+      )}
+      {output && <div className="workflow-step-port workflow-step-port-output" />}
+      {input && <div className="workflow-step-port workflow-step-port-input" />}
     </div>
   );
 };

@@ -963,5 +963,7 @@
   "rows": "行",
   "generated": "生成于",
   "Pick a project in the top bar. Reports run over one project at a time.": "请在顶部栏选择一个项目，报告每次只针对一个项目运行。",
-  "Questions about the picked project, answered from its applications and namespaces.": "关于所选项目的问题，由其应用和命名空间回答。"
+  "Questions about the picked project, answered from its applications and namespaces.": "关于所选项目的问题，由其应用和命名空间回答。",
+  "steps": "个步骤",
+  "Not started": "未开始"
 }
