@@ -293,28 +293,40 @@
   display: contents;
 }
 
-// The component that applied a resource, under its kind.
+// The component that applied a resource, under its kind, with its type or
+// trait beneath.
 .resource-origin {
   display: flex;
   gap: 4px;
-  align-items: center;
+  align-items: flex-start;
   min-width: 0;
   margin-top: 2px;
-  color: #334155;
   font-size: 11px;
   line-height: 16px;
   svg {
     flex: none;
+    margin-top: 2px;
     color: var(--primary-color);
+  }
+  .resource-origin-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
   .resource-origin-component {
     overflow: hidden;
+    color: #334155;
     font-weight: 500;
     white-space: nowrap;
     text-overflow: ellipsis;
   }
   .resource-origin-type {
-    flex: none;
     color: #94a3b8;
+    cursor: help;
   }
+}
+
+// A pod's logs link and ready count, side by side under its name.
+.graph-tree .graph-node-pod .pod-status {
+  gap: 8px;
 }

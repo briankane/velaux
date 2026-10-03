@@ -18,6 +18,7 @@ import { ComponentNode } from './component-node';
 import type { GraphNode, TreeNode, GraphEdge, ResourceOrigin } from './interface';
 import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 import { clusterTooltip, resourceTooltip, sourceTooltip, targetTooltip } from './tooltip';
+import { podTone } from './pods';
 import { treeNodeKey, getNodeSize, ResourceIcon } from './utils';
 import type { Rect } from './layout';
 import { edgeOffset, getGraphSize, placeAt, shiftIntoView } from './layout';
@@ -31,7 +32,7 @@ import { BsBox, BsDatabase } from 'react-icons/bs';
 
 import { splitType } from '../../utils/definitionVersion';
 import { StatusBadge } from '../StatusBadge';
-import { DefinitionLine } from './definition-line';
+import { DefinitionLine, useInUseLabel } from './definition-line';
 import { sourcePhaseTone } from '../../pages/ApplicationStatus/components/ApplicationGraph/sources';
 import { flowLabels, flowLine } from '../../pages/ApplicationStatus/components/ApplicationGraph/flows';
 import { BiTransferAlt } from 'react-icons/bi';
@@ -46,22 +47,26 @@ type TreeGraphProps = {
   onResourceDetailClick: (resource: ResourceTreeNode) => void;
 };
 
-// ResourceOriginLine names the component that applied a resource and its
-// type, or the trait that did.
+// ResourceOriginLine names the component that applied a resource and, under
+// it, the component's type or the trait that applied it; its revision on
+// hover.
 const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => {
-  const type = splitType(origin.type).name;
+  const kind = origin.trait ? 'trait' : 'component';
+  const type = origin.trait || origin.type;
+  const label = useInUseLabel(kind, type);
   return (
-    <div
-      className="resource-origin"
-      title={origin.trait ? `${origin.component}, trait ${origin.trait}` : origin.component}
-    >
+    <div className="resource-origin">
       <BsBox />
-      <span className="resource-origin-component">{origin.component}</span>
-      {origin.trait ? (
-        <span className="resource-origin-type">{origin.trait} trait</span>
-      ) : (
-        type && <span className="resource-origin-type">{type}</span>
-      )}
+      <div className="resource-origin-text">
+        <span className="resource-origin-component" title={origin.component}>
+          {origin.component}
+        </span>
+        {type && (
+          <span className="resource-origin-type" title={label}>
+            {origin.trait ? i18n.t('{{trait}} trait', { trait: origin.trait }) : splitType(type).name}
+          </span>
+        )}
+      </div>
     </div>
   );
 };
@@ -142,13 +147,12 @@ function renderAppNode(props: TreeGraphProps, id: string, node: GraphNode) {
 
 function renderPodNode(props: TreeGraphProps, id: string, node: GraphNode) {
   const { appName, envName } = props;
+  const ready = node.resource.additionalInfo?.Ready;
+  const tone = podTone(ready, node.resource.healthStatus?.statusCode);
   const graphNode = (
     <div
       key={id}
-      className={classNames('graph-node', 'graph-node-pod', {
-        'error-status': node.resource.healthStatus?.statusCode == 'UnHealthy',
-        'warning-status': node.resource.healthStatus?.statusCode == 'Progressing',
-      })}
+      className={classNames('graph-node', 'graph-node-pod', 'graph-node-edge', `tone-${tone}`)}
       style={{
         ...placeAt(node),
       }}
@@ -161,10 +165,11 @@ function renderPodNode(props: TreeGraphProps, id: string, node: GraphNode) {
         <Link to={`/applications/${appName}/envbinding/${envName}/instances?pod=${node.resource.name}`}>
           {node.resource.name}
         </Link>
-        <div className={classNames('actions')}>
+        <div className={classNames('actions', 'pod-status')}>
           <Link to={`/applications/${appName}/envbinding/${envName}/logs?pod=${node.resource.name}`}>
             <HiOutlineNewspaper title={i18n.t('Logger')} />
           </Link>
+          {ready && <StatusBadge tone={tone} label={i18n.t('Ready {{ready}}', { ready })} />}
         </div>
       </div>
       <div className={classNames('actions')}>
@@ -173,11 +178,6 @@ function renderPodNode(props: TreeGraphProps, id: string, node: GraphNode) {
             <Menu.Item onClick={() => props.onResourceDetailClick(node.resource)}>Detail</Menu.Item>
           </Menu>
         </Dropdown>
-      </div>
-      <div className={classNames('additional')}>
-        <Tag size="small" color="orange">
-          Ready: {node.resource.additionalInfo?.Ready}
-        </Tag>
       </div>
     </div>
   );

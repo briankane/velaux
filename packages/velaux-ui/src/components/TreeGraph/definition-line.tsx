@@ -22,27 +22,35 @@ function revisionsFor(kind: string, name: string): Promise<DefinitionRevision[]>
   return revisions;
 }
 
-// DefinitionLine is the definition a node is an instance of, and under it the
-// revision its type resolves to: the latest, or the version it is pinned to.
-export const DefinitionLine = (props: { kind: 'component' | 'source'; type?: string }) => {
-  const { name, version } = splitType(props.type);
+// useInUseLabel is the revision a type resolves to, once its definition's
+// revisions are read: the latest, or the version it is pinned to.
+export function useInUseLabel(kind: 'component' | 'source' | 'trait', type?: string): string {
+  const { name, version } = splitType(type);
   const [revisions, setRevisions] = useState<DefinitionRevision[] | undefined>();
   useEffect(() => {
     let live = true;
     if (name) {
-      revisionsFor(props.kind, name).then((list) => live && setRevisions(list));
+      revisionsFor(kind, name).then((list) => live && setRevisions(list));
     }
     return () => {
       live = false;
     };
-  }, [props.kind, name]);
+  }, [kind, name]);
+  return revisions ? inUseLabel(version, revisions) : version || 'latest';
+}
+
+// DefinitionLine is the definition a node is an instance of, and under it the
+// revision its type resolves to.
+export const DefinitionLine = (props: { kind: 'component' | 'source'; type?: string }) => {
+  const { name } = splitType(props.type);
+  const label = useInUseLabel(props.kind, props.type);
   if (!name) {
     return null;
   }
   return (
     <div className="definition-line">
       <span className="definition-name">{name}</span>
-      <span className="definition-version">{revisions ? inUseLabel(version, revisions) : version || 'latest'}</span>
+      <span className="definition-version">{label}</span>
     </div>
   );
 };
