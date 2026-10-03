@@ -128,7 +128,22 @@
   }
 }
 
+// The add menu grows out of its +, from the left, centred on it.
+@keyframes studio-add-menu-in {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
 .studio-add-menu {
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
+  transform-origin: left center;
+  animation: studio-add-menu-in 0.14s ease-out;
   .next-menu-item-inner {
     display: flex;
     align-items: center;

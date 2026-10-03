@@ -9,7 +9,6 @@ import {
   BsCollection,
   BsDiagram2,
   BsPlusLg,
-  BsSquare,
   BsTrash3,
 } from 'react-icons/bs';
 
@@ -81,10 +80,10 @@ const StepTools = (props: {
 
 type AddItem = { key: string; label: string; icon: React.ReactNode; disabled?: boolean; note?: string };
 
-// AddMenu opens, on hover, the things that can be added from where it sits;
-// clicking its trigger adds a step straight away.
+// AddMenu opens, on hover, the things that can be added from where it sits,
+// beside its trigger and centred on it; clicking the trigger adds a step.
 const AddMenu = (props: { items: AddItem[]; onPick: (key: string) => void; children: React.ReactNode }) => (
-  <Dropdown triggerType="hover" delay={250} trigger={props.children}>
+  <Dropdown triggerType="hover" delay={250} trigger={props.children} align="cl cr" offset={[8, 0]} animation={false}>
     <Menu
       className="studio-add-menu"
       onItemClick={(key: string) => props.onPick(key)}
@@ -128,7 +127,7 @@ export const StudioGraph = (props: StudioGraphProps) => {
   // addItems are what can follow a step in its own list: a branch only where
   // steps run in parallel, and no group inside a group.
   const addItems: AddItem[] = [
-    { key: 'step', label: 'New Step', icon: <BsSquare /> },
+    { key: 'step', label: 'New Step', icon: <BsPlusLg /> },
     { key: 'branch', label: 'New Branch', icon: <BsDiagram2 />, disabled: mode !== 'DAG' },
     { key: 'group', label: 'New Group', icon: <BsCollection />, disabled: !!group },
     { key: 'loop', label: 'New Loop', icon: <BsArrowRepeat />, disabled: true, note: 'Soon' },
