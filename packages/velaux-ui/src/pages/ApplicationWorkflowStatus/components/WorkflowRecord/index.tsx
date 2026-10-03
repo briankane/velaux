@@ -33,6 +33,7 @@ import {
 import Empty from '../../../../components/Empty';
 import { If } from '../../../../components/If';
 import PipelineGraph from '../../../../components/PipelineGraph';
+import { runMode } from '../../../../components/PipelineGraph/dependencies';
 import { Translation } from '../../../../components/Translation';
 import i18n from '../../../../i18n';
 import { convertAny, momentDate, timeDiff } from '../../../../utils/common';
@@ -422,6 +423,8 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
             {showRecord && (
               <PipelineGraph
                 name={`${showRecord?.name}`}
+                spec={workflow?.steps}
+                mode={runMode(showRecord?.mode, workflow?.mode)}
                 zoom={zoom}
                 selected={showDetail ? stepStatus?.id : undefined}
                 actions={this.renderStepActions}

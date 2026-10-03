@@ -1,12 +1,13 @@
-// Steps are cards in one row, joined left to right; a card's left edge and
-// badge are its status, in the badge's tone.
+// Steps are cards laid out by what they wait on, joined left to right; a card's
+// left edge and badge are its status, in the badge's tone.
 .workflow-graph {
   position: relative;
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
   transform-origin: left top;
   cursor: grab;
+
+  .workflow-step {
+    position: absolute;
+  }
 
   .step {
     position: relative;
@@ -135,22 +136,6 @@
     }
   }
 
-  .workflow-step-port {
-    position: absolute;
-    top: 22px;
-    width: 10px;
-    height: 10px;
-    background: #fff;
-    border: 2px solid #cbd5e1;
-    border-radius: 50%;
-  }
-  .workflow-step-port-output {
-    right: -6px;
-  }
-  .workflow-step-port-input {
-    left: -7px;
-  }
-
   .workflow-connectors {
     position: absolute;
     top: 0;
@@ -168,5 +153,8 @@
       stroke: #94a3b8;
       stroke-dasharray: none;
     }
+  }
+  .workflow-connector-head {
+    fill: #94a3b8;
   }
 }

@@ -9,12 +9,7 @@ import { stepCaption, stepStatus } from '../status';
 
 export interface StepProps {
   step: WorkflowStepStatus;
-  output: boolean;
-  input: boolean;
-  probeState: {
-    stepWidth: number;
-    stepInterval: number;
-  };
+  width: number;
   group: boolean;
   selected?: string;
   // actions, where given, are drawn under a step waiting for approval.
@@ -29,14 +24,13 @@ const label = (step: { alias?: string; name?: string; id?: string }) => step.ali
 // Step is a step as a card: name and status, its type, then when it ran or why
 // it failed. A step group lists its sub-steps as rows, each selectable.
 export const Step = (props: StepProps) => {
-  const { step, output, input, onNodeClick, group, selected, actions } = props;
+  const { step, width, onNodeClick, group, selected, actions } = props;
   const waitingActions = (target: WorkflowStepStatus) =>
     actions && waiting(target) ? (
       <div className="step-actions" onClick={(event) => event.stopPropagation()}>
         {actions(target)}
       </div>
     ) : null;
-  const { stepWidth, stepInterval } = props.probeState;
   const status = stepStatus(step);
   const caption = stepCaption(step);
   return (
@@ -46,7 +40,7 @@ export const Step = (props: StepProps) => {
         selected: !group && selected === step.id,
         pending: !step.phase,
       })}
-      style={{ marginRight: stepInterval + 'px', width: stepWidth + 'px' }}
+      style={{ width: width + 'px' }}
       onClick={(event) => {
         if (!group) {
           onNodeClick(props.step);
@@ -71,27 +65,25 @@ export const Step = (props: StepProps) => {
         <div className="step-subs">
           {step.subSteps?.map((subStep, index) => (
             <React.Fragment key={'step-' + (subStep.id || subStep.name) + index}>
-            <div
-              className={classNames('step-sub', { selected: selected === subStep.id })}
-              title={stepCaption(subStep).text || undefined}
-              onClick={(event) => {
-                onNodeClick(subStep);
-                event.stopPropagation();
-              }}
-            >
-              <span className={`step-sub-dot tone-${stepStatus(subStep).tone}`} title={stepStatus(subStep).label} />
-              <span className="step-sub-name">{label(subStep)}</span>
-              <span className="step-sub-time">
-                {subStep.firstExecuteTime ? timeDiff(subStep.firstExecuteTime, subStep.lastExecuteTime) : '-'}
-              </span>
-            </div>
-            {waitingActions(subStep)}
+              <div
+                className={classNames('step-sub', { selected: selected === subStep.id })}
+                title={stepCaption(subStep).text || undefined}
+                onClick={(event) => {
+                  onNodeClick(subStep);
+                  event.stopPropagation();
+                }}
+              >
+                <span className={`step-sub-dot tone-${stepStatus(subStep).tone}`} title={stepStatus(subStep).label} />
+                <span className="step-sub-name">{label(subStep)}</span>
+                <span className="step-sub-time">
+                  {subStep.firstExecuteTime ? timeDiff(subStep.firstExecuteTime, subStep.lastExecuteTime) : '-'}
+                </span>
+              </div>
+              {waitingActions(subStep)}
             </React.Fragment>
           ))}
         </div>
       )}
-      {output && <div className="workflow-step-port workflow-step-port-output" />}
-      {input && <div className="workflow-step-port workflow-step-port-input" />}
     </div>
   );
 };
