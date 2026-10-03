@@ -94,15 +94,27 @@ const AddMenu = (props: {
 }) => {
   const first = props.items.find((item) => !item.disabled)?.key || '';
   const [hovered, setHovered] = React.useState(first);
+  // open marks the trigger while its menu is showing, so it stays lit.
+  const [open, setOpen] = React.useState(false);
+  const trigger = React.isValidElement(props.children)
+    ? React.cloneElement(props.children as React.ReactElement<{ className?: string }>, {
+        className: classNames((props.children as React.ReactElement<{ className?: string }>).props.className, { open }),
+      })
+    : props.children;
   return (
     <Dropdown
       triggerType="hover"
       delay={250}
-      trigger={props.children}
+      trigger={trigger}
       align="cl cr"
       offset={[12, 0]}
       animation={false}
-      onVisibleChange={(visible: boolean) => visible && setHovered(first)}
+      onVisibleChange={(visible: boolean) => {
+        setOpen(visible);
+        if (visible) {
+          setHovered(first);
+        }
+      }}
     >
       <div className="studio-add-menu" onClick={(event: React.MouseEvent) => event.stopPropagation()}>
         <Menu onItemClick={(key: string) => props.onPick(key)}>
