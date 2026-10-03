@@ -3,11 +3,13 @@ import classNames from 'classnames';
 import React, { useState } from 'react';
 
 import type { GraphNode } from './interface';
-import { componentSections, componentSummary, ResourceIcon } from './utils';
+import { componentSections, componentSummary } from './utils';
 import { layoutTraits, maxTraitRows, traitArea } from './traits';
 
 import './component-node.less';
 import type { TraitStatus } from '@velaux/data';
+import { BsBox } from 'react-icons/bs';
+
 import { StatusBadge } from '../StatusBadge';
 import { traitState, traitStateCircle } from '../../utils/status';
 import { traitTooltip } from './tooltip';
@@ -79,7 +81,7 @@ export const ComponentNode = (props: ComponentNodeProps) => {
     >
       {WithBalloon(
         <div className={classNames('icon')}>
-          <ResourceIcon kind={node.resource.component?.componentType.substring(0, 1).toUpperCase() || ''} />
+          <BsBox />
         </div>
       )}
       <div className="component-node-body">
