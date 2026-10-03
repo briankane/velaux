@@ -80,8 +80,8 @@ const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => {
       {hoverCard(
         <div className="resource-origin-row">
           <BsBox />
-          <HealthDot healthy={origin.healthy} />
           <span className="resource-origin-component">{origin.component}</span>
+          <HealthDot healthy={origin.healthy} />
         </div>,
         componentOriginTooltip(origin, componentRevision)
       )}
@@ -90,8 +90,8 @@ const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => {
           <div className="resource-origin-row resource-origin-trait">
             <BsArrowReturnRight className="resource-origin-lead" />
             <BsGearWideConnected />
-            <HealthDot healthy={origin.traitHealthy} pending={origin.traitPending} />
             <span className="resource-origin-type">{origin.trait}</span>
+            <HealthDot healthy={origin.traitHealthy} pending={origin.traitPending} />
           </div>,
           traitOriginTooltip(origin, traitRevision)
         )}
