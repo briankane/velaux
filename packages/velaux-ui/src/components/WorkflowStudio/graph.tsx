@@ -83,7 +83,7 @@ type AddItem = { key: string; label: string; icon: React.ReactNode; disabled?: b
 // AddMenu opens, on hover, the things that can be added from where it sits,
 // beside its trigger and centred on it; clicking the trigger adds a step.
 const AddMenu = (props: { items: AddItem[]; onPick: (key: string) => void; children: React.ReactNode }) => (
-  <Dropdown triggerType="hover" delay={250} trigger={props.children} align="cl cr" offset={[8, 0]} animation={false}>
+  <Dropdown triggerType="hover" delay={250} trigger={props.children} align="cl cr" offset={[12, 0]} animation={false}>
     <Menu
       className="studio-add-menu"
       onItemClick={(key: string) => props.onPick(key)}
