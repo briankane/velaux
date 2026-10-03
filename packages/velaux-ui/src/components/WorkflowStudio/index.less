@@ -15,7 +15,7 @@
   }
   // The right of each card is kept for its +.
   .step.studio-step {
-    padding-right: 52px;
+    padding-right: 58px;
     --tone: var(--primary-color);
     &.group {
       --tone: #94a3b8;
@@ -59,20 +59,28 @@
     }
   }
   // A card's Inline and Branch sit inside it, stacked on the middle of its
-  // right side, each a grey circle, with a + just to their left joining them.
-  // Quiet until the card is hovered.
+  // right side, with a + to their left joining them. One grey shape frames all
+  // three: a capsule round the two, swelling left round the +. Quiet until the
+  // card is hovered.
   .studio-add-pair {
+    --frame: #f1f5f9;
     position: absolute;
     top: 50%;
     right: 8px;
     z-index: 2;
     display: inline-flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
     align-items: center;
+    padding: 3px;
+    background: var(--frame);
+    border-radius: 14px;
     transform: translateY(-50%);
+    transition: background 0.15s linear;
   }
   .studio-add-half {
+    position: relative;
+    z-index: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -81,7 +89,7 @@
     padding: 0;
     color: #94a3b8;
     font-size: 13px;
-    background: #f1f5f9;
+    background: none;
     border: none;
     border-radius: 50%;
     cursor: pointer;
@@ -98,26 +106,31 @@
     }
     &:disabled {
       color: #cbd5e1;
-      background: #f8fafc;
       cursor: default;
     }
   }
   .studio-add-join {
     position: absolute;
     top: 50%;
-    left: -13px;
+    left: -12px;
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
     color: #94a3b8;
-    font-size: 14px;
+    font-size: 15px;
+    background: var(--frame);
+    border-radius: 50%;
     transform: translateY(-50%);
-    transition: color 0.15s linear;
+    transition:
+      color 0.15s linear,
+      background 0.15s linear;
   }
   // A card inside a group lights its own pair, not the group's.
   .workflow-step:hover:not(:has(.workflow-step:hover)) > .studio-add-pair {
-    .studio-add-half:not(:disabled):not(:hover):not(.open) {
-      color: #16a34a;
-      background: #dcfce7;
-    }
+    --frame: #dcfce7;
+    .studio-add-half:not(:disabled):not(:hover):not(.open),
     .studio-add-join {
       color: #16a34a;
     }
