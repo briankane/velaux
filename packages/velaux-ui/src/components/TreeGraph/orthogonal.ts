@@ -179,6 +179,8 @@ export function routeEdges(
   // rises in the gap before its target into the target's left side, each at a
   // spacing of its own so no two share a run.
   const bottom = Math.max(...nodes.map((n) => n.box.top + n.box.height));
+  // Loops sit twice the usual spacing apart: they are drawn bold.
+  const apart = o.spacing * 2;
   const outs = new Map<string, number>();
   const ins = new Map<string, number>();
   backward.forEach((e, i) => {
@@ -186,11 +188,11 @@ export function routeEdges(
     const into = ins.get(e.to) || 0;
     outs.set(e.from, out + 1);
     ins.set(e.to, into + 1);
-    const fromY = e.a.top + e.a.height - o.spacing * (out + 1);
-    const toY = e.b.top + e.b.height - o.spacing * (into + 1);
-    const outX = e.a.left + e.a.width + o.leadOut + o.spacing * i;
-    const inX = e.b.left - o.leadIn - o.spacing * i;
-    const lane = bottom + o.stub + o.spacing * i;
+    const fromY = e.a.top + e.a.height - apart * (out + 1);
+    const toY = e.b.top + e.b.height - apart * (into + 1);
+    const outX = e.a.left + e.a.width + o.leadOut + apart * i;
+    const inX = e.b.left - o.leadIn - apart * i;
+    const lane = bottom + o.stub + apart * i;
     routes[e.key] = [
       { x: e.a.left + e.a.width, y: fromY },
       { x: outX, y: fromY },
