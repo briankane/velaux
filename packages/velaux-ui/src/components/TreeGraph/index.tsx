@@ -371,18 +371,31 @@ export const TreeGraph = (props: TreeGraphProps) => {
   const [rects, setRects] = React.useState<Record<string, Rect>>({});
   const container = React.useRef<HTMLDivElement>(null);
   React.useLayoutEffect(() => {
+    const tree = container.current;
+    if (!tree) {
+      return;
+    }
+    // Boxes are measured as drawn on screen, transforms included, back in the
+    // graph's own units: the graph itself is scaled by the zoom.
+    const origin = tree.getBoundingClientRect();
+    const zoom = props.zoom || 1;
     const measured: Record<string, Rect> = {};
-    container.current?.querySelectorAll<HTMLElement>('[data-node-key]').forEach((wrapper) => {
+    tree.querySelectorAll<HTMLElement>('[data-node-key]').forEach((wrapper) => {
       const box = wrapper.firstElementChild as HTMLElement | null;
       if (box) {
+        const r = box.getBoundingClientRect();
         measured[wrapper.dataset.nodeKey || ''] = {
-          left: box.offsetLeft,
-          top: box.offsetTop,
-          width: box.offsetWidth,
-          height: box.offsetHeight,
+          left: Math.round((r.left - origin.left) / zoom),
+          top: Math.round((r.top - origin.top) / zoom),
+          width: Math.round(r.width / zoom),
+          height: Math.round(r.height / zoom),
         };
       }
     });
+    if (JSON.stringify(measured) !== JSON.stringify(rects)) {
+      setRects(measured);
+    }
+  });
     if (JSON.stringify(measured) !== JSON.stringify(rects)) {
       setRects(measured);
     }
