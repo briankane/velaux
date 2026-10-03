@@ -178,7 +178,7 @@ class ApplicationGraph extends React.Component<Props, State> {
         if (node) {
           if (res.resourceTree) {
             const applied = this.convertNode([res.resourceTree]);
-            applied[0].origin = resourceOrigin(res, this.props.components);
+            applied[0].origin = resourceOrigin(res, this.props.components, this.props.applicationStatus?.services);
             node.leafNodes = (node.leafNodes || []).concat(applied);
           }
         }

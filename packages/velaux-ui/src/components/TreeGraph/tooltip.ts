@@ -87,10 +87,12 @@ export function sourceTooltip(source: ApplicationSourceStatus, elsewhere: Source
 }
 
 // componentOriginTooltip describes the component that deployed a resource:
-// its type, and the revision its definition resolves to.
+// its health, its type, and the revision its definition resolves to.
 export function componentOriginTooltip(origin: ResourceOrigin, revision: string): StatusTooltipProps {
   return {
     title: origin.component,
+    healthy: origin.healthy,
+    message: origin.message,
     summary: summaryEntries([
       ['Type', origin.type ? splitType(origin.type).name : undefined],
       ['Revision', origin.type ? revision : undefined],
@@ -99,11 +101,15 @@ export function componentOriginTooltip(origin: ResourceOrigin, revision: string)
 }
 
 // traitOriginTooltip describes the trait that deployed a resource, on the
-// component it is attached to, with the revision its definition resolves to.
+// component it is attached to: its health, and the revision its definition
+// resolves to.
 export function traitOriginTooltip(origin: ResourceOrigin, revision: string): StatusTooltipProps {
   return {
     title: origin.trait || '',
     on: origin.component,
+    healthy: origin.traitHealthy,
+    pending: origin.traitPending,
+    message: origin.traitMessage,
     summary: summaryEntries([['Revision', revision]]),
   };
 }

@@ -31,4 +31,33 @@ describe('resourceOrigin', () => {
   it('has no origin for a resource no component applied', () => {
     expect(resourceOrigin({ name: 'x', component: '', latest: true }, components)).to.equal(undefined);
   });
+
+  describe('health', () => {
+    const services: any[] = [
+      {
+        name: 'payments-api',
+        namespace: 'shop-prod',
+        cluster: 'local',
+        healthy: true,
+        message: '',
+        traits: [{ type: 'cpuscaler', healthy: false, message: 'no metrics' }],
+      },
+    ];
+    it("carries the component's health, and its trait's", () => {
+      const origin = resourceOrigin(
+        { name: 'hpa', component: 'payments-api', trait: 'cpuscaler', cluster: 'local', latest: true },
+        components,
+        services
+      );
+      expect(origin).to.include({ healthy: true, traitHealthy: false, traitMessage: 'no metrics' });
+    });
+    it('leaves health unknown for a component with no status on that cluster', () => {
+      const origin = resourceOrigin(
+        { name: 'web', component: 'payments-api', cluster: 'eu-1', latest: true },
+        components,
+        services
+      );
+      expect(origin?.healthy).to.equal(undefined);
+    });
+  });
 });

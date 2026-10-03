@@ -39,6 +39,7 @@ import { FaEllipsisV } from 'react-icons/fa';
 import { BsArrowReturnRight, BsBox, BsDatabase, BsGearWideConnected } from 'react-icons/bs';
 
 import { StatusBadge } from '../StatusBadge';
+import { traitState, traitStateCircle } from '../../utils/status';
 import { DefinitionLine, useInUseLabel } from './definition-line';
 import { sourcePhaseTone } from '../../pages/ApplicationStatus/components/ApplicationGraph/sources';
 import { flowLabels, flowLine } from '../../pages/ApplicationStatus/components/ApplicationGraph/flows';
@@ -61,6 +62,13 @@ const hoverCard = (trigger: React.ReactElement, card: StatusTooltipProps) => (
   </Balloon>
 );
 
+// HealthDot is the small status dot a trait chip has, for a health that is
+// reported; nothing where none is.
+const HealthDot = ({ healthy, pending }: { healthy?: boolean; pending?: boolean }) =>
+  healthy === undefined && !pending ? null : (
+    <span className={classNames('circle', traitStateCircle[traitState({ healthy: !!healthy, pending })])} />
+  );
+
 // ResourceOriginLine names the component that applied a resource and, for a
 // resource a trait applied, the trait, leading on from it. Each has a hover
 // card of its own: the component's type and revision, the trait's revision.
@@ -72,6 +80,7 @@ const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => {
       {hoverCard(
         <div className="resource-origin-row">
           <BsBox />
+          <HealthDot healthy={origin.healthy} />
           <span className="resource-origin-component">{origin.component}</span>
         </div>,
         componentOriginTooltip(origin, componentRevision)
@@ -81,6 +90,7 @@ const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => {
           <div className="resource-origin-row resource-origin-trait">
             <BsArrowReturnRight className="resource-origin-lead" />
             <BsGearWideConnected />
+            <HealthDot healthy={origin.traitHealthy} pending={origin.traitPending} />
             <span className="resource-origin-type">{origin.trait}</span>
           </div>,
           traitOriginTooltip(origin, traitRevision)

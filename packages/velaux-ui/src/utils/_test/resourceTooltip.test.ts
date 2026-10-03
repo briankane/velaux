@@ -28,4 +28,13 @@ describe('origin tooltips', () => {
     const props = resourceTooltip({ name: 'storefront-web', kind: 'HorizontalPodAutoscaler' });
     expect(entry(props, 'Component')).to.equal(undefined);
   });
+
+  it("gives each card its own thing's health", () => {
+    const withHealth = { ...origin, healthy: true, traitHealthy: false, traitPending: true, traitMessage: 'waiting' };
+    expect(componentOriginTooltip(withHealth, 'v5').healthy).to.equal(true);
+    const trait = traitOriginTooltip(withHealth, 'v3');
+    expect(trait.healthy).to.equal(false);
+    expect(trait.pending).to.equal(true);
+    expect(trait.message).to.equal('waiting');
+  });
 });

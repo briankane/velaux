@@ -25,11 +25,18 @@ export interface TreeNode {
 }
 
 // ResourceOrigin is the component that applied a resource, its type, and the
-// trait that applied it where a trait did.
+// trait that applied it where a trait did, each with its health.
 export interface ResourceOrigin {
   component: string;
   type?: string;
   trait?: string;
+  // healthy and message are the component's health, where it is reported on
+  // the resource's cluster; the trait ones the trait's.
+  healthy?: boolean;
+  message?: string;
+  traitHealthy?: boolean;
+  traitPending?: boolean;
+  traitMessage?: string;
 }
 
 export interface Node {
