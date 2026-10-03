@@ -966,5 +966,6 @@
   "Questions about the picked project, answered from its applications and namespaces.": "关于所选项目的问题，由其应用和命名空间回答。",
   "Not started": "未开始",
   "Approve": "批准",
-  "Step approved": "步骤已批准"
+  "Step approved": "步骤已批准",
+  "Approve this step and continue the workflow": "批准此步骤并继续工作流"
 }

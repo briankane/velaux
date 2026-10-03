@@ -65,20 +65,23 @@
     }
   }
 
-  .step-foot {
+  .step-actions {
     display: flex;
-    gap: 8px;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 24px;
-    margin-top: 6px;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
+    cursor: default;
   }
-
-  .step-approve {
-    flex: none;
+  .step-subs .step-actions {
+    margin: 2px 6px 6px;
+    padding-top: 0;
+    border-top: none;
   }
 
   .step-caption {
+    margin-top: 6px;
     overflow: hidden;
     color: #475569;
     font-size: 12px;

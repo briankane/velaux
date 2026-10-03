@@ -68,7 +68,6 @@ type State = {
   logSource?: string;
   logLoading?: boolean;
 
-  resumeLoading?: boolean;
   approvingStep?: string;
   terminateLoading?: boolean;
   rollbackLoading?: boolean;
@@ -224,26 +223,6 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
     }
   };
 
-  onResumeApplicationWorkflowRecord = () => {
-    const { applicationDetail, workflow, recordName } = this.props;
-    const params = {
-      appName: applicationDetail.name,
-      workflowName: workflow.name,
-      recordName,
-    };
-    this.setState({ resumeLoading: true });
-    resumeApplicationWorkflowRecord(params)
-      .then((re) => {
-        if (re) {
-          Message.success('Workflow resumed successfully');
-          this.loadWorkflowRecord();
-        }
-      })
-      .finally(() => {
-        this.setState({ resumeLoading: false });
-      });
-  };
-
   onApproveStep = (step: WorkflowStepStatus) => {
     const { applicationDetail, workflow, recordName } = this.props;
     this.setState({ approvingStep: step.id });
@@ -262,6 +241,42 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
       .finally(() => {
         this.setState({ approvingStep: undefined });
       });
+  };
+
+  // renderStepActions are a waiting step's choices: roll the run back, end it,
+  // or approve the step so the run continues.
+  renderStepActions = (step: WorkflowStepStatus) => {
+    const { rollbackLoading, terminateLoading, approvingStep } = this.state;
+    return (
+      <>
+        <Button
+          size="small"
+          loading={rollbackLoading}
+          title={i18n.t('Rollback to last ready revision').toString()}
+          onClick={this.onRollbackApplicationWorkflowRecord}
+        >
+          <Translation>Rollback</Translation>
+        </Button>
+        <Button
+          size="small"
+          warning
+          loading={terminateLoading}
+          title={i18n.t('Terminate this workflow').toString()}
+          onClick={this.onTerminateApplicationWorkflowRecord}
+        >
+          <Translation>Terminate</Translation>
+        </Button>
+        <Button
+          size="small"
+          type="primary"
+          loading={approvingStep === step.id}
+          title={i18n.t('Approve this step and continue the workflow').toString()}
+          onClick={() => this.onApproveStep(step)}
+        >
+          <Translation>Approve</Translation>
+        </Button>
+      </>
+    );
   };
 
   onRollbackApplicationWorkflowRecord = () => {
@@ -325,10 +340,6 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
       inputLoading,
       outputs,
       outputLoading,
-      rollbackLoading,
-      resumeLoading,
-      terminateLoading,
-      approvingStep,
     } = this.state;
 
     let stepSpec: WorkflowStepBase | undefined;
@@ -401,41 +412,6 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
               {showRecord?.message}
             </Message>
           </If>
-          <If condition={showRecord?.status === 'suspending'}>
-            <div className="wf-run-approval">
-              <span>
-                <Translation>This workflow needs your approving</Translation>
-              </span>
-              <div className="wf-run-approval-actions">
-                <Button
-                  size="small"
-                  loading={rollbackLoading}
-                  title={i18n.t('Rollback to last ready revision').toString()}
-                  onClick={this.onRollbackApplicationWorkflowRecord}
-                >
-                  <Translation>Rollback</Translation>
-                </Button>
-                <Button
-                  size="small"
-                  warning
-                  loading={terminateLoading}
-                  title={i18n.t('Terminate this workflow').toString()}
-                  onClick={this.onTerminateApplicationWorkflowRecord}
-                >
-                  <Translation>Terminate</Translation>
-                </Button>
-                <Button
-                  size="small"
-                  type="primary"
-                  loading={resumeLoading}
-                  title={i18n.t('Approve and continue this workflow').toString()}
-                  onClick={this.onResumeApplicationWorkflowRecord}
-                >
-                  <Translation>Continue</Translation>
-                </Button>
-              </div>
-            </div>
-          </If>
         </div>
 
         <div className="wf-run-body">
@@ -448,8 +424,7 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
                 name={`${showRecord?.name}`}
                 zoom={zoom}
                 selected={showDetail ? stepStatus?.id : undefined}
-                onApprove={this.onApproveStep}
-                approving={approvingStep}
+                actions={this.renderStepActions}
                 onNodeClick={this.onStepClick}
                 steps={showRecord?.steps}
               />
@@ -462,16 +437,6 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
                 {stepStatus && (
                   <StatusBadge tone={stepBadge(stepStatus).tone} label={stepBadge(stepStatus).label} />
                 )}
-                {stepStatus?.phase === 'suspending' && (
-                  <Button
-                    size="small"
-                    type="primary"
-                    loading={approvingStep === stepStatus.id}
-                    onClick={() => this.onApproveStep(stepStatus)}
-                  >
-                    <Translation>Approve</Translation>
-                  </Button>
-                )}
                 <Button
                   className="wf-step-close"
                   text
@@ -481,6 +446,9 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
                   <AiOutlineClose />
                 </Button>
               </div>
+              {stepStatus?.phase === 'suspending' && (
+                <div className="wf-step-actions">{this.renderStepActions(stepStatus)}</div>
+              )}
               <Tab shape="pure" size="small" activeKey={String(this.state.activeKey)} onChange={this.onTabChange}>
                 <Tab.Item title={<Translation>Detail</Translation>} key={'detail'}>
                   {stepStatus && (
