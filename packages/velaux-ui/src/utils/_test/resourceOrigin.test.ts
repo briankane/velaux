@@ -18,6 +18,11 @@ describe('resourceOrigin', () => {
       resourceOrigin({ name: 'hpa', component: 'payments-api', trait: 'cpuscaler', latest: true }, components)
     ).to.deep.equal({ component: 'payments-api', type: 'webapp@v1.1.0', trait: 'cpuscaler' });
   });
+  it("counts a resource the component's own template outputs as the component's, not a trait's", () => {
+    expect(
+      resourceOrigin({ name: 'svc', component: 'payments-api', trait: 'AuxiliaryWorkload', latest: true }, components)
+    ).to.deep.equal({ component: 'payments-api', type: 'webapp@v1.1.0' });
+  });
   it('leaves the type out for a component the application no longer lists', () => {
     expect(resourceOrigin({ name: 'old', component: 'gone', latest: true }, components)).to.deep.equal({
       component: 'gone',

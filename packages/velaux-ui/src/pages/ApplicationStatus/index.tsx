@@ -624,6 +624,7 @@ class ApplicationStatusPage extends React.Component<Props, State> {
                   application={applicationDetail}
                   env={env}
                   resources={resources}
+                  components={components}
                   graphType="resource-graph"
                 />
               </If>
