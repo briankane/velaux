@@ -1,14 +1,16 @@
 import { Dropdown, Menu, Select } from '@alifd/next';
 import classNames from 'classnames';
 import React from 'react';
+import { BiGitBranch } from 'react-icons/bi';
 import {
   BsArrowLeftShort,
   BsArrowRepeat,
+  BsArrowRight,
   BsArrowRightShort,
-  BsBoxArrowInRight,
   BsCollection,
-  BsDiagram2,
+  BsPlus,
   BsPlusLg,
+  BsSquare,
   BsTrash3,
 } from 'react-icons/bs';
 
@@ -159,9 +161,9 @@ const PreviewTree = (props: { root: string; nodes: PreviewNode[]; caption: strin
 };
 
 // StudioGraph draws a workflow's steps for editing, laid out by what they wait
-// on as a run is. Clicking a card's + adds a step after it, and hovering it
-// offers the rest; clicking a card edits it, and hovering a card shows its
-// moves and Delete. A group holds its own steps the same way, in its own mode.
+// on as a run is. Each card adds after it inline or as a branch; clicking a
+// card edits it, and hovering a card shows its moves and Delete. A group holds
+// its own steps the same way, in its own mode.
 export const StudioGraph = (props: StudioGraphProps) => {
   const { steps, mode, subMode, group, onAdd, onEdit, onDelete, onGroupMode, onMove, onResize } = props;
   const [, setNestedResizes] = React.useState(0);
@@ -178,30 +180,20 @@ export const StudioGraph = (props: StudioGraphProps) => {
       later={canMove(steps, index, 1)}
     />
   );
-  // addItems are what can follow a step in its own list: a branch only where
-  // steps run in parallel, and no group inside a group.
+  // addItems are what can be added: no group inside a group, and no loop yet.
   const addItems: AddItem[] = [
-    { key: 'step', label: 'New Step', icon: <BsPlusLg /> },
-    { key: 'branch', label: 'New Branch', icon: <BsDiagram2 />, disabled: mode !== 'DAG' },
-    { key: 'group', label: 'New Group', icon: <BsCollection />, disabled: !!group },
-    { key: 'loop', label: 'New Loop', icon: <BsArrowRepeat />, disabled: true, note: 'Soon' },
+    { key: 'step', label: 'Step', icon: <BsSquare /> },
+    { key: 'group', label: 'Group', icon: <BsCollection />, disabled: !!group },
+    { key: 'loop', label: 'Loop', icon: <BsArrowRepeat />, disabled: true, note: 'Soon' },
   ];
   const labelOf = (name: string) => label(steps.find((x) => x.name === name) || { name });
-  // previewAfter draws what adding after step would do, for the hovered item.
-  const previewAfter = (step: WorkflowStep, key: string) => {
+  // previewAfter draws what adding the hovered item after step would do,
+  // inline or as a branch.
+  const previewAfter = (step: WorkflowStep, key: string, branch: boolean) => {
     if (key === 'loop') {
       return <div className="pv-caption">{i18n.t('Loops are coming soon').toString()}</div>;
     }
-    if (key === 'inside') {
-      return (
-        <PreviewTree
-          root={label(step)}
-          nodes={[{ label: 'New step', added: true }]}
-          caption="Added inside this group"
-        />
-      );
-    }
-    const { moved, stay } = addPreview(steps, step.name, key, mode);
+    const { moved, stay } = addPreview(steps, step.name, branch ? 'branch' : 'step', mode);
     const added: PreviewNode = {
       label: key === 'group' ? 'New group' : 'New step',
       added: true,
@@ -211,9 +203,9 @@ export const StudioGraph = (props: StudioGraphProps) => {
     return (
       <PreviewTree
         root={label(step)}
-        nodes={key === 'branch' ? [...kept, added] : [added, ...kept]}
+        nodes={branch ? [...kept, added] : [added, ...kept]}
         caption={
-          key === 'branch'
+          branch
             ? 'Runs alongside, nothing waits on it'
             : moved.length > 0
             ? 'Runs before what followed'
@@ -222,35 +214,52 @@ export const StudioGraph = (props: StudioGraphProps) => {
       />
     );
   };
-  const addAfter = (step: WorkflowStep) => (
-    <AddMenu
-      preview={(key) => previewAfter(step, key)}
-      items={
-        step.type === 'step-group'
-          ? [{ key: 'inside', label: 'Step in Group', icon: <BsBoxArrowInRight /> }, ...addItems]
-          : addItems
-      }
-      onPick={(key) => {
-        if (key === 'inside') {
-          onAdd({ kind: 'step', group: step.name });
-        } else if (key !== 'loop') {
-          onAdd({ kind: key === 'group' ? 'group' : 'step', group, after: step.name, branch: key === 'branch' });
-        }
-      }}
-    >
-      <button
-        type="button"
-        className="studio-step-add"
-        title={i18n.t('New Step').toString()}
-        onClick={(event) => {
-          event.stopPropagation();
-          onAdd({ kind: 'step', group, after: step.name });
-        }}
-      >
-        <BsPlusLg />
-      </button>
-    </AddMenu>
-  );
+  // addPair is a card's two ways to add after it, joined by a +: inline, in
+  // the middle of what follows, and as a branch beside it (in parallel only).
+  // Clicking one adds a step that way; hovering offers a step, group or loop.
+  const addPair = (step: WorkflowStep) => {
+    const half = (branch: boolean) => {
+      const off = branch && mode !== 'DAG';
+      const button = (
+        <button
+          type="button"
+          className={classNames('studio-add-half', branch ? 'branch' : 'inline')}
+          disabled={off}
+          title={i18n
+            .t(off ? 'Branches need steps to run in parallel' : branch ? 'Add a branch' : 'Add inline')
+            .toString()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onAdd({ kind: 'step', group, after: step.name, branch });
+          }}
+        >
+          {branch ? <BiGitBranch /> : <BsArrowRight />}
+        </button>
+      );
+      return off ? (
+        button
+      ) : (
+        <AddMenu
+          preview={(key) => previewAfter(step, key, branch)}
+          items={addItems}
+          onPick={(key) =>
+            key !== 'loop' && onAdd({ kind: key === 'group' ? 'group' : 'step', group, after: step.name, branch })
+          }
+        >
+          {button}
+        </AddMenu>
+      );
+    };
+    return (
+      <span className="studio-add-pair" onClick={(event) => event.stopPropagation()}>
+        {half(false)}
+        <span className="studio-add-join">
+          <BsPlus />
+        </span>
+        {half(true)}
+      </span>
+    );
+  };
   const layout = useStepLayout(
     steps.map((s) => s.name),
     edges,
@@ -346,7 +355,7 @@ export const StudioGraph = (props: StudioGraphProps) => {
                   </div>
                 )}
               </div>
-              {addAfter(step)}
+              {addPair(step)}
             </div>
           );
         })}
