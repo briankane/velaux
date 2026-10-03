@@ -18,7 +18,7 @@ import WorkflowStudio from '../../components/WorkflowStudio';
 import { WorkflowYAML } from '../../components/WorkflowYAML';
 import { WorkflowContext } from '../../context';
 import i18n from '../../i18n';
-import type { WorkflowMode , DefinitionBase , PipelineDetail, WorkflowStep } from '@velaux/data';
+import type { WorkflowMode, DefinitionBase, PipelineDetail, WorkflowStep } from '@velaux/data';
 import { locale } from '../../utils/locale';
 import { WorkflowModeOptions } from '../ApplicationWorkflowStudio';
 
@@ -215,7 +215,7 @@ class PipelineStudio extends React.Component<Props, State> {
                     <Translation>Unsaved changes</Translation>
                   </div>
                 )}
-                <Form.Item label={i18n.t('Mode').toString()} labelAlign="inset" style={{ marginRight: '8px' }}>
+                <Form.Item label={i18n.t('Steps run').toString()} labelAlign="inset" style={{ marginRight: '8px' }}>
                   <Select
                     locale={locale().Select}
                     defaultValue="StepByStep"
@@ -226,7 +226,11 @@ class PipelineStudio extends React.Component<Props, State> {
                     }}
                   />
                 </Form.Item>
-                <Form.Item label={i18n.t('Sub Mode').toString()} labelAlign="inset" style={{ marginRight: '8px' }}>
+                <Form.Item
+                  label={i18n.t('Steps in groups run').toString()}
+                  labelAlign="inset"
+                  style={{ marginRight: '8px' }}
+                >
                   <Select
                     locale={locale().Select}
                     defaultValue="DAG"
@@ -259,7 +263,8 @@ class PipelineStudio extends React.Component<Props, State> {
               }}
             >
               <WorkflowStudio
-                subMode={pipeline.spec.mode?.subSteps}
+                mode={mode}
+                subMode={subMode}
                 definitions={definitions}
                 steps={_.cloneDeep(pipeline.spec.steps)}
                 onChange={this.onChange}

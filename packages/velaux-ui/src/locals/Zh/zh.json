@@ -972,5 +972,16 @@
   "step": "个步骤",
   "steps": "个步骤",
   "Show the steps as a list": "以列表显示步骤",
-  "Show the steps as a graph": "以图显示步骤"
+  "Show the steps as a graph": "以图显示步骤",
+  "In order": "按顺序",
+  "In parallel": "并行",
+  "Steps run": "步骤执行方式",
+  "Steps in groups run": "分组内步骤执行方式",
+  "Step actions": "步骤操作",
+  "Add a step first": "在最前添加步骤",
+  "Add a step here": "在此添加步骤",
+  "Add a step after this one": "在此步骤之后添加步骤",
+  "Add a step": "添加步骤",
+  "Add a step to this group": "向此分组添加步骤",
+  "How the steps in this group run": "此分组内步骤的执行方式"
 }

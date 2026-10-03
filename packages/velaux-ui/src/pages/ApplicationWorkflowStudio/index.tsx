@@ -12,7 +12,7 @@ import WorkflowStudio from '../../components/WorkflowStudio';
 import { WorkflowContext } from '../../context';
 import type { WorkflowData } from '../../context/index';
 import { deployNamespaces } from '../../utils/restrictions';
-import type { ApplicationDetail, EnvBinding, Workflow, WorkflowMode , DefinitionBase , WorkflowStep } from '@velaux/data';
+import type { ApplicationDetail, EnvBinding, Workflow, WorkflowMode, DefinitionBase, WorkflowStep } from '@velaux/data';
 import { showAlias } from '../../utils/common';
 import { locale } from '../../utils/locale';
 
@@ -48,14 +48,14 @@ type State = {
 
 export const WorkflowModeOptions = [
   {
-    value: 'DAG',
-    label: i18n.t('DAG'),
-    description: 'Workflows will be executed in parallel in DAG mode based on dependencies.',
+    value: 'StepByStep',
+    label: i18n.t('In order'),
+    title: 'StepByStep: each step waits for the one before it.',
   },
   {
-    value: 'StepByStep',
-    label: i18n.t('StepByStep'),
-    description: 'The workflow will be executed serially step by step .',
+    value: 'DAG',
+    label: i18n.t('In parallel'),
+    title: 'DAG: steps run as soon as the steps they depend on finish.',
   },
 ];
 
@@ -274,7 +274,7 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
                     <Translation>Canary Rollout Setting</Translation>
                   </MenuButton.Item>
                 </MenuButton>
-                <Form.Item label={i18n.t('Mode').toString()} labelAlign="inset" style={{ marginRight: '8px' }}>
+                <Form.Item label={i18n.t('Steps run').toString()} labelAlign="inset" style={{ marginRight: '8px' }}>
                   <Select
                     locale={locale().Select}
                     defaultValue="StepByStep"
@@ -285,7 +285,11 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
                     }}
                   />
                 </Form.Item>
-                <Form.Item label={i18n.t('Sub Mode').toString()} labelAlign="inset" style={{ marginRight: '8px' }}>
+                <Form.Item
+                  label={i18n.t('Steps in groups run').toString()}
+                  labelAlign="inset"
+                  style={{ marginRight: '8px' }}
+                >
                   <Select
                     locale={locale().Select}
                     defaultValue="DAG"
@@ -318,7 +322,8 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
             }}
           >
             <WorkflowStudio
-              subMode={workflow.subMode}
+              mode={mode}
+              subMode={subMode}
               definitions={definitions}
               steps={steps}
               onChange={this.onChange}

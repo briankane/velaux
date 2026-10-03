@@ -20,6 +20,7 @@ export interface StepLayout {
   // container holds the cards, each a direct child marked data-step-key.
   container: React.RefObject<HTMLDivElement>;
   place: (key: string) => { left: number; top: number };
+  box: (key: string) => { left: number; top: number; width: number; height: number };
   size: Size;
   path: (edge: StepEdge) => string;
 }
@@ -142,6 +143,12 @@ export function useStepLayout(keys: string[], edges: StepEdge[], onResize?: () =
     place: (key: string) => {
       const n = graph.node(key);
       return n ? { left: n.x - n.width / 2, top: n.y - n.height / 2 } : { left: margin, top: margin };
+    },
+    box: (key: string) => {
+      const n = graph.node(key);
+      return n
+        ? { left: n.x - n.width / 2, top: n.y - n.height / 2, width: n.width, height: n.height }
+        : { left: margin, top: margin, width: stepWidth, height: cardHeight };
     },
     path: (e: StepEdge) => orthoPath(routes[`${e.from}->${e.to}`] || [], 6),
   };
