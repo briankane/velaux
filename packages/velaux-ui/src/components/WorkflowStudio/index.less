@@ -86,7 +86,8 @@
     }
   }
   // Quiet until its card is hovered, so a large graph is not a field of buttons.
-  .workflow-step:hover > .studio-step-add {
+  // A card inside a group lights its own +, not the group's.
+  .workflow-step:hover:not(:has(.workflow-step:hover)) > .studio-step-add {
     color: #fff;
     background: #16a34a;
   }
