@@ -71,6 +71,20 @@ describe('orthogonal edge routing', () => {
     ]);
   });
 
+  it("moves where an edge crosses a skipped column level with its port, when the port can't move", () => {
+    const nodes: RouteNode[] = [
+      { key: 'a', box: box(0, 0), column: 0 },
+      { key: 'b', box: box(200, 100), column: 1 },
+      { key: 'c', box: box(400, 200), column: 2 },
+    ];
+    const routes = routeEdges(nodes, [
+      { key: 'ac', from: 'a', to: 'c', passes: [20] },
+      { key: 'ab', from: 'a', to: 'b' },
+    ]);
+    expect(shortestTurn(routes)).to.be.at.least(routeDefaults.minRun);
+    expect(noOverlaps(routes)).to.equal(true);
+  });
+
   it('runs at least the minimum between any two turns', () => {
     const nodes: RouteNode[] = [{ key: 'rs', box: box(0, 300, 100, 40), column: 0 }];
     const edges: RouteEdge[] = [];

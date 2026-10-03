@@ -178,11 +178,13 @@ export function routeEdges(
 
   // Each edge's passes, one per column it skips: as given, else level with its
   // source.
-  const passesOf = (e: RouteEdge): number[] => {
+  const passes = new Map<string, number[]>();
+  forward.forEach((e) => {
     const skipped = byKey.get(e.to)!.column - byKey.get(e.from)!.column - 1;
     const given = e.passes || [];
-    return given.length === skipped ? given : new Array(skipped).fill(centreY(byKey.get(e.from)!.box));
-  };
+    passes.set(e.key, given.length === skipped ? [...given] : new Array(skipped).fill(centreY(byKey.get(e.from)!.box)));
+  });
+  const passesOf = (e: RouteEdge): number[] => passes.get(e.key)!;
 
   const siblings = new Map<string, { outs: Port[]; ins: Port[] }>();
   const outPorts = new Map<string, Port>();
@@ -221,25 +223,54 @@ export function routeEdges(
     port.level = y;
     return true;
   };
+  // A pass moves level with a port where the column it crosses has no box and
+  // no other pass within spacing of that height.
+  const passClear = (e: RouteEdge, column: number, y: number): boolean =>
+    !nodes.some((n) => n.column === column && y > n.box.top - o.spacing && y < n.box.top + n.box.height + o.spacing) &&
+    !forward.some((other) => {
+      if (other === e) {
+        return false;
+      }
+      const at = column - byKey.get(other.from)!.column - 1;
+      const theirs = passesOf(other);
+      return at >= 0 && at < theirs.length && Math.abs(theirs[at] - y) < o.spacing;
+    });
   const tooShort = (a: number, b: number) => a !== b && Math.abs(a - b) < o.minRun;
   forward.forEach((e) => {
     const out = outPorts.get(e.key)!;
     const into = inPorts.get(e.key)!;
     const from = byKey.get(e.from)!;
     const to = byKey.get(e.to)!;
-    const passes = passesOf(e);
-    if (passes.length === 0) {
+    const crossing = passesOf(e);
+    const moveIn = (y: number) => levelWith(into, y, to.box, siblings.get(e.to)!.ins);
+    const moveOut = (y: number) => levelWith(out, y, from.box, siblings.get(e.from)!.outs);
+    const movePass = (i: number, y: number) => {
+      if (!passClear(e, from.column + 1 + i, y)) {
+        return false;
+      }
+      crossing[i] = y;
+      return true;
+    };
+    if (crossing.length === 0) {
       if (tooShort(out.level, into.level)) {
-        levelWith(into, out.level, to.box, siblings.get(e.to)!.ins) ||
-          levelWith(out, into.level, from.box, siblings.get(e.from)!.outs);
+        moveIn(out.level) || moveOut(into.level);
       }
       return;
     }
-    if (tooShort(out.level, passes[0])) {
-      levelWith(out, passes[0], from.box, siblings.get(e.from)!.outs);
+    // Along the edge, each run level with the one before it where the step
+    // between is too short: the pass follows the port it leaves, then each
+    // pass the one before it, and the port it enters the last pass.
+    if (tooShort(out.level, crossing[0])) {
+      moveOut(crossing[0]) || movePass(0, out.level);
     }
-    if (tooShort(passes[passes.length - 1], into.level)) {
-      levelWith(into, passes[passes.length - 1], to.box, siblings.get(e.to)!.ins);
+    for (let i = 1; i < crossing.length; i++) {
+      if (tooShort(crossing[i - 1], crossing[i])) {
+        movePass(i, crossing[i - 1]);
+      }
+    }
+    const last = crossing.length - 1;
+    if (tooShort(crossing[last], into.level)) {
+      moveIn(crossing[last]) || movePass(last, into.level);
     }
   });
 
