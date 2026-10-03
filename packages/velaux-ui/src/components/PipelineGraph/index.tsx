@@ -76,8 +76,8 @@ const StepGraph = (props: StepGraphProps) => {
   });
 
   const edges = stepEdges(steps, spec, mode);
-  // A hidden root, lightly tied to every step, pulls each step to the earliest
-  // column it can start in: dagre otherwise breaks a tie toward the latest.
+  // A hidden root, tied hard to every step, holds each step in the earliest
+  // column it can start in; dependency edges stretch to suit.
   const root = '\u0000root';
   const layOut = (ranksep: number) => {
     const g: Laid = new dagre.graphlib.Graph<LaidStep, LaidEdge>();
@@ -90,9 +90,9 @@ const StepGraph = (props: StepGraphProps) => {
         x: 0,
         y: 0,
       });
-      g.setEdge(root, s.name, { weight: 1, minlen: 1 });
+      g.setEdge(root, s.name, { weight: 100, minlen: 1 });
     });
-    edges.forEach((e) => g.setEdge(e.from, e.to, { weight: 100 }));
+    edges.forEach((e) => g.setEdge(e.from, e.to, { weight: 1 }));
     dagre.layout(g);
     g.removeNode(root);
     // Everything moves so the first step sits at the margin, edge points with
