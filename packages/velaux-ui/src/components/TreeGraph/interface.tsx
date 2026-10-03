@@ -20,6 +20,16 @@ export interface TreeNode {
   // For a source node: the binding's status, and its readers with no node here.
   source?: ApplicationSourceStatus;
   readersElsewhere?: SourceConsumer[];
+  // For a resource a component applied: that component, and the trait if one did.
+  origin?: ResourceOrigin;
+}
+
+// ResourceOrigin is the component that applied a resource, its type, and the
+// trait that applied it where a trait did.
+export interface ResourceOrigin {
+  component: string;
+  type?: string;
+  trait?: string;
 }
 
 export interface Node {

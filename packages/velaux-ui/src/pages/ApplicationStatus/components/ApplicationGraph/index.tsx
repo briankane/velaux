@@ -7,6 +7,8 @@ import { TreeGraph } from '../../../../components/TreeGraph';
 import { dependencyItems } from '../../../../utils/dependencies';
 import type { DependencyItem } from '../../../../utils/dependencies';
 import type { TreeNode } from '../../../../components/TreeGraph/interface';
+
+import { resourceOrigin } from './origins';
 import { treeNodeKey } from '../../../../components/TreeGraph/utils';
 import { placementKey, sourceLinks, sourceReads } from './sources';
 import { flowNodes } from './flows';
@@ -175,11 +177,9 @@ class ApplicationGraph extends React.Component<Props, State> {
         const node = clusterTree.get(cluster);
         if (node) {
           if (res.resourceTree) {
-            if (!node.leafNodes) {
-              node.leafNodes = this.convertNode([res.resourceTree]);
-            } else {
-              node.leafNodes = node.leafNodes.concat(this.convertNode([res.resourceTree]));
-            }
+            const applied = this.convertNode([res.resourceTree]);
+            applied[0].origin = resourceOrigin(res, this.props.components);
+            node.leafNodes = (node.leafNodes || []).concat(applied);
           }
         }
       });

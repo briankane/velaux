@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { If } from '../If';
 
 import { ComponentNode } from './component-node';
-import type { GraphNode, TreeNode, GraphEdge } from './interface';
+import type { GraphNode, TreeNode, GraphEdge, ResourceOrigin } from './interface';
 import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 import { clusterTooltip, resourceTooltip, sourceTooltip, targetTooltip } from './tooltip';
 import { treeNodeKey, getNodeSize, ResourceIcon } from './utils';
@@ -27,7 +27,9 @@ import { lanesNeeded, orthoPath, routeDefaults, routeEdges } from './orthogonal'
 import { Link } from 'dva/router';
 import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
 import { FaEllipsisV } from 'react-icons/fa';
-import { BsDatabase } from 'react-icons/bs';
+import { BsBox, BsDatabase } from 'react-icons/bs';
+
+import { splitType } from '../../utils/definitionVersion';
 import { StatusBadge } from '../StatusBadge';
 import { DefinitionLine } from './definition-line';
 import { sourcePhaseTone } from '../../pages/ApplicationStatus/components/ApplicationGraph/sources';
@@ -42,6 +44,26 @@ type TreeGraphProps = {
   envName: string;
   nodesep: 50 | number;
   onResourceDetailClick: (resource: ResourceTreeNode) => void;
+};
+
+// ResourceOriginLine names the component that applied a resource and its
+// type, or the trait that did.
+const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => {
+  const type = splitType(origin.type).name;
+  return (
+    <div
+      className="resource-origin"
+      title={origin.trait ? `${origin.component}, trait ${origin.trait}` : origin.component}
+    >
+      <BsBox />
+      <span className="resource-origin-component">{origin.component}</span>
+      {origin.trait ? (
+        <span className="resource-origin-type">{origin.trait} trait</span>
+      ) : (
+        type && <span className="resource-origin-type">{type}</span>
+      )}
+    </div>
+  );
 };
 
 function renderResourceNode(props: TreeGraphProps, id: string, node: GraphNode) {
@@ -62,6 +84,7 @@ function renderResourceNode(props: TreeGraphProps, id: string, node: GraphNode) 
       <div className={classNames('name')}>
         <div>{node.resource.name}</div>
         <div className="kind">{node.resource.kind}</div>
+        {node.origin && <ResourceOriginLine origin={node.origin} />}
       </div>
       <div className={classNames('actions')}>
         <Dropdown trigger={<FaEllipsisV />}>
