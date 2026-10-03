@@ -170,7 +170,7 @@ const StepGraph = (props: StepGraphProps) => {
   const nestedResized = React.useCallback(() => setNestedResizes((n) => n + 1), []);
 
   return (
-    <div ref={container} className="workflow-graph" style={{ width: size.width, height: size.height }}>
+    <div ref={container} className="run-graph" style={{ width: size.width, height: size.height }}>
       <svg className="workflow-connectors" width={size.width} height={size.height}>
         <defs>
           <marker
@@ -245,7 +245,7 @@ const StepGraph = (props: StepGraphProps) => {
 // PipelineGraph is a run's steps on a canvas that drags and zooms.
 const PipelineGraph = (props: PipelineGraphProps) => (
   <Draggable>
-    <div className="workflow-canvas" style={{ transform: `scale(${props.zoom})` }}>
+    <div className="run-canvas" style={{ transform: `scale(${props.zoom})` }}>
       <StepGraph {...props} />
     </div>
   </Draggable>
