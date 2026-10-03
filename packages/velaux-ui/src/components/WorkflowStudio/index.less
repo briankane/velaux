@@ -13,7 +13,9 @@
   > .run-graph {
     margin-left: 24px;
   }
+  // The right of each card is kept for its +.
   .step.studio-step {
+    padding-right: 42px;
     --tone: var(--primary-color);
     &.group {
       --tone: #94a3b8;
@@ -56,11 +58,11 @@
       cursor: default;
     }
   }
-  // The + sits on the middle of a card's right edge, above the lines.
+  // The + sits inside a card, on the middle of its right side.
   .studio-step-add {
     position: absolute;
     top: 50%;
-    right: -11px;
+    right: 10px;
     z-index: 2;
     display: inline-flex;
     align-items: center;
@@ -71,9 +73,8 @@
     color: #fff;
     font-size: 12px;
     background: #16a34a;
-    border: 2px solid #fff;
+    border: none;
     border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
     transform: translateY(-50%);
     cursor: pointer;
     &:hover {
