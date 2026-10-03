@@ -89,13 +89,15 @@
     padding: 0;
     color: #94a3b8;
     font-size: 13px;
-    background: none;
-    border: none;
+    // A ring marks each as a button inside the shared frame.
+    background: #fff;
+    border: 1px solid #cbd5e1;
     border-radius: 50%;
     cursor: pointer;
     transition:
       color 0.15s linear,
-      background 0.15s linear;
+      background 0.15s linear,
+      border-color 0.15s linear;
     &.branch svg {
       transform: rotate(90deg);
     }
@@ -103,9 +105,12 @@
     &.open {
       color: #fff;
       background: #16a34a;
+      border-color: #16a34a;
     }
     &:disabled {
       color: #cbd5e1;
+      background: transparent;
+      border-style: dashed;
       cursor: default;
     }
   }
@@ -130,7 +135,10 @@
   // A card inside a group lights its own pair, not the group's.
   .workflow-step:hover:not(:has(.workflow-step:hover)) > .studio-add-pair {
     --frame: #dcfce7;
-    .studio-add-half:not(:disabled):not(:hover):not(.open),
+    .studio-add-half:not(:disabled):not(:hover):not(.open) {
+      color: #16a34a;
+      border-color: #86efac;
+    }
     .studio-add-join {
       color: #16a34a;
     }
