@@ -16,7 +16,7 @@ import { If } from '../If';
 
 import { ComponentNode } from './component-node';
 import type { GraphNode, TreeNode, GraphEdge, ResourceOrigin } from './interface';
-import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
+import { SourceMark, StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 import type { StatusTooltipProps } from '../StatusTooltip';
 import {
   clusterTooltip,
@@ -26,7 +26,7 @@ import {
   sourceTooltip,
   targetTooltip,
 } from './tooltip';
-import { podTone } from './pods';
+import { podTone, resourceTone } from './pods';
 import { treeNodeKey, getNodeSize, ResourceIcon } from './utils';
 import type { Rect } from './layout';
 import { edgeOffset, getGraphSize, placeAt, shiftIntoView } from './layout';
@@ -99,19 +99,26 @@ const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => {
   );
 };
 
+// healthLabel is what a resource's health code reads as.
+const healthLabel: Record<string, string> = {
+  Healthy: 'Healthy',
+  Progressing: 'Progressing',
+  UnHealthy: 'Unhealthy',
+  UnKnown: 'Unknown',
+};
+
 // renderResourceNode is a resource: its icon, name and kind, and the component
 // that applied it. With a component named, the resource's hover card is on its
 // icon and name, so the component and trait lines can have their own.
 function renderResourceNode(props: TreeGraphProps, id: string, node: GraphNode) {
   const card = resourceTooltip(node.resource);
+  const health = node.resource.healthStatus;
+  const tone = resourceTone(health?.statusCode);
   const ownCard = (trigger: React.ReactElement) => (node.origin ? hoverCard(trigger, card) : trigger);
   const graphNode = (
     <div
       key={id}
-      className={classNames('graph-node', 'graph-node-resource', {
-        'error-status': node.resource.healthStatus?.statusCode == 'UnHealthy',
-        'warning-status': node.resource.healthStatus?.statusCode == 'Progressing',
-      })}
+      className={classNames('graph-node', 'graph-node-resource', 'graph-node-edge', `tone-${tone}`)}
       style={{
         ...placeAt(node),
       }}
@@ -124,7 +131,14 @@ function renderResourceNode(props: TreeGraphProps, id: string, node: GraphNode) 
       <div className={classNames('name')}>
         {ownCard(
           <div>
-            <div>{node.resource.name}</div>
+            <div className="component-node-title">
+              <span className="component-node-name">{node.resource.name}</span>
+              {health?.statusCode && (
+                <StatusBadge tone={tone} label={healthLabel[health.statusCode] || health.statusCode}>
+                  <SourceMark source={health.source} />
+                </StatusBadge>
+              )}
+            </div>
             <div className="kind">{node.resource.kind}</div>
           </div>
         )}

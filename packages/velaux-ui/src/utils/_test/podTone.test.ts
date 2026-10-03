@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { podTone } from '../../components/TreeGraph/pods';
+import { podTone, resourceTone } from '../../components/TreeGraph/pods';
 
 describe('podTone', () => {
   it('follows the health status where there is one', () => {
@@ -15,5 +15,15 @@ describe('podTone', () => {
   });
   it('is neutral with no ready count', () => {
     expect(podTone(undefined)).to.equal('neutral');
+  });
+});
+
+describe('resourceTone', () => {
+  it("colours a resource by its health's code", () => {
+    expect(resourceTone('Healthy')).to.equal('healthy');
+    expect(resourceTone('Progressing')).to.equal('progressing');
+    expect(resourceTone('UnHealthy')).to.equal('unhealthy');
+    expect(resourceTone('UnKnown')).to.equal('neutral');
+    expect(resourceTone(undefined)).to.equal('neutral');
   });
 });

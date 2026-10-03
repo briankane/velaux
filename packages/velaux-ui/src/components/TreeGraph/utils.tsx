@@ -108,10 +108,11 @@ export function nodeKey(node: TreeNode) {
 }
 
 export function getNodeSize(node: TreeNode): { width: number; height: number } {
-  // A resource a component applied has a line naming that component, and one
-  // more for the trait that applied it, where one did.
-  let width = node.origin ? 260 : 220;
-  let height = node.origin ? (node.origin.trait ? 84 : 66) : 40;
+  // A resource has room for its health beside its name; one a component
+  // applied has a line naming that component, and one more for the trait that
+  // applied it, where one did.
+  let width = node.nodeType == 'resource' ? 280 : 220;
+  let height = node.origin ? (node.origin.trait ? 92 : 74) : node.nodeType == 'resource' ? 48 : 40;
   if (node.nodeType == 'cluster') {
     width = 140;
     height = 40;
