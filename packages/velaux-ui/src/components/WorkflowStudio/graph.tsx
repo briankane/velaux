@@ -109,6 +109,7 @@ const AddMenu = (props: {
       align="cl cr"
       offset={[12, 0]}
       animation={false}
+      shouldUpdatePosition
       onVisibleChange={(visible: boolean) => {
         setOpen(visible);
         if (visible) {
