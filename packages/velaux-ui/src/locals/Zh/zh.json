@@ -998,5 +998,12 @@
   "New Loop": "新建循环",
   "Step in Group": "分组内步骤",
   "Soon": "即将推出",
-  "Add after this step": "在此步骤后添加"
+  "Add after this step": "在此步骤后添加",
+  "Loops are coming soon": "循环即将推出",
+  "New step": "新步骤",
+  "New group": "新分组",
+  "Added inside this group": "添加到此分组内",
+  "Runs alongside, nothing waits on it": "并行执行，没有步骤等待它",
+  "Runs before what followed": "在原后续步骤之前执行",
+  "Runs after this step": "在此步骤之后执行"
 }

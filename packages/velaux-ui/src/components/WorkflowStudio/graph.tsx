@@ -19,6 +19,7 @@ import { locale } from '../../utils/locale';
 import { canMove, forwardWaits, stepEdges } from '../PipelineGraph/dependencies';
 import { StepEdges, stepWidth, useStepLayout } from '../PipelineGraph/layout';
 import { Translation } from '../Translation';
+import { addPreview } from './edit';
 import '../PipelineGraph/index.less';
 
 // AddAt is what to add and where: a step or a group, into a group or the top
@@ -82,27 +83,80 @@ type AddItem = { key: string; label: string; icon: React.ReactNode; disabled?: b
 
 // AddMenu opens, on hover, the things that can be added from where it sits,
 // beside its trigger and centred on it; clicking the trigger adds a step.
-const AddMenu = (props: { items: AddItem[]; onPick: (key: string) => void; children: React.ReactNode }) => (
-  <Dropdown triggerType="hover" delay={250} trigger={props.children} align="cl cr" offset={[12, 0]} animation={false}>
-    <Menu
-      className="studio-add-menu"
-      onItemClick={(key: string) => props.onPick(key)}
-      onClick={(event: React.MouseEvent) => event.stopPropagation()}
+// preview, where given, draws what the hovered item would do beside the list.
+const AddMenu = (props: {
+  items: AddItem[];
+  onPick: (key: string) => void;
+  preview?: (key: string) => React.ReactNode;
+  children: React.ReactNode;
+}) => {
+  const first = props.items.find((item) => !item.disabled)?.key || '';
+  const [hovered, setHovered] = React.useState(first);
+  return (
+    <Dropdown
+      triggerType="hover"
+      delay={250}
+      trigger={props.children}
+      align="cl cr"
+      offset={[12, 0]}
+      animation={false}
+      onVisibleChange={(visible: boolean) => visible && setHovered(first)}
     >
-      {props.items.map((item) => (
-        <Menu.Item key={item.key} disabled={item.disabled}>
-          <span className="studio-add-icon">{item.icon}</span>
-          <Translation>{item.label}</Translation>
-          {item.note && (
-            <span className="studio-add-note">
-              <Translation>{item.note}</Translation>
+      <div className="studio-add-menu" onClick={(event: React.MouseEvent) => event.stopPropagation()}>
+        <Menu onItemClick={(key: string) => props.onPick(key)}>
+          {props.items.map((item) => (
+            <Menu.Item key={item.key} disabled={item.disabled} onMouseEnter={() => setHovered(item.key)}>
+              <span className="studio-add-icon">{item.icon}</span>
+              <Translation>{item.label}</Translation>
+              {item.note && (
+                <span className="studio-add-note">
+                  <Translation>{item.note}</Translation>
+                </span>
+              )}
+            </Menu.Item>
+          ))}
+        </Menu>
+        {props.preview && <div className="studio-add-preview">{props.preview(hovered)}</div>}
+      </div>
+    </Dropdown>
+  );
+};
+
+// PreviewTree draws a small tree: root, then each node as a chip, a node's
+// children nested under it; added marks the chip that would be new.
+type PreviewNode = { label: string; added?: boolean; children?: PreviewNode[] };
+const PreviewTree = (props: { root: string; nodes: PreviewNode[]; caption: string }) => {
+  const shown = (nodes: PreviewNode[]) => {
+    const limit = 4;
+    const extra = nodes.length - limit;
+    return (
+      <ul className="pv-tree">
+        {nodes.slice(0, limit).map((n) => (
+          <li key={n.label}>
+            <span className={classNames('pv-chip', { added: n.added })}>
+              <Translation>{n.label}</Translation>
             </span>
-          )}
-        </Menu.Item>
-      ))}
-    </Menu>
-  </Dropdown>
-);
+            {n.children && n.children.length > 0 && shown(n.children)}
+          </li>
+        ))}
+        {extra > 0 && (
+          <li>
+            <span className="pv-more">+{extra}</span>
+          </li>
+        )}
+      </ul>
+    );
+  };
+  return (
+    <div className="pv">
+      <span className="pv-chip root">{props.root}</span>
+      {shown(props.nodes)}
+      <div className="pv-caption">
+        <Translation>{props.caption}</Translation>
+      </div>
+    </div>
+  );
+};
 
 // StudioGraph draws a workflow's steps for editing, laid out by what they wait
 // on as a run is. Clicking a card's + adds a step after it, and hovering it
@@ -132,8 +186,45 @@ export const StudioGraph = (props: StudioGraphProps) => {
     { key: 'group', label: 'New Group', icon: <BsCollection />, disabled: !!group },
     { key: 'loop', label: 'New Loop', icon: <BsArrowRepeat />, disabled: true, note: 'Soon' },
   ];
+  const labelOf = (name: string) => label(steps.find((x) => x.name === name) || { name });
+  // previewAfter draws what adding after step would do, for the hovered item.
+  const previewAfter = (step: WorkflowStep, key: string) => {
+    if (key === 'loop') {
+      return <div className="pv-caption">{i18n.t('Loops are coming soon').toString()}</div>;
+    }
+    if (key === 'inside') {
+      return (
+        <PreviewTree
+          root={label(step)}
+          nodes={[{ label: 'New step', added: true }]}
+          caption="Added inside this group"
+        />
+      );
+    }
+    const { moved, stay } = addPreview(steps, step.name, key, mode);
+    const added: PreviewNode = {
+      label: key === 'group' ? 'New group' : 'New step',
+      added: true,
+      children: moved.map((n) => ({ label: labelOf(n) })),
+    };
+    const kept = stay.map((n) => ({ label: labelOf(n) }));
+    return (
+      <PreviewTree
+        root={label(step)}
+        nodes={key === 'branch' ? [...kept, added] : [added, ...kept]}
+        caption={
+          key === 'branch'
+            ? 'Runs alongside, nothing waits on it'
+            : moved.length > 0
+            ? 'Runs before what followed'
+            : 'Runs after this step'
+        }
+      />
+    );
+  };
   const addAfter = (step: WorkflowStep) => (
     <AddMenu
+      preview={(key) => previewAfter(step, key)}
       items={
         step.type === 'step-group'
           ? [{ key: 'inside', label: 'Step in Group', icon: <BsBoxArrowInRight /> }, ...addItems]

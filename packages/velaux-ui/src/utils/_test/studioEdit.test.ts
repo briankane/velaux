@@ -1,8 +1,14 @@
 import { expect } from 'chai';
 
-import { insertAfter } from '../../components/WorkflowStudio/edit';
+import { addPreview, insertAfter } from '../../components/WorkflowStudio/edit';
 
-type S = { name: string; type: string; dependsOn?: string[]; inputs?: Array<{ from: string; parameterKey: string }> };
+type S = {
+  name: string;
+  type: string;
+  dependsOn?: string[];
+  inputs?: Array<{ from: string; parameterKey: string }>;
+  outputs?: Array<{ name: string; valueFrom: string }>;
+};
 
 const steps: S[] = [
   { name: 'deploy', type: 'deploy' },
@@ -39,5 +45,31 @@ describe('insertAfter', () => {
   it('appends with no dependencies when there is no anchor', () => {
     const out = insertAfter(steps, undefined, added, { mode: 'DAG', branch: false });
     expect(out[out.length - 1]).to.deep.equal(added);
+  });
+});
+
+describe('addPreview', () => {
+  it('moves the dependsOn waiters after a new step, leaving input-only waiters on the anchor', () => {
+    const withReader: S[] = [
+      ...steps.slice(0, 4),
+      { name: 'reads', type: 'suspend', inputs: [{ from: 'out', parameterKey: 'x' }] },
+    ];
+    withReader[1] = { ...withReader[1], outputs: [{ name: 'out', valueFrom: 'v' }] } as S;
+    expect(addPreview(withReader, 'migrate', 'step', 'DAG')).to.deep.equal({
+      moved: ['canary', 'notify'],
+      stay: ['reads'],
+    });
+  });
+  it('leaves every waiter on the anchor for a branch', () => {
+    expect(addPreview(steps, 'migrate', 'branch', 'DAG')).to.deep.equal({ moved: [], stay: ['canary', 'notify'] });
+  });
+  it('in order, moves the next step in the list after the new one', () => {
+    const chain: S[] = [
+      { name: 'a', type: 's' },
+      { name: 'b', type: 's' },
+      { name: 'c', type: 's' },
+    ];
+    expect(addPreview(chain, 'a', 'step', 'StepByStep')).to.deep.equal({ moved: ['b'], stay: [] });
+    expect(addPreview(chain, 'c', 'step', 'StepByStep')).to.deep.equal({ moved: [], stay: [] });
   });
 });

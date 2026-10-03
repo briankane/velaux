@@ -26,3 +26,31 @@ export function insertAfter<T extends Step>(
   );
   return [...rest.slice(0, at + 1), added, ...rest.slice(at + 1)];
 }
+
+type Waiting = Step & { inputs?: Array<{ from: string }>; outputs?: Array<{ name: string }> };
+
+// addPreview is what adding after anchor would do to the steps that follow it:
+// moved are those that would wait on the new step instead, stay those that
+// would keep waiting on anchor. A new step or group takes the steps that name
+// anchor in dependsOn and, in order, the next in the list; a branch takes none.
+// A step that waits only through its inputs always stays.
+export function addPreview(
+  steps: Waiting[],
+  anchor: string,
+  key: string,
+  mode: string
+): { moved: string[]; stay: string[] } {
+  const at = steps.findIndex((s) => s.name === anchor);
+  const produced = new Set((steps[at]?.outputs || []).map((o) => o.name));
+  const named = steps.filter((s) => s.dependsOn?.includes(anchor)).map((s) => s.name);
+  const next = mode !== 'DAG' && at >= 0 && at + 1 < steps.length ? [steps[at + 1].name] : [];
+  const reads = steps
+    .filter((s) => s.name !== anchor && (s.inputs || []).some((i) => produced.has(i.from)))
+    .map((s) => s.name);
+  const inOrder = (names: string[]) => steps.map((s) => s.name).filter((n) => names.includes(n));
+  if (key === 'branch') {
+    return { moved: [], stay: inOrder([...named, ...reads, ...next]) };
+  }
+  const moved = inOrder([...named, ...next]);
+  return { moved, stay: inOrder(reads.filter((n) => !moved.includes(n))) };
+}

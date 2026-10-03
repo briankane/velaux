@@ -150,10 +150,13 @@
   }
 }
 .studio-add-menu {
+  position: relative;
+  display: flex;
+  align-items: stretch;
   overflow: visible;
+  background: #fff;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
-  box-shadow: none;
   filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.12));
   transform-origin: left center;
   animation: studio-add-menu-in 0.14s ease-out;
@@ -171,6 +174,11 @@
     transform: translateY(-50%) rotate(45deg);
     content: '';
   }
+  .next-menu {
+    border: none;
+    border-radius: 8px;
+    box-shadow: none;
+  }
   .next-menu-item-inner {
     display: flex;
     align-items: center;
@@ -185,6 +193,78 @@
     color: inherit;
   }
 }
+// The preview beside the add menu: the step, and what would follow it.
+.studio-add-preview {
+  width: 220px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-left: 1px solid #e2e8f0;
+  border-radius: 0 8px 8px 0;
+  .pv-chip {
+    display: inline-block;
+    max-width: 170px;
+    overflow: hidden;
+    padding: 1px 8px;
+    color: #334155;
+    font-size: 12px;
+    line-height: 18px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    &.root {
+      font-weight: 600;
+    }
+    &.added {
+      color: #15803d;
+      background: #f0fdf4;
+      border: 1px dashed #16a34a;
+    }
+  }
+  .pv-more {
+    color: #64748b;
+    font-size: 11px;
+  }
+  .pv-tree {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    li {
+      position: relative;
+      margin-top: 4px;
+      padding-left: 18px;
+      // The tree's lines: down the left, and across into each chip.
+      &::before {
+        position: absolute;
+        top: -4px;
+        bottom: 0;
+        left: 7px;
+        border-left: 1px solid #94a3b8;
+        content: '';
+      }
+      &:last-child::before {
+        bottom: auto;
+        height: 14px;
+      }
+      &::after {
+        position: absolute;
+        top: 10px;
+        left: 7px;
+        width: 9px;
+        border-top: 1px solid #94a3b8;
+        content: '';
+      }
+    }
+  }
+  .pv-caption {
+    margin-top: 8px;
+    color: #64748b;
+    font-size: 11px;
+  }
+}
+
 .studio-add-note {
   margin-left: 8px;
   padding: 0 5px;
