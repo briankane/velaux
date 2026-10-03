@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { edgePath, getGraphSize, rectBoundary, shiftIntoView } from '../../components/TreeGraph/layout';
+import { edgePath, getGraphSize, joinThrough, rectBoundary, shiftIntoView } from '../../components/TreeGraph/layout';
 
 describe('graph size', () => {
   it('reaches the right and bottom edges of the furthest nodes', () => {
@@ -71,5 +71,29 @@ describe('rectBoundary', () => {
   });
   it('leaves a point already inside where it is', () => {
     expect(rectBoundary({ x: 120, y: 120 }, rect)).to.deep.equal({ x: 120, y: 120 });
+  });
+});
+
+describe('joinThrough', () => {
+  it('runs from the first route through the centre into the second, dropping the ends at the box between', () => {
+    expect(
+      joinThrough(
+        [
+          { x: 0, y: 0 },
+          { x: 40, y: 0 },
+          { x: 90, y: 50 },
+        ],
+        { x: 100, y: 50 },
+        [
+          { x: 110, y: 50 },
+          { x: 200, y: 50 },
+        ]
+      )
+    ).to.deep.equal([
+      { x: 0, y: 0 },
+      { x: 40, y: 0 },
+      { x: 100, y: 50 },
+      { x: 200, y: 50 },
+    ]);
   });
 });

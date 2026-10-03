@@ -20,7 +20,7 @@ import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 import { clusterTooltip, resourceTooltip, sourceTooltip, targetTooltip } from './tooltip';
 import { treeNodeKey, getNodeSize, ResourceIcon } from './utils';
 import type { Rect } from './layout';
-import { edgePath, getGraphSize, rectBoundary, shiftIntoView } from './layout';
+import { edgePath, getGraphSize, joinThrough, rectBoundary, shiftIntoView } from './layout';
 
 import { Link } from 'dva/router';
 import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
@@ -267,9 +267,9 @@ function renderSourceNode(props: TreeGraphProps, id: string, node: GraphNode) {
   );
 }
 
-// renderFlowNode is what moves along a dependency, as a small node: how many
-// fields pass, or none for an order alone; all of them on hover. It is
-// centred where its edges meet, which is where every edge is drawn to.
+// renderFlowNode labels a dependency with what moves along it: how many fields
+// pass, or none for an order alone; all of them on hover. It sits on its edge,
+// centred where the edge is drawn through.
 function renderFlowNode(id: string, node: GraphNode) {
   const flow = node.flow;
   if (!flow) {
@@ -416,22 +416,41 @@ export const TreeGraph = (props: TreeGraphProps) => {
   );
 
   // An edge runs along the layout's route, its ends moved onto the boxes its
-  // nodes are drawn as, once they are measured.
-  const edges: Array<{ from: string; to: string; path: string; link?: boolean }> = [];
+  // nodes are drawn as, once they are measured. A flow is a label on its
+  // dependency, not a stop: the edges into and out of it are drawn as one,
+  // through its centre.
+  const route = (e: { v: string; w: string }) =>
+    (graph.edge(e).points || []).map((p) => ({ x: p.x + edgeOffset.x, y: p.y + edgeOffset.y }));
+  const flowAt = (key: string) => (graph.node(key)?.nodeType === 'flow' ? graph.node(key) : undefined);
+  const edges: Array<{ key: string; path: string; link?: boolean }> = [];
   graph.edges().forEach((edgeInfo) => {
-    const edge = graph.edge(edgeInfo);
-    const points = (edge.points || []).map((p) => ({ x: p.x + edgeOffset.x, y: p.y + edgeOffset.y }));
-    const source = rects[edgeInfo.v];
-    const target = rects[edgeInfo.w];
-    if (points.length >= 2) {
-      if (source) {
-        points[0] = rectBoundary(points[1], source);
-      }
-      if (target) {
-        points[points.length - 1] = rectBoundary(points[points.length - 2], target);
-      }
+    if (flowAt(edgeInfo.w)) {
+      return;
     }
-    edges.push({ from: edgeInfo.v, to: edgeInfo.w, path: edgePath(points), link: !!edge.link });
+    const flow = flowAt(edgeInfo.v);
+    const routes: Array<{ from: string; points: Array<{ x: number; y: number }> }> = flow
+      ? ((graph.inEdges(edgeInfo.v) || []) as unknown as Array<{ v: string; w: string }>).map((into) => ({
+          from: into.v,
+          points: joinThrough(route(into), { x: flow.x + edgeOffset.x, y: flow.y + edgeOffset.y }, route(edgeInfo)),
+        }))
+      : [{ from: edgeInfo.v, points: route(edgeInfo) }];
+    routes.forEach(({ from, points }) => {
+      const source = rects[from];
+      const target = rects[edgeInfo.w];
+      if (points.length >= 2) {
+        if (source) {
+          points[0] = rectBoundary(points[1], source);
+        }
+        if (target) {
+          points[points.length - 1] = rectBoundary(points[points.length - 2], target);
+        }
+      }
+      edges.push({
+        key: `${from}-${edgeInfo.v}-${edgeInfo.w}`,
+        path: edgePath(points),
+        link: !!graph.edge(edgeInfo).link && flow?.flow?.via !== 'dependsOn',
+      });
+    });
   });
 
   const graphNodes = graph.nodes();
@@ -499,7 +518,7 @@ export const TreeGraph = (props: TreeGraphProps) => {
         </defs>
         {edges.map((edge) => (
           <path
-            key={`${edge.from}-${edge.to}`}
+            key={edge.key}
             d={edge.path}
             className={classNames('graph-edge-path', { 'graph-edge-link': edge.link })}
             markerEnd={`url(#${markerId}-${edge.link ? 'link' : 'edge'})`}

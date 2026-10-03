@@ -104,3 +104,13 @@ export function rectBoundary(from: { x: number; y: number }, rect: Rect): { x: n
   );
   return { x: from.x + dx * t, y: from.y + dy * t };
 }
+
+// joinThrough is one route made of two that meet at a box: the first without
+// its last point and the second without its first, joined at the box's centre.
+export function joinThrough(
+  into: Array<{ x: number; y: number }>,
+  centre: { x: number; y: number },
+  out: Array<{ x: number; y: number }>
+): Array<{ x: number; y: number }> {
+  return [...into.slice(0, -1), centre, ...out.slice(1)];
+}

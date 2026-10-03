@@ -146,25 +146,42 @@
       color: #64748b;
     }
   }
+  // A flow is a label riding its edge: a small pill over the line, not a box.
   .graph-node-flow {
+    z-index: 1;
     display: flex;
-    gap: 4px;
+    gap: 3px;
     align-items: center;
     justify-content: center;
-    padding: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0 6px;
     color: var(--primary-color);
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 16px;
     background: #fff;
     border: 1px solid var(--primary-color);
-    border-radius: 13px;
-    cursor: default;
+    border-radius: 9px;
+    box-shadow: none;
+    cursor: help;
+    &:hover {
+      color: #fff;
+      background: var(--primary-color);
+      border-color: var(--primary-color);
+      box-shadow: none;
+    }
     .flow-count {
       font-weight: 600;
       font-variant-numeric: tabular-nums;
     }
     &.flow-dependsOn {
-      color: #94a3b8;
+      color: #64748b;
       border-color: #cbd5e1;
+      &:hover {
+        color: #fff;
+        background: #64748b;
+        border-color: #64748b;
+      }
     }
   }
   .graph-node.unused-status {
