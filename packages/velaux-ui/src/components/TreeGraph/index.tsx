@@ -131,15 +131,15 @@ function renderResourceNode(props: TreeGraphProps, id: string, node: GraphNode) 
       <div className={classNames('name')}>
         {ownCard(
           <div>
-            <div className="component-node-title">
-              <span className="component-node-name">{node.resource.name}</span>
+            <div className="resource-node-name">{node.resource.name}</div>
+            <div className="resource-node-kind">
+              <span className="kind">{node.resource.kind}</span>
               {health?.statusCode && (
                 <StatusBadge tone={tone} label={healthLabel[health.statusCode] || health.statusCode}>
                   <SourceMark source={health.source} />
                 </StatusBadge>
               )}
             </div>
-            <div className="kind">{node.resource.kind}</div>
           </div>
         )}
         {node.origin && <ResourceOriginLine origin={node.origin} />}

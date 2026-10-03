@@ -347,7 +347,30 @@
   gap: 8px;
 }
 
-// A resource's name and health, padded clear of its border.
+// A resource's name across the box, then its kind with its health at the
+// right; the kind gives way first. Padded clear of its border.
 .graph-tree .graph-node-resource > .name {
   padding: 4px 0;
+  .resource-node-name {
+    overflow: hidden;
+    color: #0f172a;
+    font-weight: 500;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .resource-node-kind {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    .kind {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .status-badge {
+      flex: none;
+    }
+  }
 }
