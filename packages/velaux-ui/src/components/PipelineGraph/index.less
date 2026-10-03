@@ -35,31 +35,34 @@
     &.group {
       cursor: default;
     }
-    &.pending .step-head .step-name {
+    &.pending .step-name {
       color: #64748b;
     }
   }
 
-  .step-head {
+  .step-name {
+    overflow: hidden;
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .step-meta {
     display: flex;
     gap: 8px;
     align-items: center;
     justify-content: space-between;
-    .step-name {
+    margin-top: 4px;
+    .step-type {
       overflow: hidden;
-      color: #0f172a;
-      font-weight: 600;
-      font-size: 14px;
+      color: #64748b;
+      font-size: 12px;
+      font-family: var(--font-family-code, monospace);
       white-space: nowrap;
       text-overflow: ellipsis;
     }
-  }
-
-  .step-type {
-    margin-top: 2px;
-    color: #64748b;
-    font-size: 12px;
-    font-family: var(--font-family-code, monospace);
   }
 
   .step-caption {
@@ -119,7 +122,7 @@
 
   .workflow-step-port {
     position: absolute;
-    top: 32px;
+    top: 22px;
     width: 10px;
     height: 10px;
     background: #fff;

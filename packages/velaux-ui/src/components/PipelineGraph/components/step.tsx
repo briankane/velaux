@@ -45,20 +45,20 @@ export const Step = (props: StepProps) => {
         }
       }}
     >
-      <div className="step-head">
-        <span className="step-name" title={label(step)}>
-          {label(step)}
+      <div className="step-name" title={label(step)}>
+        {label(step)}
+      </div>
+      <div className="step-meta">
+        <span className="step-type">
+          {step.type}
+          {group && step.subSteps && (
+            <span>
+              {' · '}
+              {step.subSteps.length} <Translation>steps</Translation>
+            </span>
+          )}
         </span>
         <StatusBadge tone={status.tone} label={status.label} />
-      </div>
-      <div className="step-type">
-        {step.type}
-        {group && step.subSteps && (
-          <span>
-            {' · '}
-            {step.subSteps.length} <Translation>steps</Translation>
-          </span>
-        )}
       </div>
       {!group && caption.text && (
         <div className={classNames('step-caption', { error: caption.error })} title={caption.text}>

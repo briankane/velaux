@@ -42,7 +42,7 @@ class PipelineGraph extends React.Component<PipelineGraphProps, State> {
           data-from={'step-' + from}
           data-to={'step-' + to}
           fill="none"
-          d={`M ${startPoint} 40 H ${endPoint}`}
+          d={`M ${startPoint} 30 H ${endPoint}`}
         />
       </svg>
     );
