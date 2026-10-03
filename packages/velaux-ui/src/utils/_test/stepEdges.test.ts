@@ -37,6 +37,20 @@ describe('stepEdges', () => {
     expect(pairs(stepEdges(names('a', 'b', 'c'), spec, 'StepByStep'))).to.deep.equal(['a>b', 'b>c']);
   });
 
+  it('keeps the edges into a step that waits on later steps in order', () => {
+    const spec = [
+      { name: 'announce', dependsOn: ['smoke', 'notify'] },
+      { name: 'deploy' },
+      { name: 'verify', dependsOn: ['deploy'] },
+      { name: 'notify', dependsOn: ['deploy'] },
+      { name: 'approve', dependsOn: ['verify'] },
+      { name: 'smoke', dependsOn: ['approve'] },
+    ];
+    const edges = pairs(stepEdges(names('announce', 'deploy', 'verify', 'notify', 'approve', 'smoke'), spec, 'StepByStep'));
+    expect(edges).to.include('smoke>announce');
+    expect(edges).to.include('notify>announce');
+  });
+
   it('ignores dependencies on steps the run does not have', () => {
     const spec = [{ name: 'b', dependsOn: ['gone'] }];
     expect(stepEdges(names('b'), spec, 'DAG')).to.deep.equal([]);

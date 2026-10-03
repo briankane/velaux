@@ -44,10 +44,18 @@ export function stepEdges(steps: Array<{ name: string }>, spec: SpecStep[] | und
     waitsOn.set(name, new Set(Array.from(deps).filter((d) => known.has(d))));
   });
 
+  // In order, a step waiting on a later one is a wait that never ends: that
+  // edge is always drawn, and never counts as part of a longer path.
+  const position = new Map(names.map((n, i) => [n, i]));
+  const backward = (from: string, to: string) =>
+    mode !== 'DAG' && (position.get(from) ?? 0) > (position.get(to) ?? 0);
+  const forwardOf = (step: string) =>
+    Array.from(waitsOn.get(step) || []).filter((d) => !backward(d, step));
+
   // reaches is whether `to` waits on `from` through at least one other step.
   const reaches = (from: string, to: string): boolean => {
-    const seen = new Set<string>();
-    const stack = Array.from(waitsOn.get(to) || []).filter((d) => d !== from);
+    const seen = new Set<string>([to]);
+    const stack = forwardOf(to).filter((d) => d !== from);
     while (stack.length) {
       const next = stack.pop() as string;
       if (next === from) {
@@ -55,7 +63,7 @@ export function stepEdges(steps: Array<{ name: string }>, spec: SpecStep[] | und
       }
       if (!seen.has(next)) {
         seen.add(next);
-        stack.push(...Array.from(waitsOn.get(next) || []));
+        stack.push(...forwardOf(next));
       }
     }
     return false;
@@ -64,7 +72,7 @@ export function stepEdges(steps: Array<{ name: string }>, spec: SpecStep[] | und
   const edges: StepEdge[] = [];
   names.forEach((to) => {
     (waitsOn.get(to) || new Set<string>()).forEach((from) => {
-      if (!reaches(from, to)) {
+      if (backward(from, to) || !reaches(from, to)) {
         edges.push({ from, to });
       }
     });
