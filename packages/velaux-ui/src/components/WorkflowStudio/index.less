@@ -150,10 +150,25 @@
   }
 }
 .studio-add-menu {
+  overflow: visible;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
   transform-origin: left center;
   animation: studio-add-menu-in 0.14s ease-out;
+  // A pointer on the left edge, level with the +, joins the menu to it.
+  &::before {
+    position: absolute;
+    top: 50%;
+    left: -6px;
+    width: 10px;
+    height: 10px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    border-left: 1px solid #e2e8f0;
+    transform: translateY(-50%) rotate(45deg);
+    content: '';
+  }
   .next-menu-item-inner {
     display: flex;
     align-items: center;
