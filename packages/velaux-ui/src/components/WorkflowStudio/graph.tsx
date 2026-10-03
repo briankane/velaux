@@ -81,9 +81,10 @@ const StepTools = (props: {
 
 type AddItem = { key: string; label: string; icon: React.ReactNode; disabled?: boolean; note?: string };
 
-// AddMenu opens the things that can be added from where it sits.
+// AddMenu opens, on hover, the things that can be added from where it sits;
+// clicking its trigger adds a step straight away.
 const AddMenu = (props: { items: AddItem[]; onPick: (key: string) => void; children: React.ReactNode }) => (
-  <Dropdown triggerType="click" trigger={props.children}>
+  <Dropdown triggerType="hover" delay={250} trigger={props.children}>
     <Menu
       className="studio-add-menu"
       onItemClick={(key: string) => props.onPick(key)}
@@ -105,9 +106,9 @@ const AddMenu = (props: { items: AddItem[]; onPick: (key: string) => void; child
 );
 
 // StudioGraph draws a workflow's steps for editing, laid out by what they wait
-// on as a run is. Each card's + adds after it; clicking a card edits it, and
-// hovering shows its moves and Delete. A group holds its own steps the same
-// way, in its own mode.
+// on as a run is. Clicking a card's + adds a step after it, and hovering it
+// offers the rest; clicking a card edits it, and hovering a card shows its
+// moves and Delete. A group holds its own steps the same way, in its own mode.
 export const StudioGraph = (props: StudioGraphProps) => {
   const { steps, mode, subMode, group, onAdd, onEdit, onDelete, onGroupMode, onMove, onResize } = props;
   const [, setNestedResizes] = React.useState(0);
@@ -150,8 +151,11 @@ export const StudioGraph = (props: StudioGraphProps) => {
       <button
         type="button"
         className="studio-step-add"
-        title={i18n.t('Add after this step').toString()}
-        onClick={(event) => event.stopPropagation()}
+        title={i18n.t('New Step').toString()}
+        onClick={(event) => {
+          event.stopPropagation();
+          onAdd({ kind: 'step', group, after: step.name });
+        }}
       >
         <BsPlusLg />
       </button>
@@ -261,7 +265,14 @@ export const StudioGraph = (props: StudioGraphProps) => {
         items={addItems.filter((item) => item.key !== 'branch')}
         onPick={(key) => key !== 'loop' && onAdd({ kind: key === 'group' ? 'group' : 'step', group })}
       >
-        <button type="button" className="studio-add-step" onClick={(event) => event.stopPropagation()}>
+        <button
+          type="button"
+          className="studio-add-step"
+          onClick={(event) => {
+            event.stopPropagation();
+            onAdd({ kind: 'step', group });
+          }}
+        >
           <BsPlusLg />
           <Translation>{group ? 'Add to this group' : 'Add'}</Translation>
         </button>
