@@ -25,6 +25,13 @@
     align-items: center;
     justify-content: space-between;
   }
+  .studio-step-tools {
+    display: inline-flex;
+    flex: none;
+    gap: 2px;
+    align-items: center;
+  }
+  .studio-step-add,
   .studio-step-menu {
     display: inline-flex;
     flex: none;
@@ -61,26 +68,6 @@
   .studio-group-mode .next-select {
     width: 120px;
   }
-  // A + sits on a line or a card's right edge, above the edges.
-  .studio-add {
-    position: absolute;
-    z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    padding: 0;
-    color: #fff;
-    font-size: 11px;
-    background: #94a3b8;
-    border: 2px solid #fff;
-    border-radius: 50%;
-    cursor: pointer;
-    &:hover {
-      background: var(--primary-color);
-    }
-  }
   .studio-add-step {
     display: inline-flex;
     gap: 6px;
@@ -101,6 +88,12 @@
   .step-group-body .studio-add-step {
     margin-left: 24px;
   }
+}
+
+.studio-add-note {
+  margin-left: 8px;
+  color: #94a3b8;
+  font-size: 11px;
 }
 
 .def-items {

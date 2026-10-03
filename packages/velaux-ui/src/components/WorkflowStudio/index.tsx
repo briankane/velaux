@@ -8,7 +8,8 @@ import type { Dispatch } from 'redux';
 import { WorkflowEditContext } from '../../context';
 import type { DefinitionBase, WorkflowMode, WorkflowStep, WorkflowStepBase } from '@velaux/data';
 
-import { orderByDependencies } from '../PipelineGraph/dependencies';
+import { groupMode, orderByDependencies } from '../PipelineGraph/dependencies';
+import { insertAfter } from './edit';
 import type { AddAt } from './graph';
 import { StudioGraph } from './graph';
 import StepForm from './step-form';
@@ -76,19 +77,28 @@ class WorkflowStudio extends React.Component<Props, State> {
 
   addStep = (step: WorkflowStepBase) => {
     const { adding, steps } = this.state;
+    const { mode = 'StepByStep', subMode = 'DAG' } = this.props;
     if (!adding) {
       return;
     }
-    const added = adding.dependsOn ? { ...step, dependsOn: adding.dependsOn } : step;
-    const next = _.cloneDeep(steps);
+    const opts = { branch: !!adding.branch };
+    let added: WorkflowStepBase = step;
+    let next: WorkflowStep[];
     if (adding.group) {
-      const group = next.find((s) => s.name === adding.group);
-      if (group) {
-        group.subSteps = group.subSteps || [];
-        group.subSteps.splice(adding.index, 0, added);
-      }
+      next = steps.map((s) => {
+        if (s.name !== adding.group) {
+          return s;
+        }
+        const subSteps = insertAfter(s.subSteps || [], adding.after, step, {
+          ...opts,
+          mode: groupMode(s.mode, undefined, subMode),
+        });
+        added = subSteps.find((sub) => sub.name === step.name) || step;
+        return { ...s, subSteps };
+      });
     } else {
-      next.splice(adding.index, 0, added);
+      next = insertAfter(steps, adding.after, step as WorkflowStep, { ...opts, mode });
+      added = next.find((s) => s.name === step.name) || step;
     }
     this.setState(
       {
@@ -186,7 +196,7 @@ class WorkflowStudio extends React.Component<Props, State> {
             }}
             addSub={!!adding.group}
             addStep={this.addStep}
-            definitions={definitions}
+            definitions={definitions?.filter((d) => (adding.kind === 'group') === (d.name === 'step-group'))}
           />
         )}
         {showStep && (

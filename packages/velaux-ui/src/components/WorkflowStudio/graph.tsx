@@ -12,9 +12,9 @@ import { StepEdges, stepWidth, useStepLayout } from '../PipelineGraph/layout';
 import { Translation } from '../Translation';
 import '../PipelineGraph/index.less';
 
-// AddAt is where a new step goes: into a group or the top level, at a place in
-// the order, waiting on the steps given.
-export type AddAt = { group?: string; index: number; dependsOn?: string[] };
+// AddAt is what to add and where: a step or a group, into a group or the top
+// level, after a step (in the middle, or as a branch from it) or last.
+export type AddAt = { kind: 'step' | 'group'; group?: string; after?: string; branch?: boolean };
 
 type StudioGraphProps = {
   steps: WorkflowStep[];
@@ -93,19 +93,27 @@ const StepMenu = (props: {
   </Dropdown>
 );
 
-const AddButton = (props: { title: string; style?: React.CSSProperties; onClick: () => void }) => (
-  <button
-    type="button"
-    className="studio-add"
-    style={props.style}
-    title={i18n.t(props.title).toString()}
-    onClick={(event) => {
-      event.stopPropagation();
-      props.onClick();
-    }}
-  >
-    <BsPlusLg />
-  </button>
+type AddItem = { key: string; label: string; disabled?: boolean; note?: string };
+
+// AddMenu is a + that opens the things that can be added from where it sits.
+const AddMenu = (props: { items: AddItem[]; onPick: (key: string) => void; children: React.ReactNode }) => (
+  <Dropdown triggerType="click" trigger={props.children}>
+    <Menu
+      onItemClick={(key: string) => props.onPick(key)}
+      onClick={(event: React.MouseEvent) => event.stopPropagation()}
+    >
+      {props.items.map((item) => (
+        <Menu.Item key={item.key} disabled={item.disabled}>
+          <Translation>{item.label}</Translation>
+          {item.note && (
+            <span className="studio-add-note">
+              <Translation>{item.note}</Translation>
+            </span>
+          )}
+        </Menu.Item>
+      ))}
+    </Menu>
+  </Dropdown>
 );
 
 // StudioGraph draws a workflow's steps for editing, laid out by what they wait
@@ -128,6 +136,37 @@ export const StudioGraph = (props: StudioGraphProps) => {
       earlier={canMove(steps, index, -1)}
       later={canMove(steps, index, 1)}
     />
+  );
+  // afterItems are what can follow a step: in its own list, so no group inside a
+  // group, and a branch only where steps run in parallel.
+  const afterItems: AddItem[] = [
+    { key: 'step', label: 'New step after' },
+    ...(mode === 'DAG' ? [{ key: 'branch', label: 'New branch from here' }] : []),
+    ...(group ? [] : [{ key: 'group', label: 'New group after' }]),
+    { key: 'loop', label: 'New loop after', disabled: true, note: 'Coming soon' },
+  ];
+  const addAfter = (step: WorkflowStep) => (
+    <AddMenu
+      items={
+        step.type === 'step-group' ? [{ key: 'inside', label: 'New step in this group' }, ...afterItems] : afterItems
+      }
+      onPick={(key) => {
+        if (key === 'inside') {
+          onAdd({ kind: 'step', group: step.name });
+        } else if (key !== 'loop') {
+          onAdd({ kind: key === 'group' ? 'group' : 'step', group, after: step.name, branch: key === 'branch' });
+        }
+      }}
+    >
+      <button
+        type="button"
+        className="studio-step-add"
+        title={i18n.t('Add').toString()}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <BsPlusLg />
+      </button>
+    </AddMenu>
   );
   const layout = useStepLayout(
     steps.map((s) => s.name),
@@ -163,14 +202,22 @@ export const StudioGraph = (props: StudioGraphProps) => {
                       <BsCollection />
                       <Translation>Group</Translation>
                     </span>
-                    {menu(step, index)}
+                    <span className="studio-step-tools">
+                      {addAfter(step)}
+                      {menu(step, index)}
+                    </span>
                   </div>
                 )}
                 <div className="studio-step-head">
                   <div className="step-name" title={label(step)}>
                     {label(step)}
                   </div>
-                  {!isGroup && menu(step, index)}
+                  {!isGroup && (
+                    <span className="studio-step-tools">
+                      {addAfter(step)}
+                      {menu(step, index)}
+                    </span>
+                  )}
                 </div>
                 <div className="step-meta">
                   {isGroup ? (
@@ -227,41 +274,20 @@ export const StudioGraph = (props: StudioGraphProps) => {
             </div>
           );
         })}
-        {mode === 'StepByStep'
-          ? steps.map((step, index) => {
-              const b = layout.box(step.name);
-              return (
-                <AddButton
-                  key={`add-${step.name}`}
-                  title={index === 0 ? 'Add a step first' : 'Add a step here'}
-                  style={{ left: b.left - 34, top: b.top + b.height / 2 - 10 }}
-                  onClick={() => onAdd({ group, index })}
-                />
-              );
-            })
-          : steps.map((step, index) => {
-              const b = layout.box(step.name);
-              return (
-                <AddButton
-                  key={`add-${step.name}`}
-                  title="Add a step after this one"
-                  style={{ left: b.left + b.width - 10, top: b.top + b.height / 2 - 10 }}
-                  onClick={() => onAdd({ group, index: index + 1, dependsOn: [step.name] })}
-                />
-              );
-            })}
       </div>
-      <button
-        type="button"
-        className="studio-add-step"
-        onClick={(event) => {
-          event.stopPropagation();
-          onAdd({ group, index: steps.length });
-        }}
+      <AddMenu
+        items={[
+          { key: 'step', label: 'New step' },
+          ...(group ? [] : [{ key: 'group', label: 'New group' }]),
+          { key: 'loop', label: 'New loop', disabled: true, note: 'Coming soon' },
+        ]}
+        onPick={(key) => key !== 'loop' && onAdd({ kind: key === 'group' ? 'group' : 'step', group })}
       >
-        <BsPlusLg />
-        <Translation>{group ? 'Add a step to this group' : 'Add a step'}</Translation>
-      </button>
+        <button type="button" className="studio-add-step" onClick={(event) => event.stopPropagation()}>
+          <BsPlusLg />
+          <Translation>{group ? 'Add to this group' : 'Add'}</Translation>
+        </button>
+      </AddMenu>
     </div>
   );
 };
