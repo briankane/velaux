@@ -4,7 +4,6 @@ import React from 'react';
 import type { WorkflowStepStatus } from '@velaux/data';
 import { timeDiff } from '../../../utils/common';
 import { StatusBadge } from '../../StatusBadge';
-import { Translation } from '../../Translation';
 
 import { stepCaption, stepStatus } from '../status';
 
@@ -49,15 +48,7 @@ export const Step = (props: StepProps) => {
         {label(step)}
       </div>
       <div className="step-meta">
-        <span className="step-type">
-          {step.type}
-          {group && step.subSteps && (
-            <span>
-              {' · '}
-              {step.subSteps.length} <Translation>steps</Translation>
-            </span>
-          )}
-        </span>
+        <span className="step-type">{step.type}</span>
         <StatusBadge tone={status.tone} label={status.label} />
       </div>
       {!group && caption.text && (

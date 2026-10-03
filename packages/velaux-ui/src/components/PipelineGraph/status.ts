@@ -15,7 +15,7 @@ export function recordStatus(phase?: string): { tone: Tone; label: string } {
     case 'stopped':
       return { tone: 'failed', label: 'Terminated' };
     case 'suspending':
-      return { tone: 'suspended', label: 'Waiting for approval' };
+      return { tone: 'progressing', label: 'Waiting for approval' };
     case 'skipped':
       return { tone: 'neutral', label: 'Skipped' };
     case 'pending':
