@@ -109,7 +109,6 @@ const AddMenu = (props: {
       align="cl cr"
       offset={[12, 0]}
       animation={false}
-      shouldUpdatePosition
       onVisibleChange={(visible: boolean) => {
         setOpen(visible);
         if (visible) {
@@ -131,7 +130,18 @@ const AddMenu = (props: {
             </Menu.Item>
           ))}
         </Menu>
-        {props.preview && <div className="studio-add-preview">{props.preview(hovered)}</div>}
+        {props.preview && (
+          // Every item's preview is laid out in the same place, the hovered one
+          // shown: the menu keeps the size of the largest, so it never moves
+          // under the pointer.
+          <div className="studio-add-preview">
+            {props.items.map((item) => (
+              <div key={item.key} className={classNames('pv-layer', { shown: item.key === hovered })}>
+                {props.preview!(item.key)}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Dropdown>
   );

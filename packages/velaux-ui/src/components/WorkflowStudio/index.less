@@ -230,11 +230,19 @@
 }
 // The preview beside the add menu: the step, and what would follow it.
 .studio-add-preview {
+  display: grid;
   width: 220px;
   padding: 10px 12px;
   background: #f8fafc;
   border-left: 1px solid #e2e8f0;
   border-radius: 0 8px 8px 0;
+  .pv-layer {
+    grid-area: 1 / 1;
+    visibility: hidden;
+    &.shown {
+      visibility: visible;
+    }
+  }
   .pv-chip {
     display: inline-block;
     max-width: 170px;
