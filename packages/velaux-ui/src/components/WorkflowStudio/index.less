@@ -151,21 +151,23 @@
 }
 .studio-add-menu {
   overflow: visible;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
+  box-shadow: none;
+  filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.12));
   transform-origin: left center;
   animation: studio-add-menu-in 0.14s ease-out;
   // A pointer on the left edge, level with the +, joins the menu to it.
   &::before {
     position: absolute;
     top: 50%;
-    left: -6px;
-    width: 10px;
-    height: 10px;
+    left: -8px;
+    width: 14px;
+    height: 14px;
     background: #fff;
-    border-bottom: 1px solid #e2e8f0;
-    border-left: 1px solid #e2e8f0;
+    border-bottom: 1px solid #cbd5e1;
+    border-left: 1px solid #cbd5e1;
+    border-bottom-left-radius: 2px;
     transform: translateY(-50%) rotate(45deg);
     content: '';
   }
