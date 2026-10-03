@@ -198,6 +198,44 @@ describe('orthogonal edge routing', () => {
   });
 });
 
+describe('backward edges', () => {
+  // crosses is whether a run passes through a box's inside.
+  const crosses = ([a, b]: [Point, Point], r: { left: number; top: number; width: number; height: number }) => {
+    const [x1, x2] = [Math.min(a.x, b.x), Math.max(a.x, b.x)];
+    const [y1, y2] = [Math.min(a.y, b.y), Math.max(a.y, b.y)];
+    return x1 < r.left + r.width && x2 > r.left && y1 < r.top + r.height && y2 > r.top;
+  };
+  const nodes: RouteNode[] = [
+    { key: 'a', column: 0, box: box(0, 0) },
+    { key: 'b', column: 1, box: box(200, 0) },
+    { key: 'c', column: 2, box: box(400, 0) },
+  ];
+
+  it('loops round below the graph at right angles, out of the right side and into the left', () => {
+    const routes = routeEdges(nodes, [{ key: 'c->a', from: 'c', to: 'a' }]);
+    const points = routes['c->a'];
+    expect(rightAngled(points)).to.equal(true);
+    expect(points[0]).to.deep.equal({ x: 500, y: points[0].y });
+    expect(points[0].y).to.be.within(0, 40);
+    expect(points[points.length - 1].x).to.equal(0);
+    expect(points[points.length - 1].y).to.be.within(0, 40);
+    expect(Math.max(...points.map((p) => p.y))).to.be.greaterThan(40);
+    segments(points)
+      .slice(1, -1)
+      .forEach((run) => nodes.forEach((n) => expect(crosses(run, n.box), JSON.stringify(run)).to.equal(false)));
+  });
+
+  it('gives each backward edge its own lane', () => {
+    const routes = routeEdges(nodes, [
+      { key: 'c->a', from: 'c', to: 'a' },
+      { key: 'b->a', from: 'b', to: 'a' },
+    ]);
+    segments(routes['c->a']).forEach((one) =>
+      segments(routes['b->a']).forEach((other) => expect(overlapping(one, other)).to.equal(false))
+    );
+  });
+});
+
 describe('orthoPath', () => {
   it('rounds each right angle', () => {
     expect(

@@ -45,8 +45,17 @@
     font-size: 12px;
     line-height: 16px;
   }
+  // A wait that never ends is drawn bold, in red, above the cards.
+  .workflow-connectors.front {
+    z-index: 3;
+    pointer-events: none;
+    .workflow-connector-head {
+      fill: var(--failed-color, #dc2626);
+    }
+  }
   .workflow-connector.forward {
     stroke: var(--failed-color, #dc2626);
+    stroke-width: 3px;
     stroke-dasharray: none;
   }
   .studio-group-mode .next-select {

@@ -142,6 +142,7 @@ export const StudioGraph = (props: StudioGraphProps) => {
           layout={layout}
           edges={edges}
           className={(e) => (isForward(e.from, e.to) ? 'workflow-connector forward' : 'workflow-connector reached')}
+          front={(e) => isForward(e.from, e.to)}
         />
         {steps.map((step, index) => {
           const isGroup = step.type === 'step-group';

@@ -133,6 +133,13 @@ export function useStepLayout(keys: string[], edges: StepEdge[], onResize?: () =
     size.width = Math.max(size.width, n.x + n.width / 2 + margin);
     size.height = Math.max(size.height, n.y + n.height / 2 + margin);
   });
+  // A loop round the graph reaches below and beside the cards.
+  Object.values(routes).forEach((points) =>
+    points.forEach((p) => {
+      size.width = Math.max(size.width, p.x + margin);
+      size.height = Math.max(size.height, p.y + margin);
+    })
+  );
   React.useEffect(() => {
     onResize && onResize();
   }, [size.width, size.height, onResize]);
@@ -158,35 +165,56 @@ export function useStepLayout(keys: string[], edges: StepEdge[], onResize?: () =
 let graphCount = 0;
 
 // StepEdges draws a step graph's edges, each ending in an arrowhead.
-export const StepEdges = (props: { layout: StepLayout; edges: StepEdge[]; className: (edge: StepEdge) => string }) => {
+// StepEdges draws a step graph's edges, each ending in an arrowhead. Those
+// front picks are drawn above the cards, so a warning line is never hidden.
+export const StepEdges = (props: {
+  layout: StepLayout;
+  edges: StepEdge[];
+  className: (edge: StepEdge) => string;
+  front?: (edge: StepEdge) => boolean;
+}) => {
   const [markerId] = React.useState(() => `step-edges-${++graphCount}`);
-  const { layout, edges, className } = props;
-  return (
-    <svg className="workflow-connectors" width={layout.size.width} height={layout.size.height}>
+  const { layout, edges, className, front = () => false } = props;
+  const layer = (drawn: StepEdge[], onTop: boolean) => (
+    <svg
+      className={onTop ? 'workflow-connectors front' : 'workflow-connectors'}
+      width={layout.size.width}
+      height={layout.size.height}
+    >
       <defs>
         <marker
-          id={markerId}
+          id={`${markerId}${onTop ? '-front' : ''}`}
           viewBox="0 0 10 10"
           refX="9"
           refY="5"
-          markerWidth="7"
-          markerHeight="7"
+          markerWidth={onTop ? 5 : 7}
+          markerHeight={onTop ? 5 : 7}
           orient="auto-start-reverse"
         >
           <path d="M 0 0 L 10 5 L 0 10 z" className="workflow-connector-head" />
         </marker>
       </defs>
-      {edges.map((e) => (
+      {drawn.map((e) => (
         <path
           key={`${e.from}->${e.to}`}
           className={className(e)}
           data-from={e.from}
           data-to={e.to}
           fill="none"
-          markerEnd={`url(#${markerId})`}
+          markerEnd={`url(#${markerId}${onTop ? '-front' : ''})`}
           d={layout.path(e)}
         />
       ))}
     </svg>
+  );
+  const onTop = edges.filter(front);
+  return (
+    <>
+      {layer(
+        edges.filter((e) => !front(e)),
+        false
+      )}
+      {onTop.length > 0 && layer(onTop, true)}
+    </>
   );
 };
