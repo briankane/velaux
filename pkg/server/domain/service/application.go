@@ -71,6 +71,9 @@ const (
 
 // ApplicationService application service
 type ApplicationService interface {
+	// GetApplicationResourceTree is the resource tree an env deploys, with kstatus
+	// health for the kinds KubeVela does not check itself.
+	GetApplicationResourceTree(ctx context.Context, app *model.Application, envName string, opts ResourceTreeOptions) (*apisv1.VelaQLViewResponse, error)
 	// GetApplicationDataFlows is what moves between the sources and components an env deploys.
 	GetApplicationDataFlows(ctx context.Context, app *model.Application, envName string) (*apisv1.ApplicationDataFlowsResponse, error)
 	ListApplications(ctx context.Context, listOptions apisv1.ListApplicationOptions) ([]*apisv1.ApplicationBase, error)
@@ -131,6 +134,7 @@ type applicationServiceImpl struct {
 	DefinitionService DefinitionService   `inject:""`
 	ProjectService    ProjectService      `inject:""`
 	UserService       UserService         `inject:""`
+	VelaQLService     VelaQLService       `inject:""`
 }
 
 // NewApplicationService new application service
