@@ -71,3 +71,36 @@ export function edgePath(points: Array<{ x: number; y: number }>): string {
   parts.push(`L ${last.x} ${last.y}`);
   return parts.join(' ');
 }
+
+// Rect is a node's box as drawn: its top-left corner and size.
+export type Rect = { left: number; top: number; width: number; height: number };
+
+// rectBoundary is where a line from a point toward a box's centre crosses into
+// the box: where an edge from that point meets the node. A point already
+// inside is left where it is.
+export function rectBoundary(from: { x: number; y: number }, rect: Rect): { x: number; y: number } {
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const dx = cx - from.x;
+  const dy = cy - from.y;
+  const inside =
+    from.x >= rect.left && from.x <= rect.left + rect.width && from.y >= rect.top && from.y <= rect.top + rect.height;
+  if (inside || (dx === 0 && dy === 0)) {
+    return from;
+  }
+  // The line enters the box at the latest of the times it crosses into each
+  // pair of opposite sides.
+  const enter = (start: number, delta: number, low: number, high: number) => {
+    if (delta === 0) {
+      return -Infinity;
+    }
+    const t1 = (low - start) / delta;
+    const t2 = (high - start) / delta;
+    return Math.min(t1, t2);
+  };
+  const t = Math.max(
+    enter(from.x, dx, rect.left, rect.left + rect.width),
+    enter(from.y, dy, rect.top, rect.top + rect.height)
+  );
+  return { x: from.x + dx * t, y: from.y + dy * t };
+}

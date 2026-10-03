@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { edgePath, getGraphSize, shiftIntoView } from '../../components/TreeGraph/layout';
+import { edgePath, getGraphSize, rectBoundary, shiftIntoView } from '../../components/TreeGraph/layout';
 
 describe('graph size', () => {
   it('reaches the right and bottom edges of the furthest nodes', () => {
@@ -55,5 +55,21 @@ describe('edgePath', () => {
   it('draws nothing for fewer than two points', () => {
     expect(edgePath([{ x: 1, y: 1 }])).to.equal('');
     expect(edgePath([])).to.equal('');
+  });
+});
+
+describe('rectBoundary', () => {
+  const rect = { left: 100, top: 100, width: 100, height: 50 };
+  it('meets the side a point approaches from, on the way to the centre', () => {
+    expect(rectBoundary({ x: 0, y: 125 }, rect)).to.deep.equal({ x: 100, y: 125 });
+    expect(rectBoundary({ x: 150, y: 0 }, rect)).to.deep.equal({ x: 150, y: 100 });
+    expect(rectBoundary({ x: 300, y: 125 }, rect)).to.deep.equal({ x: 200, y: 125 });
+  });
+  it('meets the side a diagonal actually crosses', () => {
+    // From (0, 25) toward the centre (150, 125), the top edge is reached first.
+    expect(rectBoundary({ x: 0, y: 25 }, rect)).to.deep.equal({ x: 112.5, y: 100 });
+  });
+  it('leaves a point already inside where it is', () => {
+    expect(rectBoundary({ x: 120, y: 120 }, rect)).to.deep.equal({ x: 120, y: 120 });
   });
 });

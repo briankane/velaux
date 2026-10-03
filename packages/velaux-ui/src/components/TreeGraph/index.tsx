@@ -19,7 +19,8 @@ import type { GraphNode, TreeNode, GraphEdge } from './interface';
 import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 import { clusterTooltip, resourceTooltip, sourceTooltip, targetTooltip } from './tooltip';
 import { treeNodeKey, getNodeSize, ResourceIcon } from './utils';
-import { edgePath, getGraphSize, shiftIntoView } from './layout';
+import type { Rect } from './layout';
+import { edgePath, getGraphSize, rectBoundary, shiftIntoView } from './layout';
 
 import { Link } from 'dva/router';
 import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
@@ -365,6 +366,27 @@ let graphCount = 0;
 
 export const TreeGraph = (props: TreeGraphProps) => {
   const [markerId] = React.useState(() => `graph-${++graphCount}`);
+  // rects are the boxes the nodes are drawn as, measured once they are, so
+  // edges end on them: a node may grow past the size the layout gave it.
+  const [rects, setRects] = React.useState<Record<string, Rect>>({});
+  const container = React.useRef<HTMLDivElement>(null);
+  React.useLayoutEffect(() => {
+    const measured: Record<string, Rect> = {};
+    container.current?.querySelectorAll<HTMLElement>('[data-node-key]').forEach((wrapper) => {
+      const box = wrapper.firstElementChild as HTMLElement | null;
+      if (box) {
+        measured[wrapper.dataset.nodeKey || ''] = {
+          left: box.offsetLeft,
+          top: box.offsetTop,
+          width: box.offsetWidth,
+          height: box.offsetHeight,
+        };
+      }
+    });
+    if (JSON.stringify(measured) !== JSON.stringify(rects)) {
+      setRects(measured);
+    }
+  });
   // init the graph
   const graph = new dagre.graphlib.Graph<GraphNode, GraphEdge>();
   graph.setGraph({
@@ -383,22 +405,55 @@ export const TreeGraph = (props: TreeGraphProps) => {
     20
   );
 
+  // An edge runs along the layout's route, its ends moved onto the boxes its
+  // nodes are drawn as, once they are measured.
   const edges: Array<{ from: string; to: string; path: string; link?: boolean }> = [];
   graph.edges().forEach((edgeInfo) => {
     const edge = graph.edge(edgeInfo);
-    edges.push({
-      from: edgeInfo.v,
-      to: edgeInfo.w,
-      path: edgePath((edge.points || []).map((p) => ({ x: p.x + edgeOffset.x, y: p.y + edgeOffset.y }))),
-      link: !!edge.link,
-    });
+    const points = (edge.points || []).map((p) => ({ x: p.x + edgeOffset.x, y: p.y + edgeOffset.y }));
+    const source = rects[edgeInfo.v];
+    const target = rects[edgeInfo.w];
+    if (points.length >= 2) {
+      if (source) {
+        points[0] = rectBoundary(points[1], source);
+      }
+      if (target) {
+        points[points.length - 1] = rectBoundary(points[points.length - 2], target);
+      }
+    }
+    edges.push({ from: edgeInfo.v, to: edgeInfo.w, path: edgePath(points), link: !!edge.link });
   });
 
   const graphNodes = graph.nodes();
 
   const size = getGraphSize(graphNodes.map((id) => graph.node(id)));
+  // renderNode draws one laid-out node as its type is drawn.
+  const renderNode = (key: string) => {
+    const node = graph.node(key);
+    const nodeType = node.nodeType;
+    switch (nodeType) {
+      case 'app':
+        return <React.Fragment key={key}>{renderAppNode(props, key, node)}</React.Fragment>;
+      case 'cluster':
+        return <React.Fragment key={key}>{renderClusterNode(props, key, node)}</React.Fragment>;
+      case 'target':
+        return <React.Fragment key={key}>{renderTargetNode(props, key, node)}</React.Fragment>;
+      case 'pod':
+        return <React.Fragment key={key}>{renderPodNode(props, key, node)}</React.Fragment>;
+      case 'component':
+        return <ComponentNode key={key} node={node} showTrait={false} />;
+      case 'source':
+        return <React.Fragment key={key}>{renderSourceNode(props, key, node)}</React.Fragment>;
+      case 'flow':
+        return <React.Fragment key={key}>{renderFlowNode(key, node)}</React.Fragment>;
+      default:
+        return <React.Fragment key={key}>{renderResourceNode(props, key, node)}</React.Fragment>;
+    }
+  };
+
   return (
     <div
+      ref={container}
       className="graph-tree"
       style={{
         width: size.width + 500,
@@ -441,28 +496,11 @@ export const TreeGraph = (props: TreeGraphProps) => {
           />
         ))}
       </svg>
-      {graphNodes.map((key) => {
-        const node = graph.node(key);
-        const nodeType = node.nodeType;
-        switch (nodeType) {
-          case 'app':
-            return <React.Fragment key={key}>{renderAppNode(props, key, node)}</React.Fragment>;
-          case 'cluster':
-            return <React.Fragment key={key}>{renderClusterNode(props, key, node)}</React.Fragment>;
-          case 'target':
-            return <React.Fragment key={key}>{renderTargetNode(props, key, node)}</React.Fragment>;
-          case 'pod':
-            return <React.Fragment key={key}>{renderPodNode(props, key, node)}</React.Fragment>;
-          case 'component':
-            return <ComponentNode key={key} node={node} showTrait={false} />;
-          case 'source':
-            return <React.Fragment key={key}>{renderSourceNode(props, key, node)}</React.Fragment>;
-          case 'flow':
-            return <React.Fragment key={key}>{renderFlowNode(key, node)}</React.Fragment>;
-          default:
-            return <React.Fragment key={key}>{renderResourceNode(props, key, node)}</React.Fragment>;
-        }
-      })}
+      {graphNodes.map((key) => (
+        <div key={key} data-node-key={key} className="graph-node-slot">
+          {renderNode(key)}
+        </div>
+      ))}
     </div>
   );
 };
