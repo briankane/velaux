@@ -294,8 +294,8 @@
   display: contents;
 }
 
-// The component that applied a resource, under its kind: its type beneath,
-// or the trait that applied it, leading on from it.
+// The component that applied a resource, under its kind, and the trait that
+// applied it, leading on from it.
 .resource-origin {
   display: flex;
   flex-direction: column;
@@ -305,6 +305,7 @@
   line-height: 16px;
   .resource-origin-row {
     display: flex;
+    cursor: help;
     gap: 4px;
     align-items: center;
     min-width: 0;
@@ -325,11 +326,6 @@
     color: #94a3b8;
     white-space: nowrap;
     text-overflow: ellipsis;
-    cursor: help;
-  }
-  // The type sits under the component's name, past its icon.
-  .resource-origin-under {
-    padding-left: 15px;
   }
   .resource-origin-trait {
     padding-left: 2px;

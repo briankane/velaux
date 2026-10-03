@@ -47,36 +47,43 @@ type TreeGraphProps = {
   onResourceDetailClick: (resource: ResourceTreeNode) => void;
 };
 
-// ResourceOriginLine names the component that applied a resource and, under
-// it, the component's type; or, for a resource a trait applied, the trait,
-// leading on from the component it is attached to. The revision either
-// resolves to shows on hover.
+// definitionHover is what hovering a component or trait names: it, the
+// definition type a component is an instance of, and the revision its
+// definition resolves to.
+function definitionHover(kind: 'Component' | 'Trait', name: string, revision: string, type?: string): string {
+  return [
+    `${i18n.t(kind)} ${name}`,
+    type ? `${i18n.t('Type')} ${splitType(type).name}` : '',
+    `${i18n.t('Revision')} ${revision}`,
+  ]
+    .filter((line) => line)
+    .join('\n');
+}
+
+// ResourceOriginLine names the component that applied a resource and, for a
+// resource a trait applied, the trait, leading on from it. Each one's type and
+// revision show on hover.
 const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => {
-  const kind = origin.trait ? 'trait' : 'component';
-  const type = origin.trait || origin.type;
-  const label = useInUseLabel(kind, type);
+  const componentRevision = useInUseLabel('component', origin.type);
+  const traitRevision = useInUseLabel('trait', origin.trait);
   return (
     <div className="resource-origin">
-      <div className="resource-origin-row">
+      <div
+        className="resource-origin-row"
+        title={definitionHover('Component', origin.component, componentRevision, origin.type)}
+      >
         <BsBox />
-        <span className="resource-origin-component" title={origin.component}>
-          {origin.component}
-        </span>
+        <span className="resource-origin-component">{origin.component}</span>
       </div>
-      {origin.trait ? (
-        <div className="resource-origin-row resource-origin-trait">
+      {origin.trait && (
+        <div
+          className="resource-origin-row resource-origin-trait"
+          title={definitionHover('Trait', origin.trait, traitRevision)}
+        >
           <BsArrowReturnRight className="resource-origin-lead" />
           <BsGearWideConnected />
-          <span className="resource-origin-type" title={label}>
-            {origin.trait}
-          </span>
+          <span className="resource-origin-type">{origin.trait}</span>
         </div>
-      ) : (
-        type && (
-          <span className="resource-origin-type resource-origin-under" title={label}>
-            {splitType(type).name}
-          </span>
-        )
       )}
     </div>
   );
