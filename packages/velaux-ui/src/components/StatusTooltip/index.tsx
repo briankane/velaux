@@ -81,7 +81,7 @@ export const StatusTooltip = (props: StatusTooltipProps) => {
           props.healthy !== undefined && (
             <span className={classNames('status-tooltip-health', { unhealthy: !props.healthy })}>
               <span className={classNames('circle', props.healthy ? 'circle-success' : 'circle-warning')} />
-              <Translation>{props.healthy ? 'Healthy' : 'UnHealthy'}</Translation>
+              <Translation>{props.healthy ? 'Healthy' : 'Unhealthy'}</Translation>
             </span>
           )
         )}
