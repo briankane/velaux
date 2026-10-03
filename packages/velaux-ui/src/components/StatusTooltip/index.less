@@ -125,26 +125,22 @@
   }
 }
 
-// A health badge whose health VelaUX read with kstatus, with a circled k
-// after it that says so on hover.
-.status-tooltip-health-source {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-}
-
+// The circled k inside a health badge VelaUX read with kstatus, in the
+// badge's own colour.
 .status-tooltip-source-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 14px;
   height: 14px;
-  color: #64748b;
+  margin-left: 2px;
+  color: inherit;
   font-weight: 600;
   font-size: 10px;
   line-height: 1;
-  border: 1px solid #94a3b8;
+  border: 1px solid currentColor;
   border-radius: 50%;
+  opacity: 0.8;
   cursor: help;
 }
 
