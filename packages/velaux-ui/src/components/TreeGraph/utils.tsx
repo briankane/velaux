@@ -134,7 +134,7 @@ export function getNodeSize(node: TreeNode): { width: number; height: number } {
   }
   if (node.nodeType == 'pod') {
     width = 240;
-    height = 60;
+    height = 66;
   }
   if (node.nodeType == 'component') {
     const types = (node.resource.service?.traits || []).map((t) => t.type);
