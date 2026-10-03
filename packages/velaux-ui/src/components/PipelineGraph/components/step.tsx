@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import React from 'react';
-import { BsChevronDown, BsChevronRight, BsCollection } from 'react-icons/bs';
+import { BsCollection, BsDashSquare, BsPlusSquare } from 'react-icons/bs';
 
 import type { WorkflowStepStatus } from '@velaux/data';
 import { timeDiff } from '../../../utils/common';
@@ -64,7 +64,7 @@ export const Step = (props: StepProps) => {
               onToggle && onToggle();
             }}
           >
-            {open ? <BsChevronDown /> : <BsChevronRight />}
+            {open ? <BsDashSquare /> : <BsPlusSquare />}
           </button>
         </div>
         <div className="step-name" title={label(step)}>
