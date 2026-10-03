@@ -70,7 +70,9 @@ export const ComponentNode = (props: ComponentNodeProps) => {
         left: node.x - 50,
         top: node.y,
         width: node.width,
-        height: node.height,
+        // The layout's height is a floor: a card grows to hold its trait rows,
+        // and its edges end on the box as drawn.
+        minHeight: node.height,
         transform: `translate(-80px, 0px)`,
       }}
     >
