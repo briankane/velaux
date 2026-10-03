@@ -69,6 +69,7 @@ type State = {
   logLoading?: boolean;
 
   resumeLoading?: boolean;
+  approvingStep?: string;
   terminateLoading?: boolean;
   rollbackLoading?: boolean;
 };
@@ -243,6 +244,26 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
       });
   };
 
+  onApproveStep = (step: WorkflowStepStatus) => {
+    const { applicationDetail, workflow, recordName } = this.props;
+    this.setState({ approvingStep: step.id });
+    resumeApplicationWorkflowRecord({
+      appName: applicationDetail.name,
+      workflowName: workflow.name,
+      recordName,
+      step: step.name,
+    })
+      .then((re) => {
+        if (re) {
+          Message.success(i18n.t('Step approved'));
+          this.loadWorkflowRecord();
+        }
+      })
+      .finally(() => {
+        this.setState({ approvingStep: undefined });
+      });
+  };
+
   onRollbackApplicationWorkflowRecord = () => {
     const { applicationDetail, workflow, recordName, dispatch, envName } = this.props;
     const params = {
@@ -307,6 +328,7 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
       rollbackLoading,
       resumeLoading,
       terminateLoading,
+      approvingStep,
     } = this.state;
 
     let stepSpec: WorkflowStepBase | undefined;
@@ -426,6 +448,8 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
                 name={`${showRecord?.name}`}
                 zoom={zoom}
                 selected={showDetail ? stepStatus?.id : undefined}
+                onApprove={this.onApproveStep}
+                approving={approvingStep}
                 onNodeClick={this.onStepClick}
                 steps={showRecord?.steps}
               />
@@ -437,6 +461,16 @@ class ApplicationWorkflowRecord extends React.Component<Props, State> {
                 <span className="wf-step-name">{stepStatus?.alias || stepStatus?.name || stepStatus?.id}</span>
                 {stepStatus && (
                   <StatusBadge tone={stepBadge(stepStatus).tone} label={stepBadge(stepStatus).label} />
+                )}
+                {stepStatus?.phase === 'suspending' && (
+                  <Button
+                    size="small"
+                    type="primary"
+                    loading={approvingStep === stepStatus.id}
+                    onClick={() => this.onApproveStep(stepStatus)}
+                  >
+                    <Translation>Approve</Translation>
+                  </Button>
                 )}
                 <Button
                   className="wf-step-close"

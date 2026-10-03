@@ -13,6 +13,8 @@ type PipelineGraphProps = {
   zoom: number;
   // selected is the id of the step whose details are open.
   selected?: string;
+  onApprove?: (step: WorkflowStepStatus) => void;
+  approving?: string;
   onNodeClick: (step: WorkflowStepStatus) => void;
 };
 
@@ -49,7 +51,7 @@ class PipelineGraph extends React.Component<PipelineGraphProps, State> {
   }
 
   render() {
-    const { steps, zoom, name, selected } = this.props;
+    const { steps, zoom, name, selected, onApprove, approving } = this.props;
     return (
       <Draggable>
         <div
@@ -75,6 +77,8 @@ class PipelineGraph extends React.Component<PipelineGraphProps, State> {
                   step={step}
                   group={step.type == 'step-group'}
                   selected={selected}
+                  onApprove={onApprove}
+                  approving={approving}
                   output={i < steps.length - 1}
                   input={i !== 0}
                   onNodeClick={this.props.onNodeClick}

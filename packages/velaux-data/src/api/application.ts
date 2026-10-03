@@ -298,7 +298,7 @@ interface StepStatus {
   name: string;
   alias: string;
   type: string;
-  phase: 'succeeded' | 'failed' | 'skipped' | 'stopped' | 'running' | 'pending';
+  phase: 'succeeded' | 'failed' | 'skipped' | 'stopped' | 'running' | 'pending' | 'suspending';
   message?: string;
   reason?: string;
   firstExecuteTime?: string;
