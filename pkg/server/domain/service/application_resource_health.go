@@ -45,13 +45,17 @@ var builtinHealth = map[schema.GroupKind]bool{
 	{Group: "source.toolkit.fluxcd.io", Kind: "HelmRepository"}: true,
 }
 
+// healthSource marks a health kstatus read, so the UI can say where it came
+// from.
+const healthSource = "kstatus"
+
 // kstatusHealth is an object's health as KubeVela's resource tree states one,
 // read by kstatus: current is healthy, in progress or terminating is
 // progressing, failed is unhealthy, and anything it cannot tell is unknown.
 func kstatusHealth(obj *unstructured.Unstructured) map[string]interface{} {
 	result, err := status.Compute(obj)
 	if err != nil {
-		return map[string]interface{}{"statusCode": "UnKnown", "reason": "kstatus", "message": err.Error()}
+		return map[string]interface{}{"statusCode": "UnKnown", "reason": "kstatus", "message": err.Error(), "source": healthSource}
 	}
 	code := "UnKnown"
 	switch result.Status {
@@ -62,7 +66,7 @@ func kstatusHealth(obj *unstructured.Unstructured) map[string]interface{} {
 	case status.FailedStatus:
 		code = "UnHealthy"
 	}
-	return map[string]interface{}{"statusCode": code, "reason": string(result.Status), "message": result.Message}
+	return map[string]interface{}{"statusCode": code, "reason": string(result.Status), "message": result.Message, "source": healthSource}
 }
 
 // objectReader fills in an object, named by its apiVersion, kind, namespace

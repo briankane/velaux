@@ -28,6 +28,7 @@ export function resourceTooltip(resource: ResourceTreeNode): StatusTooltipProps 
       ['Reason', text(resource.healthStatus?.reason)],
     ]),
     message: text(resource.healthStatus?.message),
+    ...(resource.healthStatus?.source ? { healthSource: resource.healthStatus.source } : {}),
   };
 }
 

@@ -1,3 +1,4 @@
+import { Balloon } from '@alifd/next';
 import classNames from 'classnames';
 import React, { useState } from 'react';
 import { AiOutlineRight } from 'react-icons/ai';
@@ -27,6 +28,9 @@ export interface StatusTooltipProps {
   title: string;
   // on is what the titled thing is attached to, shown under the title.
   on?: string;
+  // healthSource is what read the health where VelaUX, not KubeVela, did: its
+  // badge then says so on hover, with a link to it.
+  healthSource?: 'kstatus';
   healthy?: boolean;
   // pending is a trait waiting for its workload, shown in place of its health.
   pending?: boolean;
@@ -52,6 +56,30 @@ function CollapsibleSection(props: TooltipSection) {
   );
 }
 
+// kstatusDocs is kstatus's own account of how it reads an object's status.
+const kstatusDocs = 'https://github.com/kubernetes-sigs/cli-utils/blob/master/pkg/kstatus/README.md';
+
+// HealthSource shows a health badge and, where VelaUX read the health with
+// kstatus, says so on hover with a link to the project.
+const HealthSource = (props: { source?: 'kstatus'; children: React.ReactNode }) => {
+  if (props.source !== 'kstatus') {
+    return <>{props.children}</>;
+  }
+  return (
+    <Balloon
+      trigger={<span className="status-tooltip-health-source">{props.children}</span>}
+      closable={false}
+      align="t"
+      popupClassName="status-tooltip-source-popup"
+    >
+      <Translation>Based on</Translation>{' '}
+      <a href={kstatusDocs} target="_blank" rel="noopener noreferrer">
+        kstatus
+      </a>
+    </Balloon>
+  );
+};
+
 // StatusTooltip summarises a node on the graph, with its
 // sections, then its status details, folded away until asked for.
 export const StatusTooltip = (props: StatusTooltipProps) => {
@@ -72,19 +100,21 @@ export const StatusTooltip = (props: StatusTooltipProps) => {
             </span>
           )}
         </span>
-        {props.pending || props.progressing ? (
-          <span className="status-tooltip-health pending">
-            <span className="circle circle-pending" />
-            <Translation>{props.pending ? 'Pending' : 'Progressing'}</Translation>
-          </span>
-        ) : (
-          props.healthy !== undefined && (
-            <span className={classNames('status-tooltip-health', { unhealthy: !props.healthy })}>
-              <span className={classNames('circle', props.healthy ? 'circle-success' : 'circle-warning')} />
-              <Translation>{props.healthy ? 'Healthy' : 'Unhealthy'}</Translation>
+        <HealthSource source={props.healthSource}>
+          {props.pending || props.progressing ? (
+            <span className="status-tooltip-health pending">
+              <span className="circle circle-pending" />
+              <Translation>{props.pending ? 'Pending' : 'Progressing'}</Translation>
             </span>
-          )
-        )}
+          ) : (
+            props.healthy !== undefined && (
+              <span className={classNames('status-tooltip-health', { unhealthy: !props.healthy })}>
+                <span className={classNames('circle', props.healthy ? 'circle-success' : 'circle-warning')} />
+                <Translation>{props.healthy ? 'Healthy' : 'Unhealthy'}</Translation>
+              </span>
+            )
+          )}
+        </HealthSource>
       </div>
       {summary.length > 0 && <DetailList entries={summary} />}
       {props.message && <div className="status-tooltip-message">{props.message}</div>}

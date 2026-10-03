@@ -150,6 +150,9 @@ func TestKStatusHealth(t *testing.T) {
 			if got["statusCode"] != c.want {
 				t.Fatalf("statusCode = %v, want %s (%v)", got["statusCode"], c.want, got)
 			}
+			if got["source"] != "kstatus" {
+				t.Fatalf("source = %v, want kstatus", got["source"])
+			}
 		})
 	}
 }

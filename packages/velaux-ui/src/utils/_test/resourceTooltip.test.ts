@@ -37,4 +37,19 @@ describe('origin tooltips', () => {
     expect(trait.pending).to.equal(true);
     expect(trait.message).to.equal('waiting');
   });
+
+  it("says where a resource's health came from, where kstatus read it", () => {
+    const read = resourceTooltip({
+      name: 'web',
+      kind: 'Deployment',
+      healthStatus: { statusCode: 'Healthy', reason: 'Current', message: '', source: 'kstatus' },
+    });
+    expect(read.healthSource).to.equal('kstatus');
+    const own = resourceTooltip({
+      name: 'web-1',
+      kind: 'Pod',
+      healthStatus: { statusCode: 'Healthy', reason: '', message: '' },
+    });
+    expect(own.healthSource).to.equal(undefined);
+  });
 });
