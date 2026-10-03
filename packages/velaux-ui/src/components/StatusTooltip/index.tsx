@@ -61,7 +61,7 @@ const kstatusDocs = 'https://github.com/kubernetes-sigs/cli-utils/blob/master/pk
 
 // SourceMark is the small circled k inside a health badge whose health VelaUX
 // read with kstatus; its hover says so, with a link to the project.
-export const SourceMark = (props: { source?: 'kstatus' }) =>
+const SourceMark = (props: { source?: 'kstatus' }) =>
   props.source !== 'kstatus' ? null : (
     <Balloon
       trigger={

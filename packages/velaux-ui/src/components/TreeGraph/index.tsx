@@ -16,7 +16,7 @@ import { If } from '../If';
 
 import { ComponentNode } from './component-node';
 import type { GraphNode, TreeNode, GraphEdge, ResourceOrigin } from './interface';
-import { SourceMark, StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
+import { StatusTooltip, statusTooltipPopupClass } from '../StatusTooltip';
 import type { StatusTooltipProps } from '../StatusTooltip';
 import {
   clusterTooltip,
@@ -39,6 +39,7 @@ import { FaEllipsisV } from 'react-icons/fa';
 import { BsArrowReturnRight, BsBox, BsDatabase, BsGearWideConnected } from 'react-icons/bs';
 
 import { StatusBadge } from '../StatusBadge';
+import type { Tone } from '../StatusBadge';
 import { traitState, traitStateCircle } from '../../utils/status';
 import { DefinitionLine, useInUseLabel } from './definition-line';
 import { sourcePhaseTone } from '../../pages/ApplicationStatus/components/ApplicationGraph/sources';
@@ -99,12 +100,12 @@ const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => {
   );
 };
 
-// healthLabel is what a resource's health code reads as.
-const healthLabel: Record<string, string> = {
-  Healthy: 'Healthy',
-  Progressing: 'Progressing',
-  UnHealthy: 'Unhealthy',
-  UnKnown: 'Unknown',
+// toneCircle is the small status dot for a resource's tone.
+const toneCircle: Partial<Record<Tone, string>> = {
+  healthy: 'circle-success',
+  progressing: 'circle-pending',
+  unhealthy: 'circle-failure',
+  neutral: 'circle-pending',
 };
 
 // renderResourceNode is a resource: its icon, name and kind, and the component
@@ -131,15 +132,11 @@ function renderResourceNode(props: TreeGraphProps, id: string, node: GraphNode) 
       <div className={classNames('name')}>
         {ownCard(
           <div>
-            <div className="resource-node-name">{node.resource.name}</div>
-            <div className="resource-node-kind">
-              <span className="kind">{node.resource.kind}</span>
-              {health?.statusCode && (
-                <StatusBadge tone={tone} label={healthLabel[health.statusCode] || health.statusCode}>
-                  <SourceMark source={health.source} />
-                </StatusBadge>
-              )}
+            <div className="resource-node-name">
+              <span>{node.resource.name}</span>
+              {health?.statusCode && <span className={classNames('circle', toneCircle[tone])} />}
             </div>
+            <div className="kind">{node.resource.kind}</div>
           </div>
         )}
         {node.origin && <ResourceOriginLine origin={node.origin} />}
