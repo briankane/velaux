@@ -30,7 +30,6 @@ import { Dropdown, Menu, Tag, Balloon } from '@alifd/next';
 import { FaEllipsisV } from 'react-icons/fa';
 import { BsArrowReturnRight, BsBox, BsDatabase, BsGearWideConnected } from 'react-icons/bs';
 
-import { splitType } from '../../utils/definitionVersion';
 import { StatusBadge } from '../StatusBadge';
 import { DefinitionLine, useInUseLabel } from './definition-line';
 import { sourcePhaseTone } from '../../pages/ApplicationStatus/components/ApplicationGraph/sources';
@@ -47,46 +46,30 @@ type TreeGraphProps = {
   onResourceDetailClick: (resource: ResourceTreeNode) => void;
 };
 
-// definitionHover is what hovering a component or trait names: it, the
-// definition type a component is an instance of, and the revision its
-// definition resolves to.
-function definitionHover(kind: 'Component' | 'Trait', name: string, revision: string, type?: string): string {
-  return [
-    `${i18n.t(kind)} ${name}`,
-    type ? `${i18n.t('Type')} ${splitType(type).name}` : '',
-    `${i18n.t('Revision')} ${revision}`,
-  ]
-    .filter((line) => line)
-    .join('\n');
-}
-
 // ResourceOriginLine names the component that applied a resource and, for a
-// resource a trait applied, the trait, leading on from it. Each one's type and
-// revision show on hover.
-const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => {
-  const componentRevision = useInUseLabel('component', origin.type);
-  const traitRevision = useInUseLabel('trait', origin.trait);
-  return (
-    <div className="resource-origin">
-      <div
-        className="resource-origin-row"
-        title={definitionHover('Component', origin.component, componentRevision, origin.type)}
-      >
-        <BsBox />
-        <span className="resource-origin-component">{origin.component}</span>
-      </div>
-      {origin.trait && (
-        <div
-          className="resource-origin-row resource-origin-trait"
-          title={definitionHover('Trait', origin.trait, traitRevision)}
-        >
-          <BsArrowReturnRight className="resource-origin-lead" />
-          <BsGearWideConnected />
-          <span className="resource-origin-type">{origin.trait}</span>
-        </div>
-      )}
+// resource a trait applied, the trait, leading on from it.
+const ResourceOriginLine = ({ origin }: { origin: ResourceOrigin }) => (
+  <div className="resource-origin">
+    <div className="resource-origin-row">
+      <BsBox />
+      <span className="resource-origin-component">{origin.component}</span>
     </div>
-  );
+    {origin.trait && (
+      <div className="resource-origin-row resource-origin-trait">
+        <BsArrowReturnRight className="resource-origin-lead" />
+        <BsGearWideConnected />
+        <span className="resource-origin-type">{origin.trait}</span>
+      </div>
+    )}
+  </div>
+);
+
+// ResourceHover is a resource's hover: its status, and the component and
+// trait that deployed it with the revisions their definitions resolve to.
+const ResourceHover = ({ resource, origin }: { resource: GraphNode['resource']; origin?: ResourceOrigin }) => {
+  const componentRevision = useInUseLabel('component', origin?.type);
+  const traitRevision = useInUseLabel('trait', origin?.trait);
+  return <StatusTooltip {...resourceTooltip(resource, origin && { ...origin, componentRevision, traitRevision })} />;
 };
 
 function renderResourceNode(props: TreeGraphProps, id: string, node: GraphNode) {
@@ -127,7 +110,7 @@ function renderResourceNode(props: TreeGraphProps, id: string, node: GraphNode) 
   );
   return (
     <Balloon trigger={graphNode} closable={false} popupClassName={statusTooltipPopupClass}>
-      <StatusTooltip {...resourceTooltip(node.resource)} />
+      <ResourceHover resource={node.resource} origin={node.origin} />
     </Balloon>
   );
 }
