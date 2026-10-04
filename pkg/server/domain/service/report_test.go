@@ -515,11 +515,11 @@ func TestReportData(t *testing.T) {
 		assert.Equal(t, int64(540), r.Steps[1].Seconds, "waiting: up to now")
 	})
 
-	t.Run("environments say what is deployed and whether it differs from the app now", func(t *testing.T) {
+	t.Run("environments say what is deployed and whether the app now differs from it", func(t *testing.T) {
 		differs := false
-		fx.svc.undeployed = func(_ context.Context, app *model.Application, env string) (bool, error) {
+		fx.svc.undeployed = func(_ context.Context, app *model.Application, revision string) (bool, error) {
 			assert.Equal(t, "storefront", app.Name)
-			assert.Equal(t, "production", env)
+			assert.Equal(t, "v2", revision, "the environment's latest revision")
 			return differs, nil
 		}
 		envs, err := source.Environments(ctx)
@@ -531,7 +531,7 @@ func TestReportData(t *testing.T) {
 		differs = true
 		envs, err = source.Environments(ctx)
 		require.NoError(t, err)
-		assert.True(t, envs[0].Edited, "the app as it is now differs from what runs")
+		assert.True(t, envs[0].Edited, "the app as it would deploy now differs from v2")
 	})
 
 	t.Run("List reads the environments' namespaces too", func(t *testing.T) {

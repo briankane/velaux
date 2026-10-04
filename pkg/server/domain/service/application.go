@@ -19,9 +19,11 @@ package service
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -114,6 +116,7 @@ type ApplicationService interface {
 	Statistics(ctx context.Context, app *model.Application) (*apisv1.ApplicationStatisticsResponse, error)
 	ListRecords(ctx context.Context, appName string) (*apisv1.ListWorkflowRecordsResponse, error)
 	CompareApp(ctx context.Context, app *model.Application, compareReq apisv1.AppCompareReq) (*apisv1.AppCompareResponse, error)
+	DiffersFromDeployed(ctx context.Context, app *model.Application, revision string) (bool, error)
 	ResetAppToLatestRevision(ctx context.Context, appName string) (*apisv1.AppResetResponse, error)
 	DryRunAppOrRevision(ctx context.Context, app *model.Application, dryRunReq apisv1.AppDryRunReq) (*apisv1.AppDryRunResponse, error)
 	CreateApplicationTrigger(ctx context.Context, app *model.Application, req apisv1.CreateApplicationTriggerRequest) (*apisv1.ApplicationTriggerBase, error)
@@ -1701,6 +1704,50 @@ func (c *applicationServiceImpl) Statistics(ctx context.Context, app *model.Appl
 		RevisionCount: count,
 		WorkflowCount: c.WorkflowService.CountWorkflow(ctx, app),
 	}, nil
+}
+
+// DiffersFromDeployed says whether the application, as VelaUX would deploy it
+// now with the revision's workflow, differs from what that revision deployed.
+// It renders VelaUX's own records only: nothing is read from the cluster or
+// dry-run.
+func (c *applicationServiceImpl) DiffersFromDeployed(ctx context.Context, appModel *model.Application, revision string) (bool, error) {
+	rev, err := repository.GetApplicationRevision(ctx, c.Store, appModel.Name, revision)
+	if err != nil {
+		return false, err
+	}
+	deployed := &v1beta1.Application{}
+	if err := yaml.Unmarshal([]byte(rev.ApplyAppConfig), deployed); err != nil {
+		return false, err
+	}
+	current, err := c.renderOAMApplication(ctx, appModel, rev.WorkflowName, rev.EnvName, "")
+	if err != nil {
+		return false, err
+	}
+	return specDiffers(deployed, current)
+}
+
+// specDiffers compares two Applications' specs as CompareApp normalises them,
+// as JSON, so neither key order nor the spacing of stored properties counts.
+func specDiffers(deployed, current *v1beta1.Application) (bool, error) {
+	normal := func(app *v1beta1.Application) (interface{}, error) {
+		app = app.DeepCopy()
+		ignoreSomeParams(app)
+		raw, err := json.Marshal(app.Spec)
+		if err != nil {
+			return nil, err
+		}
+		var out interface{}
+		return out, json.Unmarshal(raw, &out)
+	}
+	a, err := normal(deployed)
+	if err != nil {
+		return false, err
+	}
+	b, err := normal(current)
+	if err != nil {
+		return false, err
+	}
+	return !reflect.DeepEqual(a, b), nil
 }
 
 // CompareApp compare application

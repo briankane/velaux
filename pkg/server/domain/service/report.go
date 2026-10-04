@@ -72,25 +72,22 @@ type reportServiceImpl struct {
 	// lists.
 	ServerKubeClient client.Client       `inject:"serverKubeClient"`
 	Store            datastore.DataStore `inject:"datastore"`
-	// ApplicationService compares an application as it is now with what runs.
+	// ApplicationService compares an application as it is now with what it
+	// last deployed.
 	ApplicationService ApplicationService `inject:""`
 	// now is the clock elapsed times are read against; time.Now unless a test
 	// fixes it.
 	now func() time.Time
-	// undeployed says the application, rendered as it is now for env, differs
-	// from what runs there; CompareApp unless a test replaces it.
-	undeployed func(ctx context.Context, app *model.Application, env string) (bool, error)
+	// undeployed says the application as VelaUX would deploy it now differs
+	// from what revision deployed; DiffersFromDeployed unless a test replaces it.
+	undeployed func(ctx context.Context, app *model.Application, revision string) (bool, error)
 }
 
-func (r *reportServiceImpl) differsFromRunning(ctx context.Context, app *model.Application, env string) (bool, error) {
+func (r *reportServiceImpl) differsFromDeployed(ctx context.Context, app *model.Application, revision string) (bool, error) {
 	if r.undeployed != nil {
-		return r.undeployed(ctx, app, env)
+		return r.undeployed(ctx, app, revision)
 	}
-	res, err := r.ApplicationService.CompareApp(ctx, app, apisv1.AppCompareReq{CompareLatestWithRunning: &apisv1.CompareLatestWithRunningOption{Env: env}})
-	if err != nil {
-		return false, err
-	}
-	return res.IsDiff, nil
+	return r.ApplicationService.DiffersFromDeployed(ctx, app, revision)
 }
 
 // NewReportService is the reports.
@@ -412,8 +409,8 @@ func (s *projectSource) elapsed(start, end time.Time) int64 {
 }
 
 // Environments are each application's environments, with the revision last
-// deployed there; edited says the application as it is now differs from what
-// runs there, as VelaUX's own comparison finds.
+// deployed there; edited says the application as VelaUX would deploy it now
+// differs from what that revision deployed.
 func (s *projectSource) Environments(ctx context.Context) ([]report.Environment, error) {
 	out := []report.Environment{}
 	var compares []envCompare
@@ -457,7 +454,7 @@ func (s *projectSource) Environments(ctx context.Context) ([]report.Environment,
 		sem <- struct{}{}
 		go func(c envCompare) {
 			defer func() { <-sem; wg.Done() }()
-			differs, err := s.r.differsFromRunning(ctx, c.app, out[c.index].Env)
+			differs, err := s.r.differsFromDeployed(ctx, c.app, out[c.index].Revision)
 			if err != nil {
 				klog.Warningf("report: compare %s in %s: %v", c.app.Name, out[c.index].Env, err)
 			}
