@@ -17,7 +17,7 @@ import {
 
 import { Translation } from '../../components/Translation';
 import type { ReportChart } from './view';
-import { chartRows } from './view';
+import { chartRows, pieRows } from './view';
 
 const palette = ['#1b58f4', '#00b578', '#ff8f1f', '#7c3aed', '#e5484d', '#0ea5e9', '#d946ef', '#64748b'];
 const colour = (i: number) => palette[i % palette.length];
@@ -33,10 +33,19 @@ export const ReportChartView = (props: { chart: ReportChart }) => {
   let body: React.ReactElement;
   if (chart.type === 'pie') {
     const series = chart.series[0];
+    const slices = pieRows(chart, series);
     body = (
       <PieChart>
-        <Pie data={rows} dataKey={series} nameKey="label" innerRadius="55%" outerRadius="85%" paddingAngle={1}>
-          {rows.map((r, i) => (
+        <Pie
+          data={slices}
+          dataKey={series}
+          animationDuration={500}
+          nameKey="label"
+          innerRadius="55%"
+          outerRadius="85%"
+          paddingAngle={1}
+        >
+          {slices.map((r, i) => (
             <Cell key={String(r.label)} fill={colour(i)} />
           ))}
         </Pie>
@@ -53,7 +62,15 @@ export const ReportChartView = (props: { chart: ReportChart }) => {
         <Tooltip />
         {legend && <Legend iconType="circle" />}
         {chart.series.map((s, i) => (
-          <Line key={s} type="monotone" dataKey={s} stroke={colour(i)} strokeWidth={2} dot={{ r: 3 }} />
+          <Line
+            key={s}
+            type="linear"
+            dataKey={s}
+            stroke={colour(i)}
+            strokeWidth={2}
+            dot={{ r: 3 }}
+            animationDuration={500}
+          />
         ))}
       </LineChart>
     );
@@ -80,6 +97,7 @@ export const ReportChartView = (props: { chart: ReportChart }) => {
         {legend && <Legend iconType="circle" />}
         {chart.series.map((s, i) => (
           <Bar
+            animationDuration={500}
             key={s}
             dataKey={s}
             stackId="all"

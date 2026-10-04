@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { chartRows, formatCell, latestOnly } from '../../pages/Reports/view';
+import { chartRows, formatCell, latestOnly, pieRows } from '../../pages/Reports/view';
 
 describe('formatCell', () => {
   it('shows a percent', () => {
@@ -51,5 +51,21 @@ describe('latestOnly', () => {
     slow('first');
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(seen).to.deep.equal(['second']);
+  });
+});
+
+describe('pieRows', () => {
+  const chart = (n: number) => ({
+    type: 'pie' as const,
+    series: ['count'],
+    points: Array.from({ length: n }, (_, i) => ({ label: `t${i}`, values: { count: i + 1 } })),
+  });
+  it('is every slice, largest first, where there are few', () => {
+    expect(pieRows(chart(3), 'count').map((r) => r.label)).to.deep.equal(['t2', 't1', 't0']);
+  });
+  it('folds all but the largest into Other where there are many', () => {
+    const rows = pieRows(chart(10), 'count');
+    expect(rows.map((r) => r.label)).to.deep.equal(['t9', 't8', 't7', 't6', 't5', 't4', 't3', 'Other']);
+    expect(rows[7].count).to.equal(1 + 2 + 3);
   });
 });

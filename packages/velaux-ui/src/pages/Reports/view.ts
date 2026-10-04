@@ -69,3 +69,18 @@ export function latestOnly() {
     });
   };
 }
+
+// pieSlices is how many slices a pie shows before the rest are one, so each
+// keeps a colour of its own.
+export const pieSlices = 7;
+
+// pieRows are a pie's slices of one series, largest first, all but the
+// largest pieSlices folded into Other.
+export function pieRows(chart: ReportChart, series: string): Array<Record<string, string | number>> {
+  const rows = chartRows(chart).sort((a, b) => Number(b[series]) - Number(a[series]));
+  if (rows.length <= pieSlices + 1) {
+    return rows;
+  }
+  const other = rows.slice(pieSlices).reduce((sum, r) => sum + Number(r[series]), 0);
+  return [...rows.slice(0, pieSlices), { label: 'Other', [series]: other }];
+}
