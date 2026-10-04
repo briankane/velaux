@@ -126,7 +126,7 @@ const defaultWorkspaceMenus: Menu[] = [
     type: MenuTypes.Workspace,
     to: '/shared-workflows',
     icon: <BsDiagram3 />,
-    label: 'Shared Workflows',
+    label: 'Workflows',
     name: 'shared-workflows',
     permission: { resource: 'project:?/workflow:*', action: 'list' },
     relatedRoute: ['/shared-workflows', /\/shared-workflows\/.*/],
