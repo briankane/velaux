@@ -1251,8 +1251,8 @@ type CreateWorkflowRequest struct {
 	Ref     string `json:"ref,omitempty" optional:"true"`
 	Mode    string `json:"mode" validate:"omitempty,oneof=DAG StepByStep"`
 	SubMode string `json:"subMode" validate:"omitempty,oneof=DAG StepByStep"`
-	Default     *bool          `json:"default"`
-	EnvName     string         `json:"envName" validate:"checkname"`
+	Default *bool  `json:"default"`
+	EnvName string `json:"envName" validate:"checkname"`
 }
 
 // UpdateWorkflowRequest update or create application workflow
@@ -1265,7 +1265,7 @@ type UpdateWorkflowRequest struct {
 	Ref     string `json:"ref,omitempty" optional:"true"`
 	Mode    string `json:"mode" validate:"omitempty,oneof=DAG StepByStep"`
 	SubMode string `json:"subMode" validate:"omitempty,oneof=DAG StepByStep"`
-	Default     *bool          `json:"default"`
+	Default *bool  `json:"default"`
 }
 
 // WorkflowStep workflow step config
@@ -1340,14 +1340,19 @@ type WorkflowBase struct {
 	// SharedMode and SharedSubMode are that Workflow's own modes, which apply
 	// where Mode and SubMode are empty.
 	Ref           string `json:"ref,omitempty"`
+	SharedScope   string `json:"sharedScope,omitempty"`
 	SharedMode    string `json:"sharedMode,omitempty"`
 	SharedSubMode string `json:"sharedSubMode,omitempty"`
 }
 
-// SharedWorkflow is a Workflow resource a workflow can reference.
+// SharedWorkflow is a Workflow resource a workflow can reference: local, in
+// its environment's namespace, or global, in the system namespace. A global
+// one is hidden where a local one has its name, as KubeVela runs the local one.
 type SharedWorkflow struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
+	Name      string         `json:"name"`
+	Namespace string         `json:"namespace"`
+	Scope     string         `json:"scope"`
+	Hidden    bool           `json:"hidden,omitempty"`
 	Mode      string         `json:"mode,omitempty"`
 	SubMode   string         `json:"subMode,omitempty"`
 	Steps     []WorkflowStep `json:"steps"`

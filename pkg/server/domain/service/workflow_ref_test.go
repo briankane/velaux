@@ -17,9 +17,11 @@ limitations under the License.
 package service
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	wfTypesv1alpha1 "github.com/kubevela/pkg/apis/oam/v1alpha1"
 	workflowv1alpha1 "github.com/kubevela/workflow/api/v1alpha1"
@@ -71,4 +73,26 @@ func TestUpdateWorkflowModes(t *testing.T) {
 		assert.Empty(t, steps)
 		assert.Empty(t, sub)
 	})
+}
+
+func TestSharedWorkflowsOf(t *testing.T) {
+	workflow := func(namespace, name string) wfTypesv1alpha1.Workflow {
+		return wfTypesv1alpha1.Workflow{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}}
+	}
+	shared, err := sharedWorkflowsOf(
+		[]wfTypesv1alpha1.Workflow{workflow("shop", "release"), workflow("shop", "hotfix")},
+		[]wfTypesv1alpha1.Workflow{workflow("vela-system", "release"), workflow("vela-system", "standard")},
+	)
+	assert.NoError(t, err)
+	got := map[string]string{}
+	for _, s := range shared {
+		got[s.Scope+"/"+s.Name] = fmt.Sprint(s.Hidden)
+	}
+	assert.Equal(t, map[string]string{
+		"local/release":   "false",
+		"local/hotfix":    "false",
+		"global/release":  "true",
+		"global/standard": "false",
+	}, got)
+	assert.Equal(t, "local", shared[0].Scope, "local ones are listed first")
 }

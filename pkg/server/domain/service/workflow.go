@@ -50,6 +50,8 @@ import (
 	"github.com/oam-dev/kubevela/pkg/utils/apply"
 	"github.com/oam-dev/kubevela/pkg/workflow/operation"
 
+	velatypes "github.com/oam-dev/kubevela/apis/types"
+
 	"github.com/kubevela/velaux/pkg/server/domain/model"
 	"github.com/kubevela/velaux/pkg/server/domain/repository"
 	"github.com/kubevela/velaux/pkg/server/event/sync/convert"
@@ -265,10 +267,11 @@ func workflowModes(mode, subMode, ref string) (string, string) {
 func (w *workflowServiceImpl) DetailWorkflow(ctx context.Context, workflow *model.Workflow) (*apisv1.DetailWorkflowResponse, error) {
 	base := assembler.ConvertWorkflowBase(workflow)
 	if workflow.Ref != "" {
-		shared, err := w.sharedWorkflow(ctx, workflow.EnvName, workflow.Ref)
+		shared, scope, err := w.sharedWorkflow(ctx, workflow.EnvName, workflow.Ref)
 		if err != nil {
 			return nil, err
 		}
+		base.SharedScope = scope
 		steps, err := convert.FromCRWorkflowSteps(shared.Steps)
 		if err != nil {
 			return nil, err
@@ -285,41 +288,74 @@ func (w *workflowServiceImpl) DetailWorkflow(ctx context.Context, workflow *mode
 	return &apisv1.DetailWorkflowResponse{WorkflowBase: base}, nil
 }
 
-// sharedWorkflow is the Workflow named ref in the namespace of the environment
-// named envName, where its Applications run and KubeVela looks for it.
-func (w *workflowServiceImpl) sharedWorkflow(ctx context.Context, envName, ref string) (*wfTypesv1alpha1.Workflow, error) {
+// sharedWorkflow is the Workflow named ref that a workflow of the environment
+// named envName runs, found as KubeVela finds it: in the environment's
+// namespace, where its Applications run, else in the system namespace. Its
+// scope says which.
+func (w *workflowServiceImpl) sharedWorkflow(ctx context.Context, envName, ref string) (*wfTypesv1alpha1.Workflow, string, error) {
 	env, err := repository.GetEnv(ctx, w.Store, envName)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	shared := &wfTypesv1alpha1.Workflow{}
-	if err := w.KubeClient.Get(ctx, types.NamespacedName{Namespace: env.Namespace, Name: ref}, shared); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, bcode.ErrSharedWorkflowNotFound
+	for _, at := range []struct{ namespace, scope string }{
+		{env.Namespace, sharedScopeLocal},
+		{velatypes.DefaultKubeVelaNS, sharedScopeGlobal},
+	} {
+		shared := &wfTypesv1alpha1.Workflow{}
+		err := w.KubeClient.Get(ctx, types.NamespacedName{Namespace: at.namespace, Name: ref}, shared)
+		if err == nil {
+			return shared, at.scope, nil
 		}
-		return nil, err
+		if !apierrors.IsNotFound(err) {
+			return nil, "", err
+		}
 	}
-	return shared, nil
+	return nil, "", bcode.ErrSharedWorkflowNotFound
 }
 
+const (
+	sharedScopeLocal  = "local"
+	sharedScopeGlobal = "global"
+)
+
 // ListSharedWorkflows lists the shared Workflows a workflow of the environment
-// named envName can reference: those in the environment's namespace.
+// named envName can reference: local ones in its namespace, then global ones in
+// the system namespace.
 func (w *workflowServiceImpl) ListSharedWorkflows(ctx context.Context, envName string) ([]apisv1.SharedWorkflow, error) {
 	env, err := repository.GetEnv(ctx, w.Store, envName)
 	if err != nil {
 		return nil, err
 	}
-	list := &wfTypesv1alpha1.WorkflowList{}
-	if err := w.KubeClient.List(ctx, list, client.InNamespace(env.Namespace)); err != nil {
+	local := &wfTypesv1alpha1.WorkflowList{}
+	if err := w.KubeClient.List(ctx, local, client.InNamespace(env.Namespace)); err != nil {
 		return nil, err
 	}
-	shared := []apisv1.SharedWorkflow{}
-	for _, item := range list.Items {
-		steps, err := convert.FromCRWorkflowSteps(item.Steps)
-		if err != nil {
+	global := &wfTypesv1alpha1.WorkflowList{}
+	if env.Namespace != velatypes.DefaultKubeVelaNS {
+		if err := w.KubeClient.List(ctx, global, client.InNamespace(velatypes.DefaultKubeVelaNS)); err != nil {
 			return nil, err
 		}
-		s := apisv1.SharedWorkflow{Name: item.Name, Namespace: item.Namespace, Steps: []apisv1.WorkflowStep{}}
+	}
+	return sharedWorkflowsOf(local.Items, global.Items)
+}
+
+// sharedWorkflowsOf lists local Workflows, then global ones, a global one
+// hidden where a local one has its name.
+func sharedWorkflowsOf(local, global []wfTypesv1alpha1.Workflow) ([]apisv1.SharedWorkflow, error) {
+	shared := []apisv1.SharedWorkflow{}
+	localNames := map[string]bool{}
+	add := func(item wfTypesv1alpha1.Workflow, scope string) error {
+		steps, err := convert.FromCRWorkflowSteps(item.Steps)
+		if err != nil {
+			return err
+		}
+		s := apisv1.SharedWorkflow{
+			Name:      item.Name,
+			Namespace: item.Namespace,
+			Scope:     scope,
+			Hidden:    scope == sharedScopeGlobal && localNames[item.Name],
+			Steps:     []apisv1.WorkflowStep{},
+		}
 		for _, step := range steps {
 			s.Steps = append(s.Steps, assembler.ConvertFromWorkflowStepModel(step))
 		}
@@ -328,6 +364,18 @@ func (w *workflowServiceImpl) ListSharedWorkflows(ctx context.Context, envName s
 			s.SubMode = string(item.Mode.SubSteps)
 		}
 		shared = append(shared, s)
+		return nil
+	}
+	for _, item := range local {
+		localNames[item.Name] = true
+		if err := add(item, sharedScopeLocal); err != nil {
+			return nil, err
+		}
+	}
+	for _, item := range global {
+		if err := add(item, sharedScopeGlobal); err != nil {
+			return nil, err
+		}
 	}
 	return shared, nil
 }
