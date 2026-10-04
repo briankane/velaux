@@ -101,7 +101,9 @@ export class WorkflowSettingsPanel extends React.Component<Props> {
           <Form.Item
             label={<Translation>Steps run</Translation>}
             help={i18n
-              .t('In order: each step waits for the one before it. In parallel: as soon as what it depends on is done.')
+              .t(
+                'In order, each step waits for the one before it; in parallel, each starts once what it depends on is done.'
+              )
               .toString()}
           >
             <Select locale={locale().Select} dataSource={modeOptions()} {...init('mode')} />

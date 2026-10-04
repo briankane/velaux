@@ -1013,6 +1013,6 @@
   "in order": "按顺序",
   "in parallel": "并行",
   "Default workflow for this environment": "此环境的默认工作流",
-  "In order: each step waits for the one before it. In parallel: as soon as what it depends on is done.": "按顺序：每个步骤等待前一个步骤。并行：依赖完成后立即执行。",
-  "For a group that does not choose its own.": "用于未指定自身执行方式的分组。"
+  "For a group that does not choose its own.": "用于未指定自身执行方式的分组。",
+  "In order, each step waits for the one before it; in parallel, each starts once what it depends on is done.": "按顺序时，每个步骤等待前一个步骤；并行时，依赖完成后即开始。"
 }
