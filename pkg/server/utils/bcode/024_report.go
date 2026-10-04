@@ -18,3 +18,9 @@ package bcode
 
 // ErrReportNotFound is returned for a report the catalogue does not have.
 var ErrReportNotFound = NewBcode(404, 24001, "the report does not exist")
+
+// ErrReportInvalid is returned for a report whose CUE is not a report.
+var ErrReportInvalid = NewBcode(400, 24002, "the report is not a valid report")
+
+// ErrReportFailed is returned for a report that failed to run.
+var ErrReportFailed = NewBcode(400, 24003, "the report failed")

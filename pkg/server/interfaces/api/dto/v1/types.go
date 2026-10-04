@@ -2417,40 +2417,59 @@ type ApplicationDataFlowsResponse struct {
 	Flows []*DataFlow `json:"flows"`
 }
 
-// ReportMeta is a built-in report in the catalogue.
+// ReportMeta is a report in the catalogue: a labelled ConfigMap, global in
+// vela-system or local in the project's namespace.
 type ReportMeta struct {
 	ID          string `json:"id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	// Scope is local or global; a global report is hidden where a local one
+	// has its name.
+	Scope  string `json:"scope"`
+	Hidden bool   `json:"hidden,omitempty"`
+	// Error says why the report cannot be run, where its CUE is not a report.
+	Error string `json:"error,omitempty"`
+	// Parameters is the form for the report's parameter block, if it has one.
+	Parameters schema.UISchema `json:"parameters,omitempty"`
 }
 
-// ListReportsResponse is the catalogue of built-in reports.
+// ListReportsResponse is the catalogue of reports for a project.
 type ListReportsResponse struct {
 	Reports []ReportMeta `json:"reports"`
+	// GlobalUnavailable says the global reports could not be read.
+	GlobalUnavailable bool `json:"globalUnavailable,omitempty"`
 }
 
 // ReportColumn is a column of a report's table.
 type ReportColumn struct {
-	Key   string `json:"key"`
-	Title string `json:"title"`
+	Key    string `json:"key"`
+	Title  string `json:"title"`
+	Format string `json:"format,omitempty"`
 }
 
-// ReportRow is a row of a report's table, and the page it describes.
+// ReportRow is a row of a report's table, with a link per column that has one.
 type ReportRow struct {
 	Values map[string]interface{} `json:"values"`
-	Link   string                 `json:"link,omitempty"`
+	Links  map[string]string      `json:"links,omitempty"`
 }
 
-// ReportBar is a bar of a report's chart.
-type ReportBar struct {
-	Label string  `json:"label"`
-	Value float64 `json:"value"`
+// ReportPoint is a point on a report's chart: a value per series.
+type ReportPoint struct {
+	Label  string             `json:"label"`
+	Values map[string]float64 `json:"values"`
 }
 
-// ReportChart is a bar chart summarising a report.
+// ReportChart summarises a report's rows: bar, line or pie.
 type ReportChart struct {
-	Title string      `json:"title"`
-	Bars  []ReportBar `json:"bars"`
+	Type   string        `json:"type"`
+	Title  string        `json:"title,omitempty"`
+	Series []string      `json:"series"`
+	Points []ReportPoint `json:"points"`
+}
+
+// RunReportRequest is a report's parameters.
+type RunReportRequest struct {
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
 // ReportResult is a report run over one project.

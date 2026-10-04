@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 package service
 
 import (
@@ -24,115 +23,205 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	appsv1 "k8s.io/api/apps/v1"
-	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apiserver/pkg/authentication/user"
+	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	"github.com/oam-dev/kubevela/apis/types"
+	"github.com/oam-dev/kubevela/pkg/auth"
 	"github.com/oam-dev/kubevela/pkg/multicluster"
-	"github.com/oam-dev/kubevela/pkg/oam"
 
 	"github.com/kubevela/velaux/pkg/server/domain/model"
+	"github.com/kubevela/velaux/pkg/server/domain/report"
 	"github.com/kubevela/velaux/pkg/server/infrastructure/datastore"
 	apisv1 "github.com/kubevela/velaux/pkg/server/interfaces/api/dto/v1"
+	"github.com/kubevela/velaux/pkg/server/utils"
 	"github.com/kubevela/velaux/pkg/server/utils/bcode"
 )
 
-// ReportService runs the built-in reports, each over one project alone.
+const (
+	// reportLabel marks a ConfigMap as a report.
+	reportLabel = "velaux.oam.dev/report"
+	// reportTemplateKey holds a report's CUE.
+	reportTemplateKey = "template"
+
+	reportScopeLocal  = "local"
+	reportScopeGlobal = "global"
+)
+
+// ReportService lists and runs reports: labelled ConfigMaps of CUE, local in a
+// project's namespace or global in vela-system, each run over one project.
 type ReportService interface {
-	ListReports() []apisv1.ReportMeta
-	RunReport(ctx context.Context, project, id string) (*apisv1.ReportResult, error)
+	ListReports(ctx context.Context, project string) (*apisv1.ListReportsResponse, error)
+	RunReport(ctx context.Context, project, id string, parameters map[string]interface{}) (*apisv1.ReportResult, error)
 }
 
 type reportServiceImpl struct {
-	KubeClient        client.Client       `inject:"kubeClient"`
-	Store             datastore.DataStore `inject:"datastore"`
-	DefinitionService DefinitionService   `inject:""`
+	// KubeClient reads as the signed-in user: a project's own reports.
+	KubeClient client.Client `inject:"kubeClient"`
+	// ServerKubeClient reads as VelaUX: global reports and definitions, which
+	// every project may use, and, impersonating the project, what a report
+	// lists.
+	ServerKubeClient client.Client       `inject:"serverKubeClient"`
+	Store            datastore.DataStore `inject:"datastore"`
 }
 
-// NewReportService is the built-in reports.
+// NewReportService is the reports.
 func NewReportService() ReportService {
 	return &reportServiceImpl{}
 }
 
-// report is one built-in report: what it is, and how it runs over a project.
-type report struct {
-	meta apisv1.ReportMeta
-	run  func(r *reportServiceImpl, ctx context.Context, p *projectScope) (*apisv1.ReportResult, error)
+// ListReports lists the project's reports, then the global ones. Global ones
+// that cannot be read leave the project's alone, saying so.
+func (r *reportServiceImpl) ListReports(ctx context.Context, project string) (*apisv1.ListReportsResponse, error) {
+	namespace, err := r.projectNamespace(ctx, project)
+	if err != nil {
+		return nil, err
+	}
+	local := &corev1.ConfigMapList{}
+	if err := r.KubeClient.List(ctx, local, client.InNamespace(namespace), client.MatchingLabels{reportLabel: "true"}); err != nil {
+		return nil, err
+	}
+	global := &corev1.ConfigMapList{}
+	unavailable := false
+	if namespace != types.DefaultKubeVelaNS {
+		if err := r.ServerKubeClient.List(ctx, global, client.InNamespace(types.DefaultKubeVelaNS), client.MatchingLabels{reportLabel: "true"}); err != nil {
+			klog.Warningf("global reports could not be listed: %v", err)
+			global.Items, unavailable = nil, true
+		}
+	}
+	return &apisv1.ListReportsResponse{Reports: reportsOf(local.Items, global.Items), GlobalUnavailable: unavailable}, nil
 }
 
-var reports = []report{
-	{apisv1.ReportMeta{ID: "unpinned", Title: "Unpinned types", Description: "Components and traits that follow their definition's latest version, and the version that is"}, (*reportServiceImpl).unpinned},
-	{apisv1.ReportMeta{ID: "pruned", Title: "Pinned to a missing version", Description: "Components and traits pinned to a definition revision that no longer exists, which cannot render"}, (*reportServiceImpl).pruned},
-	{apisv1.ReportMeta{ID: "failed-runs", Title: "Failed workflow runs", Description: "Workflow runs that failed or were terminated, and the step that stopped them"}, (*reportServiceImpl).failedRuns},
-	{apisv1.ReportMeta{ID: "inventory", Title: "Resource inventory", Description: "Workloads, services, config maps and autoscalers in the project's namespaces"}, (*reportServiceImpl).inventory},
-	{apisv1.ReportMeta{ID: "expressions", Title: "Expression usage", Description: "Properties that read sources, context or other components through $( ) expressions"}, (*reportServiceImpl).expressions},
-	{apisv1.ReportMeta{ID: "autoscaling", Title: "Autoscaling", Description: "Each autoscaler's replicas against its bounds, and CPU against its target"}, (*reportServiceImpl).autoscaling},
-}
-
-// ListReports is the catalogue of built-in reports.
-func (r *reportServiceImpl) ListReports() []apisv1.ReportMeta {
-	out := make([]apisv1.ReportMeta, 0, len(reports))
-	for _, rep := range reports {
-		out = append(out, rep.meta)
+// reportsOf is the catalogue: local reports, then global ones, each by name, a
+// global one hidden where a local one has its name.
+func reportsOf(local, global []corev1.ConfigMap) []apisv1.ReportMeta {
+	byName := func(cms []corev1.ConfigMap) {
+		sort.Slice(cms, func(i, j int) bool { return cms[i].Name < cms[j].Name })
+	}
+	byName(local)
+	byName(global)
+	out := make([]apisv1.ReportMeta, 0, len(local)+len(global))
+	names := map[string]bool{}
+	for _, cm := range local {
+		names[cm.Name] = true
+		out = append(out, reportMeta(cm, reportScopeLocal))
+	}
+	for _, cm := range global {
+		meta := reportMeta(cm, reportScopeGlobal)
+		meta.Hidden = names[cm.Name]
+		out = append(out, meta)
 	}
 	return out
 }
 
-// RunReport runs a report over one project: its applications, and the
-// namespaces its targets deploy to, and nothing else.
-func (r *reportServiceImpl) RunReport(ctx context.Context, project, id string) (*apisv1.ReportResult, error) {
-	for _, rep := range reports {
-		if rep.meta.ID != id {
-			continue
-		}
-		scope, err := r.scope(ctx, project)
-		if err != nil {
-			return nil, err
-		}
-		result, err := rep.run(r, ctx, scope)
-		if err != nil {
-			return nil, err
-		}
-		// An empty report is an empty table, not a missing one.
-		if result.Rows == nil {
-			result.Rows = []apisv1.ReportRow{}
-		}
-		result.Report = rep.meta
-		result.Project = project
-		result.GeneratedAt = time.Now()
-		return result, nil
+// reportMeta is a report as the catalogue shows it, with why it cannot run
+// where its CUE is not a report.
+func reportMeta(cm corev1.ConfigMap, scope string) apisv1.ReportMeta {
+	meta := apisv1.ReportMeta{ID: cm.Name, Title: cm.Name, Scope: scope}
+	src := cm.Data[reportTemplateKey]
+	spec, err := report.ParseSpec(src)
+	if err != nil {
+		meta.Error = err.Error()
+		return meta
 	}
-	return nil, bcode.ErrReportNotFound
+	if spec.Title != "" {
+		meta.Title = spec.Title
+	}
+	meta.Description = spec.Description
+	params, err := report.ParameterSchemas(src)
+	if err != nil {
+		meta.Error = err.Error()
+		return meta
+	}
+	if params != nil {
+		meta.Parameters = params.UI
+	}
+	return meta
 }
 
-// projectScope is what a report may read for a project: its applications and
-// the namespaces, by cluster, its targets deploy to.
-type projectScope struct {
-	name       string
-	apps       []*model.Application
-	namespaces []clusterNamespace
+// RunReport runs a report over one project: the project's own of that name,
+// else the global one.
+func (r *reportServiceImpl) RunReport(ctx context.Context, project, id string, parameters map[string]interface{}) (*apisv1.ReportResult, error) {
+	cm, scope, err := r.findReport(ctx, project, id)
+	if err != nil {
+		return nil, err
+	}
+	source, err := r.projectSource(ctx, project)
+	if err != nil {
+		return nil, err
+	}
+	meta := reportMeta(*cm, scope)
+	if meta.Error != "" {
+		return nil, bcode.ErrReportInvalid.SetMessage(meta.Error)
+	}
+	result, err := report.Run(ctx, cm.Data[reportTemplateKey], source, parameters)
+	if err != nil {
+		return nil, bcode.ErrReportFailed.SetMessage(fmt.Sprintf("the report failed: %s", err.Error()))
+	}
+	result.Report = meta
+	result.Project = project
+	result.GeneratedAt = time.Now()
+	return result, nil
 }
 
-type clusterNamespace struct {
-	cluster   string
-	namespace string
+func (r *reportServiceImpl) findReport(ctx context.Context, project, id string) (*corev1.ConfigMap, string, error) {
+	namespace, err := r.projectNamespace(ctx, project)
+	if err != nil {
+		return nil, "", err
+	}
+	cm := &corev1.ConfigMap{}
+	err = r.KubeClient.Get(ctx, k8stypes.NamespacedName{Namespace: namespace, Name: id}, cm)
+	if err == nil && cm.Labels[reportLabel] == "true" {
+		return cm, reportScopeLocal, nil
+	}
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, "", err
+	}
+	cm = &corev1.ConfigMap{}
+	err = r.ServerKubeClient.Get(ctx, k8stypes.NamespacedName{Namespace: types.DefaultKubeVelaNS, Name: id}, cm)
+	if err == nil && cm.Labels[reportLabel] == "true" {
+		return cm, reportScopeGlobal, nil
+	}
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, "", err
+	}
+	return nil, "", bcode.ErrReportNotFound
 }
 
-func (r *reportServiceImpl) scope(ctx context.Context, project string) (*projectScope, error) {
-	scope := &projectScope{name: project}
+func (r *reportServiceImpl) projectNamespace(ctx context.Context, project string) (string, error) {
+	p := &model.Project{Name: project}
+	if err := r.Store.Get(ctx, p); err != nil {
+		if err == datastore.ErrRecordNotExist {
+			return "", bcode.ErrProjectIsNotExist
+		}
+		return "", err
+	}
+	if p.Namespace == "" {
+		return project, nil
+	}
+	return p.Namespace, nil
+}
+
+// projectSource is what a report run for the signed-in user may read: the
+// project's applications and runs from VelaUX's store, definitions, and
+// resources in the namespaces its targets deploy to, listed as the project.
+func (r *reportServiceImpl) projectSource(ctx context.Context, project string) (*projectSource, error) {
+	s := &projectSource{r: r, project: project}
 	apps, err := r.Store.List(ctx, &model.Application{Project: project}, nil)
 	if err != nil {
 		return nil, err
 	}
 	for _, e := range apps {
 		if app, ok := e.(*model.Application); ok && app.Project == project {
-			scope.apps = append(scope.apps, app)
+			s.apps = append(s.apps, app)
 		}
 	}
 	targets, err := r.Store.List(ctx, &model.Target{Project: project}, nil)
@@ -148,26 +237,49 @@ func (r *reportServiceImpl) scope(ctx context.Context, project string) (*project
 		ns := clusterNamespace{cluster: t.Cluster.ClusterName, namespace: t.Cluster.Namespace}
 		if !seen[ns] {
 			seen[ns] = true
-			scope.namespaces = append(scope.namespaces, ns)
+			s.namespaces = append(s.namespaces, ns)
 		}
 	}
-	sort.Slice(scope.namespaces, func(i, j int) bool {
-		return scope.namespaces[i].cluster+scope.namespaces[i].namespace < scope.namespaces[j].cluster+scope.namespaces[j].namespace
+	sort.Slice(s.namespaces, func(i, j int) bool {
+		return s.namespaces[i].cluster+s.namespaces[i].namespace < s.namespaces[j].cluster+s.namespaces[j].namespace
 	})
-	return scope, nil
+	name, _ := utils.UsernameFrom(ctx)
+	if name == "" {
+		name = user.Anonymous
+	}
+	s.as = &user.DefaultInfo{Name: name, Groups: []string{utils.KubeVelaProjectGroupPrefix + project, auth.KubeVelaClientGroup}}
+	return s, nil
 }
 
-// typed is a component or trait of an application, as the type-based reports
-// walk them.
-type typed struct {
-	app, component, kind, typ string
-	properties                *model.JSONStruct
+type clusterNamespace struct {
+	cluster   string
+	namespace string
 }
 
-func (r *reportServiceImpl) typedOf(ctx context.Context, scope *projectScope) ([]typed, error) {
-	var out []typed
-	for _, app := range scope.apps {
-		comps, err := r.Store.List(ctx, &model.ApplicationComponent{AppPrimaryKey: app.PrimaryKey()}, nil)
+type projectSource struct {
+	r          *reportServiceImpl
+	project    string
+	apps       []*model.Application
+	namespaces []clusterNamespace
+	// as is who a report's Kubernetes reads run as: the user, in the project's
+	// group, whatever VelaUX's impersonation gate says.
+	as user.Info
+}
+
+var _ report.Source = &projectSource{}
+
+func (s *projectSource) Apps(context.Context) ([]report.App, error) {
+	out := make([]report.App, 0, len(s.apps))
+	for _, a := range s.apps {
+		out = append(out, report.App{Name: a.Name, Alias: a.Alias, Description: a.Description})
+	}
+	return out, nil
+}
+
+func (s *projectSource) Components(ctx context.Context) ([]report.Component, error) {
+	out := []report.Component{}
+	for _, app := range s.apps {
+		comps, err := s.r.Store.List(ctx, &model.ApplicationComponent{AppPrimaryKey: app.PrimaryKey()}, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -176,272 +288,141 @@ func (r *reportServiceImpl) typedOf(ctx context.Context, scope *projectScope) ([
 			if !ok {
 				continue
 			}
-			out = append(out, typed{app: app.Name, component: c.Name, kind: "component", typ: c.Type, properties: c.Properties})
+			out = append(out, componentOf(app.Name, c.Name, "component", c.Type, c.Properties))
 			for _, t := range c.Traits {
-				out = append(out, typed{app: app.Name, component: c.Name, kind: "trait", typ: t.Type, properties: t.Properties})
+				out = append(out, componentOf(app.Name, c.Name, "trait", t.Type, t.Properties))
 			}
 		}
 	}
 	return out, nil
 }
 
-func componentLink(app string) string {
-	return fmt.Sprintf("/applications/%s/config/components", app)
+func componentOf(app, component, kind, typ string, properties *model.JSONStruct) report.Component {
+	c := report.Component{App: app, Component: component, Kind: kind, Type: typ}
+	if properties == nil {
+		return c
+	}
+	c.Properties = *properties
+	_ = walkExpressions("", map[string]interface{}(*properties), nil, func(path, value string, _ *openapi3.Schema) error {
+		c.Expressions = append(c.Expressions, report.Expression{Property: path, Expression: value})
+		return nil
+	})
+	return c
 }
 
-func (r *reportServiceImpl) unpinned(ctx context.Context, scope *projectScope) (*apisv1.ReportResult, error) {
-	items, err := r.typedOf(ctx, scope)
-	if err != nil {
-		return nil, err
-	}
-	latest := map[string]string{}
-	result := &apisv1.ReportResult{Columns: columns("app:Application", "component:Component", "kind:Kind", "type:Type", "latest:Follows now")}
-	byType := map[string]float64{}
-	for _, it := range items {
-		if strings.Contains(it.typ, "@") {
-			continue
-		}
-		key := it.kind + "/" + it.typ
-		if _, done := latest[key]; !done {
-			latest[key] = "-"
-			if revs, err := r.DefinitionService.ListDefinitionRevisions(ctx, it.typ, it.kind); err == nil && len(revs) > 0 {
-				latest[key] = revs[0].Version
-			}
-		}
-		byType[it.typ]++
-		result.Rows = append(result.Rows, apisv1.ReportRow{
-			Values: map[string]interface{}{"app": it.app, "component": it.component, "kind": it.kind, "type": it.typ, "latest": latest[key]},
-			Link:   componentLink(it.app),
-		})
-	}
-	result.Chart = barChart("Unpinned by type", byType)
-	return result, nil
-}
-
-func (r *reportServiceImpl) pruned(ctx context.Context, scope *projectScope) (*apisv1.ReportResult, error) {
-	items, err := r.typedOf(ctx, scope)
-	if err != nil {
-		return nil, err
-	}
-	result := &apisv1.ReportResult{Columns: columns("app:Application", "component:Component", "kind:Kind", "type:Pinned type")}
-	for _, it := range items {
-		name, version, pinned := strings.Cut(it.typ, "@")
-		if !pinned {
-			continue
-		}
-		rev := &v1beta1.DefinitionRevision{}
-		err := r.KubeClient.Get(ctx, k8stypes.NamespacedName{Namespace: types.DefaultKubeVelaNS, Name: name + "-" + version}, rev)
-		if err == nil {
-			continue
-		}
-		if !apierrors.IsNotFound(err) {
-			return nil, err
-		}
-		result.Rows = append(result.Rows, apisv1.ReportRow{
-			Values: map[string]interface{}{"app": it.app, "component": it.component, "kind": it.kind, "type": it.typ},
-			Link:   componentLink(it.app),
-		})
-	}
-	return result, nil
-}
-
-func (r *reportServiceImpl) failedRuns(ctx context.Context, scope *projectScope) (*apisv1.ReportResult, error) {
-	result := &apisv1.ReportResult{Columns: columns("app:Application", "run:Run", "status:Status", "step:Failed step", "message:Message", "finished:Finished")}
-	perDay := map[string]float64{}
-	envOf := map[string]string{}
-	for _, app := range scope.apps {
-		records, err := r.Store.List(ctx, &model.WorkflowRecord{AppPrimaryKey: app.PrimaryKey()}, nil)
+func (s *projectSource) Runs(ctx context.Context) ([]report.WorkflowRun, error) {
+	out := []report.WorkflowRun{}
+	for _, app := range s.apps {
+		records, err := s.r.Store.List(ctx, &model.WorkflowRecord{AppPrimaryKey: app.PrimaryKey()}, nil)
 		if err != nil {
 			return nil, err
 		}
+		envOf := map[string]string{}
 		for _, e := range records {
 			rec, ok := e.(*model.WorkflowRecord)
-			if !ok || (rec.Status != "failed" && rec.Status != "terminated") {
+			if !ok {
 				continue
 			}
-			step, message := "", ""
-			for _, s := range rec.Steps {
-				if string(s.Phase) == "failed" {
-					step, message = s.Name, s.Message
-					break
-				}
-			}
-			key := app.Name + "/" + rec.WorkflowName
-			if _, done := envOf[key]; !done {
+			if _, done := envOf[rec.WorkflowName]; !done {
 				wf := &model.Workflow{AppPrimaryKey: app.PrimaryKey(), Name: rec.WorkflowName}
-				if err := r.Store.Get(ctx, wf); err == nil {
-					envOf[key] = wf.EnvName
+				if err := s.r.Store.Get(ctx, wf); err == nil {
+					envOf[rec.WorkflowName] = wf.EnvName
 				}
 			}
-			link := ""
-			if env := envOf[key]; env != "" {
-				link = fmt.Sprintf("/applications/%s/envbinding/%s/workflow/records/%s", app.Name, env, rec.Name)
+			run := report.WorkflowRun{App: app.Name, Env: envOf[rec.WorkflowName], Workflow: rec.WorkflowName, Name: rec.Name,
+				Status: rec.Status, Started: timeOf(rec.StartTime), Finished: timeOf(rec.EndTime)}
+			for _, st := range rec.Steps {
+				run.Steps = append(run.Steps, report.RunStep{Name: st.Name, Alias: st.Alias, Type: st.Type, Phase: string(st.Phase), Message: st.Message})
 			}
-			finished := rec.EndTime
-			if finished.IsZero() || finished.Year() < 2000 {
-				finished = rec.StartTime
-			}
-			perDay[finished.Format("2006-01-02")]++
-			result.Rows = append(result.Rows, apisv1.ReportRow{
-				Values: map[string]interface{}{"app": app.Name, "run": rec.Name, "status": rec.Status, "step": step, "message": message, "finished": finished.Format(time.RFC3339)},
-				Link:   link,
-			})
+			out = append(out, run)
 		}
 	}
-	sort.Slice(result.Rows, func(i, j int) bool {
-		return fmt.Sprint(result.Rows[i].Values["finished"]) > fmt.Sprint(result.Rows[j].Values["finished"])
-	})
-	result.Chart = barChart("Failed runs per day", perDay)
-	return result, nil
+	return out, nil
 }
 
-// inNamespaces lists objects of a kind in each of the project's namespaces.
-func (r *reportServiceImpl) inNamespaces(ctx context.Context, scope *projectScope, list client.ObjectList, each func(ns clusterNamespace)) {
-	for _, ns := range scope.namespaces {
-		cctx := multicluster.ContextWithClusterName(ctx, ns.cluster)
-		if err := r.KubeClient.List(cctx, list, client.InNamespace(ns.namespace)); err != nil {
-			klog.Warningf("report: list %T in %s/%s: %v", list, ns.cluster, ns.namespace, err)
+func timeOf(t time.Time) string {
+	if t.IsZero() || t.Year() < 2000 {
+		return ""
+	}
+	return t.Format(time.RFC3339)
+}
+
+// Definitions are read as VelaUX: they are global, as the catalogue of types
+// every project picks from.
+func (s *projectSource) Definitions(ctx context.Context) ([]report.Definition, error) {
+	defs := map[string]*report.Definition{}
+	add := func(kind, name string) *report.Definition {
+		key := kind + "/" + name
+		if defs[key] == nil {
+			defs[key] = &report.Definition{Name: name, Kind: kind, Versions: []string{}}
+		}
+		return defs[key]
+	}
+	components := &v1beta1.ComponentDefinitionList{}
+	if err := s.r.ServerKubeClient.List(ctx, components, client.InNamespace(types.DefaultKubeVelaNS)); err != nil {
+		return nil, err
+	}
+	for _, d := range components.Items {
+		add("component", d.Name)
+	}
+	traits := &v1beta1.TraitDefinitionList{}
+	if err := s.r.ServerKubeClient.List(ctx, traits, client.InNamespace(types.DefaultKubeVelaNS)); err != nil {
+		return nil, err
+	}
+	for _, d := range traits.Items {
+		add("trait", d.Name)
+	}
+	revisions := &v1beta1.DefinitionRevisionList{}
+	if err := s.r.ServerKubeClient.List(ctx, revisions, client.InNamespace(types.DefaultKubeVelaNS)); err != nil {
+		return nil, err
+	}
+	sort.Slice(revisions.Items, func(i, j int) bool { return revisions.Items[i].Spec.Revision > revisions.Items[j].Spec.Revision })
+	for _, rev := range revisions.Items {
+		kind := ""
+		switch rev.Spec.DefinitionType {
+		case "Component":
+			kind = "component"
+		case "Trait":
+			kind = "trait"
+		default:
 			continue
 		}
-		each(ns)
+		name := revisionOf(rev)
+		d := add(kind, name)
+		version := strings.TrimPrefix(rev.Name, name+"-")
+		if d.Latest == "" {
+			d.Latest = version
+		}
+		d.Versions = append(d.Versions, version)
 	}
-}
-
-func appOf(labels map[string]string) string {
-	return labels[oam.LabelAppName]
-}
-
-func (r *reportServiceImpl) appLink(scope *projectScope, app string) string {
-	for _, a := range scope.apps {
-		if a.Name == app {
-			return fmt.Sprintf("/applications/%s/config", app)
-		}
+	out := make([]report.Definition, 0, len(defs))
+	for _, d := range defs {
+		out = append(out, *d)
 	}
-	return ""
+	sort.Slice(out, func(i, j int) bool { return out[i].Kind+"/"+out[i].Name < out[j].Kind+"/"+out[j].Name })
+	return out, nil
 }
 
-func (r *reportServiceImpl) inventory(ctx context.Context, scope *projectScope) (*apisv1.ReportResult, error) {
-	result := &apisv1.ReportResult{Columns: columns("kind:Kind", "name:Name", "namespace:Namespace", "app:Application", "status:Status")}
-	byKind := map[string]float64{}
-	add := func(kind, name string, ns clusterNamespace, labels map[string]string, status string) {
-		byKind[kind]++
-		app := appOf(labels)
-		result.Rows = append(result.Rows, apisv1.ReportRow{
-			Values: map[string]interface{}{"kind": kind, "name": name, "namespace": ns.cluster + "/" + ns.namespace, "app": app, "status": status},
-			Link:   r.appLink(scope, app),
-		})
-	}
-	var deployments appsv1.DeploymentList
-	r.inNamespaces(ctx, scope, &deployments, func(ns clusterNamespace) {
-		for _, d := range deployments.Items {
-			add("Deployment", d.Name, ns, d.Labels, fmt.Sprintf("%d/%d ready", d.Status.ReadyReplicas, d.Status.Replicas))
-		}
-	})
-	var statefulsets appsv1.StatefulSetList
-	r.inNamespaces(ctx, scope, &statefulsets, func(ns clusterNamespace) {
-		for _, s := range statefulsets.Items {
-			add("StatefulSet", s.Name, ns, s.Labels, fmt.Sprintf("%d/%d ready", s.Status.ReadyReplicas, s.Status.Replicas))
-		}
-	})
-	var services corev1.ServiceList
-	r.inNamespaces(ctx, scope, &services, func(ns clusterNamespace) {
-		for _, s := range services.Items {
-			add("Service", s.Name, ns, s.Labels, string(s.Spec.Type))
-		}
-	})
-	var configmaps corev1.ConfigMapList
-	r.inNamespaces(ctx, scope, &configmaps, func(ns clusterNamespace) {
-		for _, c := range configmaps.Items {
-			// The cluster's CA bundle and KubeVela's workflow state are in every namespace.
-			if c.Name == "kube-root-ca.crt" || strings.HasPrefix(c.Name, "workflow-") {
-				continue
-			}
-			add("ConfigMap", c.Name, ns, c.Labels, fmt.Sprintf("%d keys", len(c.Data)))
-		}
-	})
-	var hpas autoscalingv1.HorizontalPodAutoscalerList
-	r.inNamespaces(ctx, scope, &hpas, func(ns clusterNamespace) {
-		for _, h := range hpas.Items {
-			add("HorizontalPodAutoscaler", h.Name, ns, h.Labels, fmt.Sprintf("%d replicas", h.Status.CurrentReplicas))
-		}
-	})
-	result.Chart = barChart("Resources by kind", byKind)
-	return result, nil
-}
-
-func (r *reportServiceImpl) expressions(ctx context.Context, scope *projectScope) (*apisv1.ReportResult, error) {
-	items, err := r.typedOf(ctx, scope)
+// List lists a kind in each of the project's namespaces as the project, so
+// Kubernetes decides what it may see. A namespace it cannot read is left out.
+func (s *projectSource) List(ctx context.Context, apiVersion, kind string) ([]report.Object, error) {
+	gv, err := schema.ParseGroupVersion(apiVersion)
 	if err != nil {
 		return nil, err
 	}
-	result := &apisv1.ReportResult{Columns: columns("app:Application", "component:Component", "kind:Kind", "type:Type", "property:Property", "expression:Expression")}
-	reads := map[string]float64{}
-	for _, it := range items {
-		if it.properties == nil {
+	out := []report.Object{}
+	asProject := request.WithUser(ctx, s.as)
+	for _, ns := range s.namespaces {
+		list := &unstructured.UnstructuredList{}
+		list.SetGroupVersionKind(gv.WithKind(kind + "List"))
+		cctx := multicluster.ContextWithClusterName(asProject, ns.cluster)
+		if err := s.r.ServerKubeClient.List(cctx, list, client.InNamespace(ns.namespace)); err != nil {
+			klog.Warningf("report: list %s in %s/%s for project %s: %v", kind, ns.cluster, ns.namespace, s.project, err)
 			continue
 		}
-		_ = walkExpressions("", map[string]interface{}(*it.properties), nil, func(path, value string, _ *openapi3.Schema) error {
-			for _, root := range []string{"source.", "context.", "component."} {
-				if strings.Contains(value, root) {
-					reads[strings.TrimSuffix(root, ".")]++
-				}
-			}
-			result.Rows = append(result.Rows, apisv1.ReportRow{
-				Values: map[string]interface{}{"app": it.app, "component": it.component, "kind": it.kind, "type": it.typ, "property": path, "expression": value},
-				Link:   componentLink(it.app),
-			})
-			return nil
-		})
-	}
-	result.Chart = barChart("Expressions by what they read", reads)
-	return result, nil
-}
-
-func (r *reportServiceImpl) autoscaling(ctx context.Context, scope *projectScope) (*apisv1.ReportResult, error) {
-	result := &apisv1.ReportResult{Columns: columns("name:Autoscaler", "app:Application", "namespace:Namespace", "replicas:Replicas", "bounds:Min-max", "cpu:CPU now / target")}
-	current := map[string]float64{}
-	var hpas autoscalingv1.HorizontalPodAutoscalerList
-	r.inNamespaces(ctx, scope, &hpas, func(ns clusterNamespace) {
-		for _, h := range hpas.Items {
-			min := int32(1)
-			if h.Spec.MinReplicas != nil {
-				min = *h.Spec.MinReplicas
-			}
-			cpu := "-"
-			if h.Status.CurrentCPUUtilizationPercentage != nil && h.Spec.TargetCPUUtilizationPercentage != nil {
-				cpu = fmt.Sprintf("%d%% / %d%%", *h.Status.CurrentCPUUtilizationPercentage, *h.Spec.TargetCPUUtilizationPercentage)
-			}
-			app := appOf(h.Labels)
-			current[h.Name] = float64(h.Status.CurrentReplicas)
-			result.Rows = append(result.Rows, apisv1.ReportRow{
-				Values: map[string]interface{}{"name": h.Name, "app": app, "namespace": ns.cluster + "/" + ns.namespace, "replicas": h.Status.CurrentReplicas, "bounds": fmt.Sprintf("%d-%d", min, h.Spec.MaxReplicas), "cpu": cpu},
-				Link:   r.appLink(scope, app),
-			})
+		for _, item := range list.Items {
+			out = append(out, report.Object{Cluster: ns.cluster, Namespace: ns.namespace, Object: item.Object})
 		}
-	})
-	result.Chart = barChart("Replicas now", current)
-	return result, nil
-}
-
-// columns builds a report's columns from key:title pairs.
-func columns(pairs ...string) []apisv1.ReportColumn {
-	out := make([]apisv1.ReportColumn, 0, len(pairs))
-	for _, p := range pairs {
-		key, title, _ := strings.Cut(p, ":")
-		out = append(out, apisv1.ReportColumn{Key: key, Title: title})
 	}
-	return out
-}
-
-// barChart is a bar per label, in label order, or none for no data.
-func barChart(title string, values map[string]float64) *apisv1.ReportChart {
-	if len(values) == 0 {
-		return nil
-	}
-	chart := &apisv1.ReportChart{Title: title}
-	for label, value := range values {
-		chart.Bars = append(chart.Bars, apisv1.ReportBar{Label: label, Value: value})
-	}
-	sort.Slice(chart.Bars, func(i, j int) bool { return chart.Bars[i].Label < chart.Bars[j].Label })
-	return chart
+	return out, nil
 }

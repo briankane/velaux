@@ -226,19 +226,20 @@ func (n *project) GetWebServiceRoute() *restful.WebService {
 		Writes(apis.ConfigTemplateDetail{}))
 
 	ws.Route(ws.GET("/{projectName}/reports").To(n.listReports).
-		Doc("the built-in reports a project can run").
+		Doc("the reports a project can run: its own, then the global ones").
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Filter(n.RbacService.CheckPerm("project/application", "list")).
 		Param(ws.PathParameter("projectName", "identifier of the project").DataType("string").Required(true)).
 		Returns(200, "OK", apis.ListReportsResponse{}).
 		Writes(apis.ListReportsResponse{}))
 
-	ws.Route(ws.GET("/{projectName}/reports/{reportID}").To(n.runReport).
-		Doc("run a built-in report over the project's applications and namespaces").
+	ws.Route(ws.POST("/{projectName}/reports/{reportID}").To(n.runReport).
+		Doc("run a report over the project's applications and namespaces").
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Filter(n.RbacService.CheckPerm("project/application", "list")).
 		Param(ws.PathParameter("projectName", "identifier of the project").DataType("string").Required(true)).
 		Param(ws.PathParameter("reportID", "the report").DataType("string").Required(true)).
+		Reads(apis.RunReportRequest{}).
 		Returns(200, "OK", apis.ReportResult{}).
 		Returns(404, "Not Found", bcode.Bcode{}).
 		Writes(apis.ReportResult{}))
@@ -885,7 +886,12 @@ func (n *project) deleteDistribution(req *restful.Request, res *restful.Response
 }
 
 func (n *project) listReports(req *restful.Request, res *restful.Response) {
-	if err := res.WriteEntity(apis.ListReportsResponse{Reports: n.ReportService.ListReports()}); err != nil {
+	list, err := n.ReportService.ListReports(req.Request.Context(), req.PathParameter("projectName"))
+	if err != nil {
+		bcode.ReturnError(req, res, err)
+		return
+	}
+	if err := res.WriteEntity(list); err != nil {
 		bcode.ReturnError(req, res, err)
 	}
 }
@@ -899,13 +905,20 @@ func (n *project) runReport(req *restful.Request, res *restful.Response) {
 		return
 	}
 	reportID := req.PathParameter("reportID")
-	result, err := n.ReportService.RunReport(req.Request.Context(), projectName, reportID)
+	var run apis.RunReportRequest
+	if req.Request.ContentLength > 0 {
+		if err := req.ReadEntity(&run); err != nil {
+			bcode.ReturnError(req, res, err)
+			return
+		}
+	}
+	result, err := n.ReportService.RunReport(req.Request.Context(), projectName, reportID, run.Parameters)
 	if err != nil {
 		bcode.ReturnError(req, res, err)
 		return
 	}
 	user, _ := req.Request.Context().Value(&apis.CtxKeyUser).(string)
-	klog.InfoS("report run", "user", pkgUtils.Sanitize(user), "project", pkgUtils.Sanitize(projectName), "report", pkgUtils.Sanitize(reportID), "rows", len(result.Rows))
+	klog.InfoS("report run", "user", pkgUtils.Sanitize(user), "project", pkgUtils.Sanitize(projectName), "report", pkgUtils.Sanitize(reportID), "scope", result.Report.Scope, "parameters", len(run.Parameters), "rows", len(result.Rows))
 	if err := res.WriteEntity(result); err != nil {
 		bcode.ReturnError(req, res, err)
 	}
