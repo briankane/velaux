@@ -362,9 +362,7 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
                       ? 'Steps come from the global shared workflow'
                       : 'Steps come from the shared workflow'}
                   </Translation>{' '}
-                  <code>{ref}</code>
-                  {this.state.sharedScope === 'global' && <span> (vela-system)</span>}.{' '}
-                  <Translation>Change them there, or</Translation>
+                  <code>{ref}</code>. <Translation>Change them there, or</Translation>
                 </span>
                 <Button text type="primary" onClick={this.useCopy}>
                   <Translation>use a copy instead</Translation>

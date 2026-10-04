@@ -181,7 +181,6 @@
   "Kind": "类型",
   "KubeConfig": "KubeConfig",
   "LastTransitionTime": "上次变更时间",
-  "Local": "本地",
   "Log query": "日志查询",
   "Logs Date": "日志日期",
   "Memory": "内存",
@@ -1029,9 +1028,8 @@
   "Steps come from the shared workflow": "步骤来自共享工作流",
   "Change them there, or": "请在那里修改，或",
   "use a copy instead": "改用副本",
-  "There are no shared workflows in this environment's namespace or vela-system.": "此环境的命名空间和 vela-system 中都没有共享工作流。",
-  "Local (this environment's namespace)": "本地（此环境的命名空间）",
-  "Global (vela-system)": "全局（vela-system）",
-  "hidden by the local one": "被同名本地工作流覆盖",
-  "Steps come from the global shared workflow": "步骤来自全局共享工作流"
+  "Steps come from the global shared workflow": "步骤来自全局共享工作流",
+  "This environment": "此环境",
+  "There are no shared workflows for this environment, nor global ones.": "此环境没有共享工作流，也没有全局共享工作流。",
+  "hidden by this environment's": "被此环境的同名工作流覆盖"
 }

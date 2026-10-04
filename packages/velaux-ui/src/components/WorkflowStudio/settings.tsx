@@ -23,13 +23,13 @@ export type WorkflowSettings = {
 
 const modeLabel = (mode?: WorkflowMode | '') => (mode === 'DAG' ? 'In parallel' : 'In order');
 
-// sharedOptions groups shared workflows as the picker shows them: local ones,
-// then global ones, a global one hidden by a local one of its name offered but
+// sharedOptions groups shared workflows as the picker shows them: this
+// environment's, then global ones, a global one hidden by a local one of its name offered but
 // disabled, saying why.
 const sharedOptions = (shared: SharedWorkflow[]) =>
   [
-    { scope: 'local', label: i18n.t("Local (this environment's namespace)").toString() },
-    { scope: 'global', label: i18n.t('Global (vela-system)').toString() },
+    { scope: 'local', label: i18n.t('This environment').toString() },
+    { scope: 'global', label: i18n.t('Global').toString() },
   ]
     .map((group) => ({
       label: group.label,
@@ -37,7 +37,7 @@ const sharedOptions = (shared: SharedWorkflow[]) =>
         .filter((s) => s.scope === group.scope)
         .map((s) => ({
           value: s.hidden ? `hidden:${s.name}` : s.name,
-          label: s.hidden ? `${s.name} (${i18n.t('hidden by the local one').toString()})` : s.name,
+          label: s.hidden ? `${s.name} (${i18n.t("hidden by this environment's").toString()})` : s.name,
           disabled: s.hidden,
         })),
     }))
@@ -204,9 +204,9 @@ export class WorkflowSettingsPanel extends React.Component<Props, State> {
               required
               help={
                 shared && shared.length === 0
-                  ? i18n.t("There are no shared workflows in this environment's namespace or vela-system.").toString()
+                  ? i18n.t('There are no shared workflows for this environment, nor global ones.').toString()
                   : chosen
-                  ? `${i18n.t(chosen.scope === 'global' ? 'Global' : 'Local').toString()} · ${chosen.namespace} · ${
+                  ? `${i18n.t(chosen.scope === 'global' ? 'Global' : 'This environment').toString()} · ${
                       chosen.steps.length
                     } ${i18n.t(chosen.steps.length === 1 ? 'step' : 'steps').toString()}`
                   : undefined
