@@ -329,6 +329,10 @@ export interface UpdateWorkflowRequest {
 export interface SharedWorkflow {
   name: string;
   namespace: string;
+  // scope is local, in the environment's namespace, or global, in vela-system;
+  // a global one is hidden where a local one has its name.
+  scope: 'local' | 'global';
+  hidden?: boolean;
   mode?: WorkflowMode;
   subMode?: WorkflowMode;
   steps: WorkflowStep[];
@@ -474,6 +478,7 @@ export interface Workflow {
   // sharedMode and sharedSubMode are its modes, which apply where mode and
   // subMode are empty.
   ref?: string;
+  sharedScope?: 'local' | 'global';
   sharedMode?: WorkflowMode;
   sharedSubMode?: WorkflowMode;
 }

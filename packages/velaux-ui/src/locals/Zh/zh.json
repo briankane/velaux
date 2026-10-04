@@ -1024,10 +1024,14 @@
   "This workflow": "此工作流",
   "A shared workflow": "共享工作流",
   "Shared workflow": "共享工作流",
-  "There are no shared workflows in this environment's namespace.": "此环境的命名空间中没有共享工作流。",
   "Choose a shared workflow": "请选择共享工作流",
   "Use the shared workflow's": "使用共享工作流的设置",
   "Steps come from the shared workflow": "步骤来自共享工作流",
   "Change them there, or": "请在那里修改，或",
-  "use a copy instead": "改用副本"
+  "use a copy instead": "改用副本",
+  "There are no shared workflows in this environment's namespace or vela-system.": "此环境的命名空间和 vela-system 中都没有共享工作流。",
+  "Local (this environment's namespace)": "本地（此环境的命名空间）",
+  "Global (vela-system)": "全局（vela-system）",
+  "hidden by the local one": "被同名本地工作流覆盖",
+  "Steps come from the global shared workflow": "步骤来自全局共享工作流"
 }

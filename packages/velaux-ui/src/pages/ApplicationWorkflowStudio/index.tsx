@@ -55,6 +55,7 @@ type State = {
   mode: WorkflowMode | '';
   subMode: WorkflowMode | '';
   ref?: string;
+  sharedScope?: 'local' | 'global';
   sharedMode?: WorkflowMode;
   sharedSubMode?: WorkflowMode;
   editMode: 'visual' | 'yaml';
@@ -111,6 +112,7 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
         description: res.description,
         isDefault: res.default,
         ref: res.ref,
+        sharedScope: res.sharedScope,
         sharedMode: res.sharedMode,
         sharedSubMode: res.sharedSubMode,
       });
@@ -211,7 +213,15 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
   // as this workflow's own, to edit.
   useCopy = () => {
     const [mode, subMode] = this.effectiveModes();
-    this.setState({ ref: undefined, sharedMode: undefined, sharedSubMode: undefined, mode, subMode, changed: true });
+    this.setState({
+      ref: undefined,
+      sharedScope: undefined,
+      sharedMode: undefined,
+      sharedSubMode: undefined,
+      mode,
+      subMode,
+      changed: true,
+    });
   };
 
   render() {
@@ -316,7 +326,7 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
                 >
                   <AiOutlineSetting />
                   <Translation>Settings</Translation>
-                  <SettingsSummary mode={runMode} subMode={runSubMode} shared={ref} />
+                  <SettingsSummary mode={runMode} subMode={runSubMode} shared={ref} scope={this.state.sharedScope} />
                 </Button>
                 <Button
                   disabled={!changed}
@@ -347,7 +357,13 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
             {ref && (
               <div className="studio-shared-banner">
                 <span>
-                  <Translation>Steps come from the shared workflow</Translation> <code>{ref}</code>.{' '}
+                  <Translation>
+                    {this.state.sharedScope === 'global'
+                      ? 'Steps come from the global shared workflow'
+                      : 'Steps come from the shared workflow'}
+                  </Translation>{' '}
+                  <code>{ref}</code>
+                  {this.state.sharedScope === 'global' && <span> (vela-system)</span>}.{' '}
                   <Translation>Change them there, or</Translation>
                 </span>
                 <Button text type="primary" onClick={this.useCopy}>
@@ -394,6 +410,7 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
                 // A shared workflow's steps are shown, not edited; leaving one
                 // keeps its steps as this workflow's own.
                 steps: settings.ref ? shared?.steps || [] : steps,
+                sharedScope: settings.ref ? shared?.scope : undefined,
                 sharedMode: settings.ref ? shared?.mode : undefined,
                 sharedSubMode: settings.ref ? shared?.subMode : undefined,
                 editMode: settings.ref ? 'visual' : editMode,

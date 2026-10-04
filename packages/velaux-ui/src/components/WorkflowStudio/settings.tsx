@@ -23,13 +23,38 @@ export type WorkflowSettings = {
 
 const modeLabel = (mode?: WorkflowMode | '') => (mode === 'DAG' ? 'In parallel' : 'In order');
 
+// sharedOptions groups shared workflows as the picker shows them: local ones,
+// then global ones, a global one hidden by a local one of its name offered but
+// disabled, saying why.
+const sharedOptions = (shared: SharedWorkflow[]) =>
+  [
+    { scope: 'local', label: i18n.t("Local (this environment's namespace)").toString() },
+    { scope: 'global', label: i18n.t('Global (vela-system)').toString() },
+  ]
+    .map((group) => ({
+      label: group.label,
+      children: shared
+        .filter((s) => s.scope === group.scope)
+        .map((s) => ({
+          value: s.hidden ? `hidden:${s.name}` : s.name,
+          label: s.hidden ? `${s.name} (${i18n.t('hidden by the local one').toString()})` : s.name,
+          disabled: s.hidden,
+        })),
+    }))
+    .filter((group) => group.children.length > 0);
+
 // SettingsSummary is the toolbar's one-line account of how a workflow runs,
 // naming the shared workflow it uses, if any.
-export const SettingsSummary = (props: { mode: WorkflowMode; subMode: WorkflowMode; shared?: string }) => (
+export const SettingsSummary = (props: {
+  mode: WorkflowMode;
+  subMode: WorkflowMode;
+  shared?: string;
+  scope?: 'local' | 'global';
+}) => (
   <span className="studio-settings-summary">
     {props.shared && (
       <>
-        <Translation>Shared</Translation> <code>{props.shared}</code>
+        <Translation>{props.scope === 'global' ? 'Global' : 'Shared'}</Translation> <code>{props.shared}</code>
         <span className="studio-settings-sep">·</span>
       </>
     )}
@@ -73,7 +98,9 @@ export class WorkflowSettingsPanel extends React.Component<Props, State> {
     }
   }
 
-  chosen = () => this.state.shared?.find((s) => s.name === this.field.getValue('ref'));
+  // chosen is the shared workflow the ref runs: a local one wins over a global
+  // one of its name, as in KubeVela.
+  chosen = () => this.state.shared?.find((s) => s.name === this.field.getValue('ref') && !s.hidden);
 
   apply = () => {
     this.field.validate((error, values: any) => {
@@ -177,18 +204,18 @@ export class WorkflowSettingsPanel extends React.Component<Props, State> {
               required
               help={
                 shared && shared.length === 0
-                  ? i18n.t("There are no shared workflows in this environment's namespace.").toString()
+                  ? i18n.t("There are no shared workflows in this environment's namespace or vela-system.").toString()
                   : chosen
-                  ? `${chosen.namespace} · ${chosen.steps.length} ${i18n
-                      .t(chosen.steps.length === 1 ? 'step' : 'steps')
-                      .toString()}`
+                  ? `${i18n.t(chosen.scope === 'global' ? 'Global' : 'Local').toString()} · ${chosen.namespace} · ${
+                      chosen.steps.length
+                    } ${i18n.t(chosen.steps.length === 1 ? 'step' : 'steps').toString()}`
                   : undefined
               }
             >
               <Select
                 locale={locale().Select}
                 state={!shared ? 'loading' : undefined}
-                dataSource={(shared || []).map((s) => ({ value: s.name, label: s.name }))}
+                dataSource={sharedOptions(shared || [])}
                 {...init('ref', {
                   rules: [{ required: true, message: i18n.t('Choose a shared workflow').toString() }],
                 })}
