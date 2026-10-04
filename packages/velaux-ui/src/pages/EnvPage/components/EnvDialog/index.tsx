@@ -9,7 +9,7 @@ import { If } from '../../../../components/If';
 import Permission from '../../../../components/Permission';
 import { Translation } from '../../../../components/Translation';
 import i18n from '../../../../i18n';
-import type { Cluster , Env , Target , LoginUserInfo, UserProject } from '@velaux/data';
+import type { Cluster, Env, Target, LoginUserInfo, UserProject } from '@velaux/data';
 import { checkName } from '../../../../utils/common';
 import { locale } from '../../../../utils/locale';
 import { checkPermission } from '../../../../utils/permission';
@@ -181,7 +181,7 @@ class EnvDialog extends React.Component<Props, State> {
 
   loadNamespaces = async (cluster: string | undefined) => {
     if (cluster) {
-      listNamespaces({ cluster: cluster }).then((re) => {
+      listNamespaces({ cluster: cluster, project: this.field.getValue('project') || this.props.project }).then((re) => {
         if (re && re.list) {
           const namespaces = re.list.map((item: any) => {
             return { label: item.metadata.name, value: item.metadata.name };
