@@ -327,7 +327,7 @@ func (w *workflowServiceImpl) ListSharedWorkflows(ctx context.Context, envName s
 			shared[i].Hidden = false
 		}
 	}
-	return &apisv1.ListSharedWorkflowsResponse{Workflows: shared, GlobalUnavailable: unavailable, ProjectUnavailable: outside}, nil
+	return &apisv1.ListSharedWorkflowsResponse{Workflows: shared, GlobalUnavailable: unavailable, ProjectUnavailable: outside, ProjectNamespace: projectNs}, nil
 }
 
 // GetWorkflow get workflow model

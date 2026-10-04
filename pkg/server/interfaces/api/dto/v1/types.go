@@ -1382,6 +1382,8 @@ type ListSharedWorkflowsResponse struct {
 	// ProjectUnavailable says the environment's Applications run outside the
 	// project's namespace, so KubeVela cannot find the project's workflows.
 	ProjectUnavailable bool `json:"projectUnavailable,omitempty"`
+	// ProjectNamespace is the namespace holding the project's.
+	ProjectNamespace string `json:"projectNamespace,omitempty"`
 }
 
 // SharedWorkflowRequest creates or updates a shared Workflow. Name is only read

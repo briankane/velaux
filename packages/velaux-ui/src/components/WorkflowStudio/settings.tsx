@@ -1,10 +1,11 @@
 import { Button, Checkbox, Field, Form, Input, Radio, Select } from '@alifd/next';
 import React from 'react';
 
-import type { SharedWorkflow, WorkflowMode } from '@velaux/data';
+import type { ListSharedWorkflowsResponse, SharedWorkflow, SharedWorkflowScope, WorkflowMode } from '@velaux/data';
 
 import i18n from '../../i18n';
 import { locale } from '../../utils/locale';
+import { usableShared } from '../../utils/sharedWorkflows';
 import DrawerWithFooter from '../Drawer';
 import { Translation } from '../Translation';
 
@@ -23,23 +24,31 @@ export type WorkflowSettings = {
 
 const modeLabel = (mode?: WorkflowMode | '') => (mode === 'DAG' ? 'In parallel' : 'In order');
 
-// sharedOptions groups shared workflows as the picker shows them: this
-// environment's, then global ones, a global one hidden by one of this
-// environment's of its name offered but disabled, saying why.
-const sharedOptions = (shared: SharedWorkflow[]) =>
-  [
-    { scope: 'local', label: i18n.t('This environment').toString() },
-    { scope: 'global', label: i18n.t('Global').toString() },
-  ]
-    .map((group) => ({
-      label: group.label,
+// scopeLabel names where a shared workflow is.
+export const scopeLabel = (scope?: SharedWorkflowScope) =>
+  scope === 'global' ? 'Global' : scope === 'project' ? 'Project' : 'This environment';
+
+// sharedOptions groups shared workflows as the picker shows them: the
+// project's, then global ones. One that cannot be used is offered but
+// disabled, saying why.
+const sharedOptions = (shared: SharedWorkflow[], projectUnavailable?: boolean) =>
+  (['project', 'global'] as SharedWorkflowScope[])
+    .map((scope) => ({
+      label: i18n.t(scopeLabel(scope)).toString(),
       children: shared
-        .filter((s) => s.scope === group.scope)
-        .map((s) => ({
-          value: s.hidden ? `hidden:${s.name}` : s.name,
-          label: s.hidden ? `${s.name} (${i18n.t("hidden by this environment's").toString()})` : s.name,
-          disabled: s.hidden,
-        })),
+        .filter((s) => s.scope === scope)
+        .map((s) => {
+          const why = s.hidden
+            ? i18n.t("hidden by the project's").toString()
+            : !usableShared(s, projectUnavailable)
+            ? i18n.t('not reachable from this environment').toString()
+            : '';
+          return {
+            value: usableShared(s, projectUnavailable) ? s.name : `unusable:${s.scope}:${s.name}`,
+            label: `${s.alias || s.name}${why ? ` (${why})` : ''}`,
+            disabled: !usableShared(s, projectUnavailable),
+          };
+        }),
     }))
     .filter((group) => group.children.length > 0);
 
@@ -49,12 +58,13 @@ export const SettingsSummary = (props: {
   mode: WorkflowMode;
   subMode: WorkflowMode;
   shared?: string;
-  scope?: 'local' | 'global';
+  scope?: SharedWorkflowScope;
 }) => (
   <span className="studio-settings-summary">
     {props.shared && (
       <>
-        <Translation>{props.scope === 'global' ? 'Global' : 'Shared'}</Translation> <code>{props.shared}</code>
+        <Translation>{props.scope === 'environment' ? 'Shared' : scopeLabel(props.scope)}</Translation>{' '}
+        <code>{props.shared}</code>
         <span className="studio-settings-sep">·</span>
       </>
     )}
@@ -69,9 +79,8 @@ type Props = {
   // withDefault offers whether the workflow is its environment's default; a
   // pipeline has none.
   withDefault?: boolean;
-  // loadShared, where given, offers running a shared Workflow's steps;
-  // globalUnavailable says the global ones could not be read.
-  loadShared?: () => Promise<{ workflows: SharedWorkflow[]; globalUnavailable?: boolean }>;
+  // loadShared, where given, offers running a shared Workflow's steps.
+  loadShared?: () => Promise<ListSharedWorkflowsResponse>;
   // onApply hands back the settings and, with a ref, the shared Workflow.
   onApply: (settings: WorkflowSettings, shared?: SharedWorkflow) => void;
   onClose: () => void;
@@ -81,6 +90,7 @@ type State = {
   stepsFrom: 'own' | 'shared';
   shared?: SharedWorkflow[];
   globalUnavailable?: boolean;
+  projectUnavailable?: boolean;
 };
 
 // WorkflowSettingsPanel edits a workflow's own fields. Apply hands them back to
@@ -96,15 +106,22 @@ export class WorkflowSettingsPanel extends React.Component<Props, State> {
   componentDidMount() {
     this.field.setValues(this.props.settings);
     if (this.props.loadShared) {
-      this.props
-        .loadShared()
-        .then((res) => this.setState({ shared: res.workflows, globalUnavailable: res.globalUnavailable }));
+      this.props.loadShared().then((res) =>
+        this.setState({
+          shared: res.workflows,
+          globalUnavailable: res.globalUnavailable,
+          projectUnavailable: res.projectUnavailable,
+        })
+      );
     }
   }
 
-  // chosen is the shared workflow the ref runs: a local one wins over a global
-  // one of its name, as in KubeVela.
-  chosen = () => this.state.shared?.find((s) => s.name === this.field.getValue('ref') && !s.hidden);
+  // chosen is the shared workflow the ref runs: the project's wins over a
+  // global one of its name, as in KubeVela.
+  chosen = () =>
+    this.state.shared?.find(
+      (s) => s.name === this.field.getValue('ref') && usableShared(s, this.state.projectUnavailable)
+    );
 
   apply = () => {
     this.field.validate((error, values: any) => {
@@ -143,7 +160,7 @@ export class WorkflowSettingsPanel extends React.Component<Props, State> {
   render() {
     const { init } = this.field;
     const { settings, withDefault, loadShared, onClose } = this.props;
-    const { stepsFrom, shared, globalUnavailable } = this.state;
+    const { stepsFrom, shared, globalUnavailable, projectUnavailable } = this.state;
     const chosen = this.chosen();
     return (
       <DrawerWithFooter
@@ -210,18 +227,24 @@ export class WorkflowSettingsPanel extends React.Component<Props, State> {
                 globalUnavailable && !chosen
                   ? i18n.t('Global shared workflows could not be loaded.').toString()
                   : shared && shared.length === 0
-                  ? i18n.t('There are no shared workflows for this environment, nor global ones.').toString()
+                  ? i18n.t('There are no shared workflows for this project, nor global ones.').toString()
                   : chosen
-                  ? `${i18n.t(chosen.scope === 'global' ? 'Global' : 'This environment').toString()} · ${
-                      chosen.steps.length
-                    } ${i18n.t(chosen.steps.length === 1 ? 'step' : 'steps').toString()}`
+                  ? `${i18n.t(scopeLabel(chosen.scope)).toString()} · ${chosen.steps.length} ${i18n
+                      .t(chosen.steps.length === 1 ? 'step' : 'steps')
+                      .toString()}`
+                  : projectUnavailable
+                  ? i18n
+                      .t(
+                        "This environment's applications run outside the project's namespace, so they can use global shared workflows only."
+                      )
+                      .toString()
                   : undefined
               }
             >
               <Select
                 locale={locale().Select}
                 state={!shared ? 'loading' : undefined}
-                dataSource={sharedOptions(shared || [])}
+                dataSource={sharedOptions(shared || [], projectUnavailable)}
                 {...init('ref', {
                   rules: [{ required: true, message: i18n.t('Choose a shared workflow').toString() }],
                 })}

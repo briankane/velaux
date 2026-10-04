@@ -94,7 +94,7 @@ func (s *sharedWorkflowServiceImpl) ListSharedWorkflows(ctx context.Context, pro
 	for i := range shared {
 		shared[i].UsedBy, shared[i].UsedElsewhere = usesOf(refs, shared[i].Namespace, shared[i].Name, projectName)
 	}
-	return &apisv1.ListSharedWorkflowsResponse{Workflows: shared, GlobalUnavailable: unavailable}, nil
+	return &apisv1.ListSharedWorkflowsResponse{Workflows: shared, GlobalUnavailable: unavailable, ProjectNamespace: namespace}, nil
 }
 
 // DetailSharedWorkflow is the shared Workflow named name in scope, with what

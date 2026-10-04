@@ -22,6 +22,8 @@ import ApplicationWorkflowStatus from '../../pages/ApplicationWorkflowStatus/ind
 import ApplicationWorkflowStudio from '../../pages/ApplicationWorkflowStudio';
 import Clusters from '../../pages/Cluster/index';
 import Reports from '../../pages/Reports';
+import SharedWorkflows from '../../pages/SharedWorkflows';
+import SharedWorkflowStudio from '../../pages/SharedWorkflowStudio';
 import Configs from '../../pages/Configs';
 import Definitions from '../../pages/Definitions';
 import EnvPage from '../../pages/EnvPage';
@@ -374,6 +376,20 @@ export default function Router() {
         path="/roles"
         render={(props: any) => {
           return <Roles {...props} />;
+        }}
+      />
+      <Route
+        exact
+        path="/shared-workflows"
+        render={(props: any) => {
+          return <SharedWorkflows {...props} />;
+        }}
+      />
+      <Route
+        exact
+        path={['/shared-workflows/new', '/shared-workflows/:scope/:name']}
+        render={(props: any) => {
+          return <SharedWorkflowStudio {...props} />;
         }}
       />
       <Route

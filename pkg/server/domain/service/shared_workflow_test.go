@@ -95,6 +95,7 @@ func TestListSharedWorkflowsForProject(t *testing.T) {
 	require.NoError(t, err)
 	got := byScopeName(resp.Workflows)
 	require.Len(t, got, 4)
+	assert.Equal(t, "shop", resp.ProjectNamespace)
 
 	t.Run("a global one is hidden where the project has one of its name", func(t *testing.T) {
 		assert.True(t, got["global/release"].Hidden)
