@@ -1246,8 +1246,11 @@ type CreateWorkflowRequest struct {
 	Alias       string         `json:"alias" validate:"checkalias" optional:"true"`
 	Description string         `json:"description" optional:"true"`
 	Steps       []WorkflowStep `json:"steps,omitempty"`
-	Mode        string         `json:"mode" validate:"oneof=DAG StepByStep"`
-	SubMode     string         `json:"subMode" validate:"oneof=DAG StepByStep"`
+	// Ref names a shared Workflow to run in place of steps; its modes may then
+	// be empty, to follow the shared one's.
+	Ref     string `json:"ref,omitempty" optional:"true"`
+	Mode    string `json:"mode" validate:"omitempty,oneof=DAG StepByStep"`
+	SubMode string `json:"subMode" validate:"omitempty,oneof=DAG StepByStep"`
 	Default     *bool          `json:"default"`
 	EnvName     string         `json:"envName" validate:"checkname"`
 }
@@ -1257,8 +1260,11 @@ type UpdateWorkflowRequest struct {
 	Alias       string         `json:"alias"  validate:"checkalias" optional:"true"`
 	Description string         `json:"description" optional:"true"`
 	Steps       []WorkflowStep `json:"steps,omitempty"`
-	Mode        string         `json:"mode" validate:"oneof=DAG StepByStep"`
-	SubMode     string         `json:"subMode" validate:"oneof=DAG StepByStep"`
+	// Ref names a shared Workflow to run in place of steps; its modes may then
+	// be empty, to follow the shared one's.
+	Ref     string `json:"ref,omitempty" optional:"true"`
+	Mode    string `json:"mode" validate:"omitempty,oneof=DAG StepByStep"`
+	SubMode string `json:"subMode" validate:"omitempty,oneof=DAG StepByStep"`
 	Default     *bool          `json:"default"`
 }
 
@@ -1330,6 +1336,26 @@ type WorkflowBase struct {
 	Mode        string         `json:"mode"`
 	SubMode     string         `json:"subMode"`
 	Steps       []WorkflowStep `json:"steps,omitempty"`
+	// Ref names the shared Workflow this one runs, its steps shown in Steps;
+	// SharedMode and SharedSubMode are that Workflow's own modes, which apply
+	// where Mode and SubMode are empty.
+	Ref           string `json:"ref,omitempty"`
+	SharedMode    string `json:"sharedMode,omitempty"`
+	SharedSubMode string `json:"sharedSubMode,omitempty"`
+}
+
+// SharedWorkflow is a Workflow resource a workflow can reference.
+type SharedWorkflow struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+	Mode      string         `json:"mode,omitempty"`
+	SubMode   string         `json:"subMode,omitempty"`
+	Steps     []WorkflowStep `json:"steps"`
+}
+
+// ListSharedWorkflowsResponse lists the shared Workflows a workflow can reference.
+type ListSharedWorkflowsResponse struct {
+	Workflows []SharedWorkflow `json:"workflows"`
 }
 
 // ListWorkflowRecordsResponse list workflow execution record

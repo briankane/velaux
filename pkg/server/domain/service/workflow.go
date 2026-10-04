@@ -71,6 +71,7 @@ type WorkflowService interface {
 	ListApplicationWorkflow(ctx context.Context, app *model.Application) ([]*apisv1.WorkflowBase, error)
 	GetWorkflow(ctx context.Context, app *model.Application, workflowName string) (*model.Workflow, error)
 	DetailWorkflow(ctx context.Context, workflow *model.Workflow) (*apisv1.DetailWorkflowResponse, error)
+	ListSharedWorkflows(ctx context.Context, envName string) ([]apisv1.SharedWorkflow, error)
 	GetApplicationDefaultWorkflow(ctx context.Context, app *model.Application) (*model.Workflow, error)
 	DeleteWorkflow(ctx context.Context, app *model.Application, workflowName string) error
 	DeleteWorkflowByApp(ctx context.Context, app *model.Application) error
@@ -180,13 +181,12 @@ func (w *workflowServiceImpl) CreateOrUpdateWorkflow(ctx context.Context, app *m
 	if err != nil {
 		return nil, err
 	}
-	if req.Mode == "" {
-		req.Mode = string(workflowv1alpha1.WorkflowModeStep)
+	if req.Ref != "" {
+		modelSteps = nil
 	}
-	if req.SubMode == "" {
-		req.Mode = string(workflowv1alpha1.WorkflowModeDAG)
-	}
+	req.Mode, req.SubMode = workflowModes(req.Mode, req.SubMode, req.Ref)
 	if workflow != nil {
+		workflow.Ref = req.Ref
 		workflow.Steps = modelSteps
 		workflow.Alias = req.Alias
 		workflow.Description = req.Description
@@ -200,6 +200,7 @@ func (w *workflowServiceImpl) CreateOrUpdateWorkflow(ctx context.Context, app *m
 		// It is allowed to set multiple workflows as default, and only one takes effect.
 		workflow = &model.Workflow{
 			Steps:         modelSteps,
+			Ref:           req.Ref,
 			Name:          req.Name,
 			Alias:         req.Alias,
 			Description:   req.Description,
@@ -226,12 +227,11 @@ func (w *workflowServiceImpl) UpdateWorkflow(ctx context.Context, workflow *mode
 	}
 	workflow.Description = req.Description
 	workflow.Alias = req.Alias
-	if req.Mode == "" {
-		req.Mode = string(workflowv1alpha1.WorkflowModeStep)
+	workflow.Ref = req.Ref
+	if req.Ref != "" {
+		modeSteps = nil
 	}
-	if req.SubMode == "" {
-		req.Mode = string(workflowv1alpha1.WorkflowModeDAG)
-	}
+	req.Mode, req.SubMode = workflowModes(req.Mode, req.SubMode, req.Ref)
 	workflow.Mode.Steps = wfTypesv1alpha1.WorkflowMode(req.Mode)
 	workflow.Mode.SubSteps = wfTypesv1alpha1.WorkflowMode(req.SubMode)
 	// It is allowed to set multiple workflows as default, and only one takes effect.
@@ -244,11 +244,92 @@ func (w *workflowServiceImpl) UpdateWorkflow(ctx context.Context, workflow *mode
 	return w.DetailWorkflow(ctx, workflow)
 }
 
-// DetailWorkflow detail workflow
-func (w *workflowServiceImpl) DetailWorkflow(_ context.Context, workflow *model.Workflow) (*apisv1.DetailWorkflowResponse, error) {
-	return &apisv1.DetailWorkflowResponse{
-		WorkflowBase: assembler.ConvertWorkflowBase(workflow),
-	}, nil
+// workflowModes are the modes a workflow is stored with: as given, an empty
+// mode taken as StepByStep and an empty sub-mode as DAG, except for a workflow
+// referencing a shared one, where empty means the shared one's.
+func workflowModes(mode, subMode, ref string) (string, string) {
+	if ref != "" {
+		return mode, subMode
+	}
+	if mode == "" {
+		mode = string(workflowv1alpha1.WorkflowModeStep)
+	}
+	if subMode == "" {
+		subMode = string(workflowv1alpha1.WorkflowModeDAG)
+	}
+	return mode, subMode
+}
+
+// DetailWorkflow detail workflow. A workflow referencing a shared Workflow
+// shows that Workflow's steps and modes as they are now.
+func (w *workflowServiceImpl) DetailWorkflow(ctx context.Context, workflow *model.Workflow) (*apisv1.DetailWorkflowResponse, error) {
+	base := assembler.ConvertWorkflowBase(workflow)
+	if workflow.Ref != "" {
+		shared, err := w.sharedWorkflow(ctx, workflow.EnvName, workflow.Ref)
+		if err != nil {
+			return nil, err
+		}
+		steps, err := convert.FromCRWorkflowSteps(shared.Steps)
+		if err != nil {
+			return nil, err
+		}
+		base.Steps = nil
+		for _, step := range steps {
+			base.Steps = append(base.Steps, assembler.ConvertFromWorkflowStepModel(step))
+		}
+		if shared.Mode != nil {
+			base.SharedMode = string(shared.Mode.Steps)
+			base.SharedSubMode = string(shared.Mode.SubSteps)
+		}
+	}
+	return &apisv1.DetailWorkflowResponse{WorkflowBase: base}, nil
+}
+
+// sharedWorkflow is the Workflow named ref in the namespace of the environment
+// named envName, where its Applications run and KubeVela looks for it.
+func (w *workflowServiceImpl) sharedWorkflow(ctx context.Context, envName, ref string) (*wfTypesv1alpha1.Workflow, error) {
+	env, err := repository.GetEnv(ctx, w.Store, envName)
+	if err != nil {
+		return nil, err
+	}
+	shared := &wfTypesv1alpha1.Workflow{}
+	if err := w.KubeClient.Get(ctx, types.NamespacedName{Namespace: env.Namespace, Name: ref}, shared); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, bcode.ErrSharedWorkflowNotFound
+		}
+		return nil, err
+	}
+	return shared, nil
+}
+
+// ListSharedWorkflows lists the shared Workflows a workflow of the environment
+// named envName can reference: those in the environment's namespace.
+func (w *workflowServiceImpl) ListSharedWorkflows(ctx context.Context, envName string) ([]apisv1.SharedWorkflow, error) {
+	env, err := repository.GetEnv(ctx, w.Store, envName)
+	if err != nil {
+		return nil, err
+	}
+	list := &wfTypesv1alpha1.WorkflowList{}
+	if err := w.KubeClient.List(ctx, list, client.InNamespace(env.Namespace)); err != nil {
+		return nil, err
+	}
+	shared := []apisv1.SharedWorkflow{}
+	for _, item := range list.Items {
+		steps, err := convert.FromCRWorkflowSteps(item.Steps)
+		if err != nil {
+			return nil, err
+		}
+		s := apisv1.SharedWorkflow{Name: item.Name, Namespace: item.Namespace, Steps: []apisv1.WorkflowStep{}}
+		for _, step := range steps {
+			s.Steps = append(s.Steps, assembler.ConvertFromWorkflowStepModel(step))
+		}
+		if item.Mode != nil {
+			s.Mode = string(item.Mode.Steps)
+			s.SubMode = string(item.Mode.SubSteps)
+		}
+		shared = append(shared, s)
+	}
+	return shared, nil
 }
 
 // GetWorkflow get workflow model

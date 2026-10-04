@@ -36,3 +36,6 @@ var ErrWorkflowRecordNotExist = NewBcode(404, 20007, "workflow record is not exi
 
 // ErrWorkflowMode the workflow mode is neither StepByStep nor DAG
 var ErrWorkflowMode = NewBcode(400, 20008, "a workflow mode is StepByStep or DAG")
+
+// ErrSharedWorkflowNotFound the shared Workflow a workflow references is not in its environment's namespace
+var ErrSharedWorkflowNotFound = NewBcode(404, 20009, "the shared workflow is not found in the environment's namespace")
