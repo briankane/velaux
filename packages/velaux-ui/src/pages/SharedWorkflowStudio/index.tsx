@@ -256,7 +256,7 @@ class SharedWorkflowStudio extends React.Component<Props, State> {
                 {readOnly && (
                   <span className="row-list-muted">
                     <Translation>
-                      {scope === 'global' ? 'Read-only: only admins change global shared workflows' : 'Read-only'}
+                      {scope === 'global' ? 'Read-only, as only admins change global shared workflows' : 'Read-only'}
                     </Translation>
                   </span>
                 )}

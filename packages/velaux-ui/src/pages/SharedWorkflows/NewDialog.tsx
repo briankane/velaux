@@ -84,8 +84,8 @@ export const NewDialog = (props: Props) => {
           help={i18n
             .t(
               field.getValue('scope') === 'global'
-                ? 'Global: every project can use it. Only admins can change it.'
-                : "Project: this project's applications can use it."
+                ? 'Every project can use a global one. Only admins can change it.'
+                : "Only this project's applications can use it."
             )
             .toString()}
         >
