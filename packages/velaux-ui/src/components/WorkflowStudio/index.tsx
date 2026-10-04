@@ -9,7 +9,7 @@ import { WorkflowEditContext } from '../../context';
 import type { DefinitionBase, WorkflowMode, WorkflowStep, WorkflowStepBase } from '@velaux/data';
 
 import { groupMode, orderByDependencies } from '../PipelineGraph/dependencies';
-import { insertAfter } from './edit';
+import { addDependency, insertAfter, removeDependency } from './edit';
 import type { AddAt } from './graph';
 import { StudioGraph } from './graph';
 import StepForm from './step-form';
@@ -158,6 +158,24 @@ class WorkflowStudio extends React.Component<Props, State> {
     this.setState({ steps }, this.onChange);
   };
 
+  // edit applies change to the steps of group, or to the top level.
+  edit = (group: string | undefined, change: (list: WorkflowStepBase[]) => WorkflowStepBase[] | undefined) => {
+    const steps = group
+      ? this.state.steps.map((s) => {
+          if (s.name !== group) {
+            return s;
+          }
+          const subSteps = change(s.subSteps || []);
+          return subSteps ? { ...s, subSteps } : s;
+        })
+      : (change(this.state.steps) as WorkflowStep[] | undefined) ?? this.state.steps;
+    this.setState({ steps }, this.onChange);
+  };
+
+  onLink = (from: string, to: string, group?: string) => this.edit(group, (list) => addDependency(list, from, to));
+
+  onUnlink = (from: string, to: string, group?: string) => this.edit(group, (list) => removeDependency(list, from, to));
+
   onMove = (name: string, group: string | undefined, delta: -1 | 1) => {
     const swap = <T extends { name: string }>(list: T[]): T[] => {
       const i = list.findIndex((s) => s.name === name);
@@ -177,7 +195,7 @@ class WorkflowStudio extends React.Component<Props, State> {
     return (
       <div className={classNames('run-studio', 'studio-editor')}>
         <div className="studio">
-          <Draggable cancel=".studio-step, .studio-add, .studio-add-step">
+          <Draggable cancel=".studio-step, .studio-add-pair, .studio-add-step, .studio-port, .studio-unlink, .workflow-connector-hit">
             <div className="run-canvas">
               <StudioGraph
                 steps={steps}
@@ -188,6 +206,8 @@ class WorkflowStudio extends React.Component<Props, State> {
                 onDelete={this.onDeleteStep}
                 onGroupMode={this.onGroupMode}
                 onMove={this.onMove}
+                onLink={this.onLink}
+                onUnlink={this.onUnlink}
               />
             </div>
           </Draggable>

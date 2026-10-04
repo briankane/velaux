@@ -1,5 +1,7 @@
 // Edits to a list of workflow steps, as the studio makes them.
 
+import { waitsOn } from '../PipelineGraph/dependencies';
+
 type Step = { name: string; dependsOn?: string[] };
 
 // insertAfter adds step to steps straight after anchor. Unless it is a branch,
@@ -54,4 +56,47 @@ export function addPreview(
   }
   const moved = inOrder([...named, ...next]);
   return { moved, stay: inOrder(reads.filter((n) => !moved.includes(n))) };
+}
+
+// canDependOn is whether step `to` may be made to wait on step `from`, both in
+// steps: not itself, not one it already waits on, and not one that waits on it,
+// directly or through others, which would make a loop.
+export function canDependOn(steps: Waiting[], from: string, to: string): boolean {
+  const names = new Set(steps.map((s) => s.name));
+  if (from === to || !names.has(from) || !names.has(to)) {
+    return false;
+  }
+  const waits = waitsOn(steps);
+  if (waits.get(to)?.has(from)) {
+    return false;
+  }
+  const seen = new Set<string>();
+  const stack = [from];
+  while (stack.length) {
+    const next = stack.pop() as string;
+    if (next === to) {
+      return false;
+    }
+    if (!seen.has(next)) {
+      seen.add(next);
+      stack.push(...Array.from(waits.get(next) || []));
+    }
+  }
+  return true;
+}
+
+// addDependency makes step `to` wait on step `from`.
+export function addDependency<T extends Step>(steps: T[], from: string, to: string): T[] {
+  return steps.map((s) => (s.name === to ? { ...s, dependsOn: [...(s.dependsOn || []), from] } : s));
+}
+
+// removeDependency stops step `to` waiting on step `from`, or is undefined when
+// `to` does not name `from` in its dependsOn: a wait through its inputs is
+// changed in its inputs, not here.
+export function removeDependency<T extends Step>(steps: T[], from: string, to: string): T[] | undefined {
+  const step = steps.find((s) => s.name === to);
+  if (!step?.dependsOn?.includes(from)) {
+    return undefined;
+  }
+  return steps.map((s) => (s.name === to ? { ...s, dependsOn: (s.dependsOn || []).filter((d) => d !== from) } : s));
 }

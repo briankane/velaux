@@ -47,10 +47,8 @@ export function stepEdges(steps: Array<{ name: string }>, spec: SpecStep[] | und
   // In order, a step waiting on a later one is a wait that never ends: that
   // edge is always drawn, and never counts as part of a longer path.
   const position = new Map(names.map((n, i) => [n, i]));
-  const backward = (from: string, to: string) =>
-    mode !== 'DAG' && (position.get(from) ?? 0) > (position.get(to) ?? 0);
-  const forwardOf = (step: string) =>
-    Array.from(waitsOn.get(step) || []).filter((d) => !backward(d, step));
+  const backward = (from: string, to: string) => mode !== 'DAG' && (position.get(from) ?? 0) > (position.get(to) ?? 0);
+  const forwardOf = (step: string) => Array.from(waitsOn.get(step) || []).filter((d) => !backward(d, step));
 
   // reaches is whether `to` waits on `from` through at least one other step.
   const reaches = (from: string, to: string): boolean => {
@@ -97,7 +95,7 @@ export function groupOpensItself(group: { subSteps?: Array<{ phase?: string }> }
 
 // waitsOn names the steps in the same list a step waits on: those in its
 // dependsOn and those whose outputs feed its inputs.
-function waitsOn(steps: SpecStep[]): Map<string, Set<string>> {
+export function waitsOn(steps: SpecStep[]): Map<string, Set<string>> {
   const known = new Set(steps.map((s) => s.name));
   const producer = new Map<string, string>();
   steps.forEach((s) => (s.outputs || []).forEach((o) => producer.set(o.name, s.name)));

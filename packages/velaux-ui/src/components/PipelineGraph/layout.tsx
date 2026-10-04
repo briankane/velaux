@@ -23,6 +23,8 @@ export interface StepLayout {
   box: (key: string) => { left: number; top: number; width: number; height: number };
   size: Size;
   path: (edge: StepEdge) => string;
+  // middle is the point halfway along an edge's route.
+  middle: (edge: StepEdge) => { x: number; y: number } | undefined;
 }
 
 // layOut places cards left to right: each sits right of every card it waits on,
@@ -158,6 +160,21 @@ export function useStepLayout(keys: string[], edges: StepEdge[], onResize?: () =
         : { left: margin, top: margin, width: stepWidth, height: cardHeight };
     },
     path: (e: StepEdge) => orthoPath(routes[`${e.from}->${e.to}`] || [], 6),
+    middle: (e: StepEdge) => {
+      const points = routes[`${e.from}->${e.to}`] || [];
+      const runs = points
+        .slice(1)
+        .map((p, i) => ({ a: points[i], b: p, d: Math.abs(p.x - points[i].x) + Math.abs(p.y - points[i].y) }));
+      let left = runs.reduce((sum, r) => sum + r.d, 0) / 2;
+      for (const r of runs) {
+        if (left <= r.d) {
+          const t = r.d ? left / r.d : 0;
+          return { x: r.a.x + (r.b.x - r.a.x) * t, y: r.a.y + (r.b.y - r.a.y) * t };
+        }
+        left -= r.d;
+      }
+      return points[0];
+    },
   };
 }
 
@@ -171,10 +188,14 @@ export const StepEdges = (props: {
   layout: StepLayout;
   edges: StepEdge[];
   className: (edge: StepEdge) => string;
+  // onPick, where given, makes each edge clickable along a band wider than it
+  // is drawn; title is that edge's hover text.
+  onPick?: (edge: StepEdge) => void;
+  title?: (edge: StepEdge) => string | undefined;
   front?: (edge: StepEdge) => boolean;
 }) => {
   const [markerId] = React.useState(() => `step-edges-${++graphCount}`);
-  const { layout, edges, className, front = () => false } = props;
+  const { layout, edges, className, front = () => false, onPick, title } = props;
   const layer = (drawn: StepEdge[], onTop: boolean) => (
     <svg
       className={onTop ? 'workflow-connectors front' : 'workflow-connectors'}
@@ -205,6 +226,21 @@ export const StepEdges = (props: {
           d={layout.path(e)}
         />
       ))}
+      {onPick &&
+        drawn.map((e) => (
+          <path
+            key={`hit-${e.from}->${e.to}`}
+            className="workflow-connector-hit"
+            fill="none"
+            d={layout.path(e)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onPick(e);
+            }}
+          >
+            {title && title(e) && <title>{title(e)}</title>}
+          </path>
+        ))}
     </svg>
   );
   const onTop = edges.filter(front);

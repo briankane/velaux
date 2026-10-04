@@ -11,16 +11,18 @@ import {
   BsPlusLg,
   BsSquare,
   BsTrash3,
+  BsXLg,
 } from 'react-icons/bs';
 
 import type { WorkflowMode, WorkflowStep, WorkflowStepBase } from '@velaux/data';
 
 import i18n from '../../i18n';
 import { locale } from '../../utils/locale';
+import type { StepEdge } from '../PipelineGraph/dependencies';
 import { canMove, forwardWaits, stepEdges } from '../PipelineGraph/dependencies';
 import { StepEdges, stepWidth, useStepLayout } from '../PipelineGraph/layout';
 import { Translation } from '../Translation';
-import { addPreview } from './edit';
+import { addPreview, canDependOn } from './edit';
 import '../PipelineGraph/index.less';
 
 // AddAt is what to add and where: a step or a group, into a group or the top
@@ -39,8 +41,15 @@ type StudioGraphProps = {
   onDelete: (name: string, group?: string) => void;
   onGroupMode: (group: string, mode: WorkflowMode) => void;
   onMove: (name: string, group: string | undefined, delta: -1 | 1) => void;
+  // onLink makes step `to` wait on step `from`; onUnlink stops it.
+  onLink: (from: string, to: string, group?: string) => void;
+  onUnlink: (from: string, to: string, group?: string) => void;
   onResize?: () => void;
 };
+
+// Drag is a line being drawn from a step's port to the pointer, in the graph's
+// own coordinates.
+type Drag = { from: string; x0: number; y0: number; x: number; y: number };
 
 const modeOptions = () => [
   { value: 'StepByStep', label: i18n.t('In order').toString() },
@@ -202,7 +211,13 @@ const PreviewTree = (props: { root: string; nodes: PreviewNode[]; caption: strin
 // card edits it, and hovering a card shows its moves and Delete. A group holds
 // its own steps the same way, in its own mode.
 export const StudioGraph = (props: StudioGraphProps) => {
-  const { steps, mode, subMode, group, onAdd, onEdit, onDelete, onGroupMode, onMove, onResize } = props;
+  const { steps, mode, subMode, group, onAdd, onEdit, onDelete, onGroupMode, onMove, onLink, onUnlink, onResize } =
+    props;
+  // Lines are drawn and removed by hand only where steps run in parallel: in
+  // order, the order is the dependency.
+  const linking = mode === 'DAG';
+  const [drag, setDrag] = React.useState<Drag>();
+  const [picked, setPicked] = React.useState<StepEdge>();
   const [, setNestedResizes] = React.useState(0);
   const nestedResized = React.useCallback(() => setNestedResizes((n) => n + 1), []);
   const edges = stepEdges(steps, steps, mode);
@@ -304,20 +319,106 @@ export const StudioGraph = (props: StudioGraphProps) => {
     onResize
   );
 
+  // local turns a pointer position into the graph's own coordinates.
+  const local = (clientX: number, clientY: number) => {
+    const r = layout.container.current?.getBoundingClientRect();
+    return { x: clientX - (r?.left || 0), y: clientY - (r?.top || 0) };
+  };
+  const startDrag = (from: string) => (event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    const b = layout.box(from);
+    const p = local(event.clientX, event.clientY);
+    setPicked(undefined);
+    setDrag({ from, x0: b.left + b.width, y0: b.top + b.height / 2, x: p.x, y: p.y });
+  };
+  React.useEffect(() => {
+    if (!drag) {
+      return;
+    }
+    const move = (event: MouseEvent) => {
+      const p = local(event.clientX, event.clientY);
+      setDrag((d) => (d ? { ...d, x: p.x, y: p.y } : d));
+    };
+    const drop = (event: MouseEvent) => {
+      // Only a card of this graph, not one inside a group or outside it.
+      const target = (document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null)?.closest(
+        '.workflow-step'
+      ) as HTMLElement | null;
+      const to = target && target.parentElement === layout.container.current ? target.dataset.stepKey : undefined;
+      if (to && canDependOn(steps, drag.from, to)) {
+        onLink(drag.from, to, group);
+      }
+      setDrag(undefined);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', drop);
+    return () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', drop);
+    };
+    // The listeners follow one drag; they are replaced when it starts or ends.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drag?.from]);
+  const removable = (e: StepEdge) => !!steps.find((s) => s.name === e.to)?.dependsOn?.includes(e.from);
+  const pickedAt = picked && layout.middle(picked);
+
   return (
-    <div className="studio-graph">
-      <div ref={layout.container} className="run-graph" style={layout.size}>
+    <div className="studio-graph" onClick={() => setPicked(undefined)}>
+      <div ref={layout.container} className={classNames('run-graph', { dragging: !!drag })} style={layout.size}>
         <StepEdges
           layout={layout}
           edges={edges}
-          className={(e) => (isForward(e.from, e.to) ? 'workflow-connector forward' : 'workflow-connector reached')}
+          className={(e) =>
+            classNames('workflow-connector', isForward(e.from, e.to) ? 'forward' : 'reached', {
+              picked: picked && picked.from === e.from && picked.to === e.to,
+            })
+          }
           front={(e) => isForward(e.from, e.to)}
+          onPick={linking ? (e) => setPicked(e) : undefined}
+          title={(e) =>
+            removable(e)
+              ? i18n.t('Click to select, then remove').toString()
+              : i18n.t("This step reads the other one's outputs; change its Inputs to remove this").toString()
+          }
         />
+        {drag && (
+          <svg
+            className="workflow-connectors front studio-drag-line"
+            width={layout.size.width}
+            height={layout.size.height}
+          >
+            <path d={`M ${drag.x0} ${drag.y0} L ${drag.x} ${drag.y}`} />
+          </svg>
+        )}
+        {picked && pickedAt && removable(picked) && (
+          <button
+            type="button"
+            className="studio-unlink"
+            style={{ left: pickedAt.x - 10, top: pickedAt.y - 10 }}
+            title={i18n.t('Remove this dependency').toString()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onUnlink(picked.from, picked.to, group);
+              setPicked(undefined);
+            }}
+          >
+            <BsXLg />
+          </button>
+        )}
         {steps.map((step, index) => {
           const isGroup = step.type === 'step-group';
           const ownMode: WorkflowMode = (step.mode as WorkflowMode) || subMode;
           return (
-            <div key={step.name} className="workflow-step" data-step-key={step.name} style={layout.place(step.name)}>
+            <div
+              key={step.name}
+              className={classNames('workflow-step', {
+                'drop-ok': drag && drag.from !== step.name && canDependOn(steps, drag.from, step.name),
+                'drop-no': drag && drag.from !== step.name && !canDependOn(steps, drag.from, step.name),
+              })}
+              data-step-key={step.name}
+              style={layout.place(step.name)}
+            >
               <div
                 className={classNames('step', 'studio-step', { group: isGroup, open: isGroup })}
                 style={isGroup ? undefined : { width: stepWidth }}
@@ -389,12 +490,21 @@ export const StudioGraph = (props: StudioGraphProps) => {
                       onDelete={onDelete}
                       onGroupMode={onGroupMode}
                       onMove={onMove}
+                      onLink={onLink}
+                      onUnlink={onUnlink}
                       onResize={nestedResized}
                     />
                   </div>
                 )}
               </div>
               {addPair(step)}
+              {linking && (
+                <span
+                  className="studio-port"
+                  title={i18n.t('Drag onto a step that should wait on this one').toString()}
+                  onMouseDown={startDrag(step.name)}
+                />
+              )}
             </div>
           );
         })}

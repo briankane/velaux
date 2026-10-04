@@ -1014,5 +1014,9 @@
   "in parallel": "并行",
   "Default workflow for this environment": "此环境的默认工作流",
   "For a group that does not choose its own.": "用于未指定自身执行方式的分组。",
-  "In order, each step waits for the one before it; in parallel, each starts once what it depends on is done.": "按顺序时，每个步骤等待前一个步骤；并行时，依赖完成后即开始。"
+  "In order, each step waits for the one before it; in parallel, each starts once what it depends on is done.": "按顺序时，每个步骤等待前一个步骤；并行时，依赖完成后即开始。",
+  "Click to select, then remove": "点击选中后可移除",
+  "This step reads the other one's outputs; change its Inputs to remove this": "此步骤读取另一步骤的输出；请修改其输入以移除",
+  "Remove this dependency": "移除此依赖",
+  "Drag onto a step that should wait on this one": "拖到应等待此步骤的步骤上"
 }

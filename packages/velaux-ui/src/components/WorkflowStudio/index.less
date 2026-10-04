@@ -141,6 +141,77 @@
       border-color: #86efac;
     }
   }
+  // A step's port, on the middle of its right border: drag it onto a step that
+  // should wait on this one. Shown while the card is hovered.
+  .studio-port {
+    position: absolute;
+    top: 50%;
+    right: -7px;
+    z-index: 3;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border: 2px solid #94a3b8;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    cursor: crosshair;
+    opacity: 0;
+    transition: opacity 0.15s linear;
+    &:hover {
+      background: #16a34a;
+      border-color: #16a34a;
+    }
+  }
+  .workflow-step:hover:not(:has(.workflow-step:hover)) > .studio-port,
+  .run-graph.dragging > .workflow-step > .studio-port {
+    opacity: 1;
+  }
+  // While a line is drawn: where it may land, and where it may not.
+  .workflow-step.drop-ok > .studio-step {
+    outline: 2px dashed #16a34a;
+    outline-offset: 3px;
+  }
+  .workflow-step.drop-no > .studio-step {
+    opacity: 0.4;
+  }
+  .studio-drag-line path {
+    fill: none;
+    stroke: #16a34a;
+    stroke-width: 2px;
+    stroke-dasharray: 5 4;
+  }
+  // Lines are picked along a band wider than they are drawn.
+  .workflow-connectors {
+    pointer-events: none;
+  }
+  .workflow-connector-hit {
+    stroke: transparent;
+    stroke-width: 12px;
+    cursor: pointer;
+    pointer-events: stroke;
+  }
+  .workflow-connector.picked {
+    stroke: var(--primary-color);
+    stroke-width: 3px;
+  }
+  .studio-unlink {
+    position: absolute;
+    z-index: 4;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    color: #fff;
+    font-size: 10px;
+    background: #dc2626;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+    cursor: pointer;
+  }
+
   .studio-warning {
     margin-top: 6px;
     color: var(--failed-color, #dc2626);
@@ -373,6 +444,7 @@
   align-items: center;
   > svg,
   .next-btn-helper > svg {
+    display: block;
     margin-right: 6px;
   }
   .studio-settings-summary {
