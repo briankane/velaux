@@ -100,11 +100,13 @@ class WorkflowStudio extends React.Component<Props, State> {
       next = insertAfter(steps, adding.after, step as WorkflowStep, { ...opts, mode });
       added = next.find((s) => s.name === step.name) || step;
     }
+    // A new group goes straight on to its first step; a new step to its form.
+    const group = step.type == 'step-group';
     this.setState(
       {
         steps: next,
-        adding: undefined,
-        showStep: step.type != 'step-group' ? added : undefined,
+        adding: group ? { kind: 'step', group: step.name } : undefined,
+        showStep: group ? undefined : added,
         showGroup: adding.group,
       },
       this.onChange
@@ -190,6 +192,7 @@ class WorkflowStudio extends React.Component<Props, State> {
         </div>
         {adding && (
           <TypeSelect
+            key={JSON.stringify(adding)}
             checkStepName={this.checkStepName}
             onClose={() => {
               this.setState({ adding: undefined });

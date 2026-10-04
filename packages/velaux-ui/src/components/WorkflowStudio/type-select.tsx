@@ -126,8 +126,18 @@ class TypeSelect extends React.Component<Props, State> {
     super(props);
     this.state = {};
   }
+  // usable are the types on offer: inside a group, no group.
+  usable = () =>
+    this.props.definitions?.filter((def) => (!this.props.addSub || def.name != 'step-group') && isUsable(def)) || [];
+
+  // chosen is the picked type, or the only one on offer, which needs no picking.
+  chosen = () => {
+    const usable = this.usable();
+    return this.state.selectType || (usable.length === 1 ? usable[0] : undefined);
+  };
+
   onSubmit = () => {
-    const { selectType } = this.state;
+    const selectType = this.chosen();
     this.field.validate((error, values: any) => {
       if (error) {
         return;
@@ -146,11 +156,9 @@ class TypeSelect extends React.Component<Props, State> {
   };
 
   render() {
-    const { definitions, onClose, checkStepName, addSub } = this.props;
-    const { selectType } = this.state;
-    const categories = buildDefinitionCategory(
-      definitions?.filter((def) => (!addSub || def.name != 'step-group') && isUsable(def)) || []
-    );
+    const { onClose, checkStepName } = this.props;
+    const selectType = this.chosen();
+    const categories = buildDefinitionCategory(this.usable());
     const { init } = this.field;
     const checkStepNameRule = (rule: Rule, value: any, callback: (error?: string) => void) => {
       if (checkStepName(value)) {
