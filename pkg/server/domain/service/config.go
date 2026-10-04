@@ -159,7 +159,7 @@ func (u *configServiceImpl) GetTemplate(ctx context.Context, tem config.Namespac
 		},
 		APISchema: template.Schema,
 		// TODO: Support to define the custom UI schema in the template cue script.
-		UISchema: renderCustomUISchema(ctx, u.KubeClient, template.Name, "config", defaultUISchema),
+		UISchema: renderCustomUISchema(ctx, u.KubeClient, types.DefaultKubeVelaNS, template.Name, "config", defaultUISchema),
 	}
 	return t, nil
 }
