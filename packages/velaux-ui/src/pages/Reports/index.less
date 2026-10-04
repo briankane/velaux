@@ -8,8 +8,27 @@
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: 4px;
+  gap: 16px;
   width: 280px;
+}
+
+.reports-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  .reports-group-title {
+    margin: 0 2px 2px;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+}
+
+.reports-note {
+  color: #b45309;
+  font-size: 12px;
 }
 
 .reports-item {
@@ -28,6 +47,14 @@
   &.active {
     border-color: var(--primary-color, #1b58f4);
     box-shadow: 0 0 0 1px var(--primary-color, #1b58f4);
+  }
+  &.hidden {
+    background: #f8fafc;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  &.invalid .reports-item-description {
+    color: #dc2626;
   }
   .reports-item-title {
     color: #0f172a;
@@ -60,9 +87,25 @@
     font-weight: 600;
     font-size: 16px;
   }
+  .reports-result-description {
+    margin-top: 2px;
+    color: #475569;
+    font-size: 13px;
+  }
   .reports-result-meta {
+    margin-top: 2px;
     color: #64748b;
     font-size: 12px;
+  }
+  .reports-scope {
+    margin-left: 8px;
+    padding: 1px 8px;
+    color: #475569;
+    font-weight: 500;
+    font-size: 11px;
+    vertical-align: 2px;
+    background: #f1f5f9;
+    border-radius: 10px;
   }
   .reports-result-actions {
     display: flex;
@@ -88,33 +131,24 @@
   }
 }
 
-.report-bar {
-  display: grid;
-  grid-template-columns: 180px 1fr 48px;
-  gap: 10px;
-  align-items: center;
-  margin: 4px 0;
-  font-size: 12px;
-  .report-bar-label {
-    overflow: hidden;
-    color: #334155;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+.reports-message {
+  margin-bottom: 12px;
+}
+
+.reports-parameters {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+  padding: 12px 14px 0;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  > :first-child {
+    flex: 1;
+    min-width: 0;
   }
-  .report-bar-track {
-    height: 10px;
-    background: #e2e8f0;
-    border-radius: 5px;
-  }
-  .report-bar-fill {
-    display: block;
-    height: 100%;
-    background: var(--primary-color, #1b58f4);
-    border-radius: 5px;
-  }
-  .report-bar-value {
-    color: #0f172a;
-    font-weight: 600;
-    text-align: right;
+  > .next-btn {
+    margin-bottom: 16px;
   }
 }

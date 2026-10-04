@@ -1032,5 +1032,10 @@
   "This environment": "此环境",
   "There are no shared workflows for this environment, nor global ones.": "此环境没有共享工作流，也没有全局共享工作流。",
   "hidden by this environment's": "被此环境的同名工作流覆盖",
-  "Global shared workflows could not be loaded.": "无法加载全局共享工作流。"
+  "Global shared workflows could not be loaded.": "无法加载全局共享工作流。",
+  "This project": "此项目",
+  "Hidden by this project's report of the same name": "被此项目的同名报表覆盖",
+  "Not a valid report": "不是有效的报表",
+  "Global reports could not be loaded.": "无法加载全局报表。",
+  "The report failed": "报表运行失败"
 }
