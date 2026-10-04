@@ -1,11 +1,10 @@
 import { Dropdown, Menu, Select } from '@alifd/next';
 import classNames from 'classnames';
 import React from 'react';
-import { BiGitBranch } from 'react-icons/bi';
+import { TbArrowRight, TbArrowsSplit2 } from 'react-icons/tb';
 import {
   BsArrowLeftShort,
   BsArrowRepeat,
-  BsArrowRight,
   BsArrowRightShort,
   BsCollection,
   BsPlus,
@@ -272,7 +271,7 @@ export const StudioGraph = (props: StudioGraphProps) => {
             onAdd({ kind: 'step', group, after: step.name, branch });
           }}
         >
-          {branch ? <BiGitBranch /> : <BsArrowRight />}
+          {branch ? <TbArrowsSplit2 strokeWidth={2.5} /> : <TbArrowRight strokeWidth={2.5} />}
         </button>
       );
       return off ? (
