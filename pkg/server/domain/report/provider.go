@@ -61,10 +61,11 @@ func read[T any, U any](fn func(Source, context.Context, T) (U, error)) cuexrunt
 // packages, nothing that writes, and nothing from the cluster.
 var compiler = cuex.NewCompilerWithInternalPackages(
 	runtime.Must(cuexruntime.NewInternalPackage("report", template, map[string]cuexruntime.ProviderFn{
-		"apps":        read(func(s Source, ctx context.Context, _ none) ([]App, error) { return s.Apps(ctx) }),
-		"components":  read(func(s Source, ctx context.Context, _ none) ([]Component, error) { return s.Components(ctx) }),
-		"runs":        read(func(s Source, ctx context.Context, _ none) ([]WorkflowRun, error) { return s.Runs(ctx) }),
-		"definitions": read(func(s Source, ctx context.Context, _ none) ([]Definition, error) { return s.Definitions(ctx) }),
+		"apps":         read(func(s Source, ctx context.Context, _ none) ([]App, error) { return s.Apps(ctx) }),
+		"components":   read(func(s Source, ctx context.Context, _ none) ([]Component, error) { return s.Components(ctx) }),
+		"runs":         read(func(s Source, ctx context.Context, _ none) ([]WorkflowRun, error) { return s.Runs(ctx) }),
+		"environments": read(func(s Source, ctx context.Context, _ none) ([]Environment, error) { return s.Environments(ctx) }),
+		"definitions":  read(func(s Source, ctx context.Context, _ none) ([]Definition, error) { return s.Definitions(ctx) }),
 		"list": read(func(s Source, ctx context.Context, p listParams) ([]Object, error) {
 			return s.List(ctx, p.APIVersion, p.Kind)
 		}),

@@ -365,3 +365,61 @@ func TestBuiltinReports(t *testing.T) {
 		assert.Equal(t, []apisv1.ReportPoint{{Label: "storefront-web", Values: map[string]float64{"replicas": 2}}}, res.Chart.Points)
 	})
 }
+
+func TestReportData(t *testing.T) {
+	fx := newReportFixture(t, false)
+	ctx := context.Background()
+	now := time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC)
+	fx.svc.now = func() time.Time { return now }
+	started := now.Add(-10 * time.Minute)
+	for _, e := range []datastore.Entity{
+		&model.Env{Name: "production", Project: "shop", Namespace: "shop"},
+		&model.EnvBinding{AppPrimaryKey: "storefront", Name: "production"},
+		&model.Workflow{AppPrimaryKey: "storefront", Name: "workflow-production", EnvName: "production"},
+		&model.ApplicationRevision{AppPrimaryKey: "storefront", Version: "v2", EnvName: "production", Status: "running", DeployUser: "alice", Note: "Bump", TriggerType: "web"},
+		&model.WorkflowRecord{AppPrimaryKey: "storefront", WorkflowName: "workflow-production", Name: "run-1", Status: "suspending", StartTime: started, RevisionPrimaryKey: "v2",
+			Steps: []model.WorkflowStepStatus{
+				{StepStatus: model.StepStatus{Name: "deploy", Phase: "succeeded", FirstExecuteTime: started, LastExecuteTime: started.Add(time.Minute)}},
+				{StepStatus: model.StepStatus{Name: "approve", Type: "suspend", Phase: "suspending", FirstExecuteTime: started.Add(time.Minute)}},
+			}},
+	} {
+		require.NoError(t, fx.svc.Store.Add(ctx, e))
+	}
+	require.NoError(t, fx.svc.ServerKubeClient.Create(ctx, &v1beta1.Application{ObjectMeta: metav1.ObjectMeta{Name: "storefront", Namespace: "shop"}}))
+	source, err := fx.svc.projectSource(utils.WithUsername(ctx, "alice"), "shop")
+	require.NoError(t, err)
+
+	t.Run("runs carry their revision and how long they and their steps have taken", func(t *testing.T) {
+		runs, err := source.Runs(ctx)
+		require.NoError(t, err)
+		require.Len(t, runs, 1)
+		r := runs[0]
+		assert.Equal(t, []interface{}{"v2", "alice", "Bump", "web"}, []interface{}{r.Revision, r.User, r.Note, r.Trigger})
+		assert.Equal(t, int64(600), r.Seconds, "still going: up to now")
+		assert.Equal(t, int64(60), r.Steps[0].Seconds, "finished: start to end")
+		assert.Equal(t, int64(540), r.Steps[1].Seconds, "waiting: up to now")
+	})
+
+	t.Run("environments say what is deployed and whether the app changed since", func(t *testing.T) {
+		envs, err := source.Environments(ctx)
+		require.NoError(t, err)
+		require.Len(t, envs, 1)
+		assert.Equal(t, "v2", envs[0].Revision)
+		assert.False(t, envs[0].Edited, "nothing changed after v2")
+
+		comp := &model.ApplicationComponent{AppPrimaryKey: "storefront", Name: "storefront-web"}
+		require.NoError(t, fx.svc.Store.Get(ctx, comp))
+		time.Sleep(10 * time.Millisecond)
+		require.NoError(t, fx.svc.Store.Put(ctx, comp))
+		envs, err = source.Environments(ctx)
+		require.NoError(t, err)
+		assert.True(t, envs[0].Edited, "a component changed after v2")
+	})
+
+	t.Run("List reads the environments' namespaces too", func(t *testing.T) {
+		apps, err := source.List(ctx, "core.oam.dev/v1beta1", "Application")
+		require.NoError(t, err)
+		require.Len(t, apps, 1)
+		assert.Equal(t, "shop", apps[0].Namespace)
+	})
+}

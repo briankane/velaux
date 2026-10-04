@@ -28,9 +28,13 @@ type Source interface {
 	Components(ctx context.Context) ([]Component, error)
 	// Runs are the workflow runs of the project's applications.
 	Runs(ctx context.Context) ([]WorkflowRun, error)
+	// Environments are each application's environments: what is deployed there,
+	// and whether the application changed since.
+	Environments(ctx context.Context) ([]Environment, error)
 	// Definitions are the component and trait definitions and their versions.
 	Definitions(ctx context.Context) ([]Definition, error)
-	// List lists a kind in each of the project's namespaces, as the project.
+	// List lists a kind in each of the project's namespaces, its environments'
+	// and its targets', as the project.
 	List(ctx context.Context, apiVersion, kind string) ([]Object, error)
 }
 
@@ -58,15 +62,21 @@ type Expression struct {
 	Expression string `json:"expression"`
 }
 
-// WorkflowRun is a workflow run.
+// WorkflowRun is a workflow run, and the revision it deployed.
 type WorkflowRun struct {
-	App      string    `json:"app"`
-	Env      string    `json:"env,omitempty"`
-	Workflow string    `json:"workflow"`
-	Name     string    `json:"name"`
-	Status   string    `json:"status"`
-	Started  string    `json:"started,omitempty"`
-	Finished string    `json:"finished,omitempty"`
+	App      string `json:"app"`
+	Env      string `json:"env,omitempty"`
+	Workflow string `json:"workflow"`
+	Name     string `json:"name"`
+	Status   string `json:"status"`
+	Started  string `json:"started,omitempty"`
+	Finished string `json:"finished,omitempty"`
+	// Seconds is how long the run took, or has taken so far.
+	Seconds  int64     `json:"seconds"`
+	Revision string    `json:"revision,omitempty"`
+	User     string    `json:"user,omitempty"`
+	Note     string    `json:"note,omitempty"`
+	Trigger  string    `json:"trigger,omitempty"`
 	Steps    []RunStep `json:"steps,omitempty"`
 }
 
@@ -77,6 +87,21 @@ type RunStep struct {
 	Type    string `json:"type,omitempty"`
 	Phase   string `json:"phase"`
 	Message string `json:"message,omitempty"`
+	Started string `json:"started,omitempty"`
+	// Seconds is how long the step took, or has taken so far.
+	Seconds int64 `json:"seconds"`
+}
+
+// Environment is an application's environment: the revision last deployed
+// there, and whether the application was edited after it.
+type Environment struct {
+	App        string `json:"app"`
+	Env        string `json:"env"`
+	Revision   string `json:"revision,omitempty"`
+	Status     string `json:"status,omitempty"`
+	DeployedAt string `json:"deployedAt,omitempty"`
+	User       string `json:"user,omitempty"`
+	Edited     bool   `json:"edited"`
 }
 
 // Definition is a component or trait definition: its latest version and every

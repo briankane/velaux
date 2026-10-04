@@ -71,6 +71,9 @@ type reportServiceImpl struct {
 	// lists.
 	ServerKubeClient client.Client       `inject:"serverKubeClient"`
 	Store            datastore.DataStore `inject:"datastore"`
+	// now is the clock elapsed times are read against; time.Now unless a test
+	// fixes it.
+	now func() time.Time
 }
 
 // NewReportService is the reports.
@@ -212,9 +215,13 @@ func (r *reportServiceImpl) projectNamespace(ctx context.Context, project string
 
 // projectSource is what a report run for the signed-in user may read: the
 // project's applications and runs from VelaUX's store, definitions, and
-// resources in the namespaces its targets deploy to, listed as the project.
+// resources in its environments' namespaces and those its targets deploy to,
+// listed as the project.
 func (r *reportServiceImpl) projectSource(ctx context.Context, project string) (*projectSource, error) {
-	s := &projectSource{r: r, project: project}
+	s := &projectSource{r: r, project: project, now: r.now}
+	if s.now == nil {
+		s.now = time.Now
+	}
 	apps, err := r.Store.List(ctx, &model.Application{Project: project}, nil)
 	if err != nil {
 		return nil, err
@@ -235,6 +242,21 @@ func (r *reportServiceImpl) projectSource(ctx context.Context, project string) (
 			continue
 		}
 		ns := clusterNamespace{cluster: t.Cluster.ClusterName, namespace: t.Cluster.Namespace}
+		if !seen[ns] {
+			seen[ns] = true
+			s.namespaces = append(s.namespaces, ns)
+		}
+	}
+	envs, err := r.Store.List(ctx, &model.Env{Project: project}, nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range envs {
+		env, ok := e.(*model.Env)
+		if !ok || env.Project != project || env.Namespace == "" {
+			continue
+		}
+		ns := clusterNamespace{cluster: multicluster.ClusterLocalName, namespace: env.Namespace}
 		if !seen[ns] {
 			seen[ns] = true
 			s.namespaces = append(s.namespaces, ns)
@@ -263,7 +285,8 @@ type projectSource struct {
 	namespaces []clusterNamespace
 	// as is who a report's Kubernetes reads run as: the user, in the project's
 	// group, whatever VelaUX's impersonation gate says.
-	as user.Info
+	as  user.Info
+	now func() time.Time
 }
 
 var _ report.Source = &projectSource{}
@@ -330,11 +353,103 @@ func (s *projectSource) Runs(ctx context.Context) ([]report.WorkflowRun, error) 
 				}
 			}
 			run := report.WorkflowRun{App: app.Name, Env: envOf[rec.WorkflowName], Workflow: rec.WorkflowName, Name: rec.Name,
-				Status: rec.Status, Started: timeOf(rec.StartTime), Finished: timeOf(rec.EndTime)}
+				Status: rec.Status, Started: timeOf(rec.StartTime), Finished: timeOf(rec.EndTime), Seconds: s.elapsed(rec.StartTime, rec.EndTime)}
+			if rec.RevisionPrimaryKey != "" {
+				rev := &model.ApplicationRevision{AppPrimaryKey: app.PrimaryKey(), Version: rec.RevisionPrimaryKey}
+				if err := s.r.Store.Get(ctx, rev); err == nil {
+					run.Revision, run.User, run.Note, run.Trigger = rev.Version, rev.DeployUser, rev.Note, rev.TriggerType
+				}
+			}
 			for _, st := range rec.Steps {
-				run.Steps = append(run.Steps, report.RunStep{Name: st.Name, Alias: st.Alias, Type: st.Type, Phase: string(st.Phase), Message: st.Message})
+				run.Steps = append(run.Steps, report.RunStep{Name: st.Name, Alias: st.Alias, Type: st.Type, Phase: string(st.Phase), Message: st.Message,
+					Started: timeOf(st.FirstExecuteTime), Seconds: s.elapsed(st.FirstExecuteTime, finishedStep(st))})
 			}
 			out = append(out, run)
+		}
+	}
+	return out, nil
+}
+
+// finishedStep is when a step finished, or zero for one still going.
+func finishedStep(st model.WorkflowStepStatus) time.Time {
+	switch string(st.Phase) {
+	case "running", "pending", "suspending", "":
+		return time.Time{}
+	}
+	return st.LastExecuteTime
+}
+
+// elapsed is the seconds from start to end, or to now where end is unset; 0
+// for no start.
+func (s *projectSource) elapsed(start, end time.Time) int64 {
+	if timeOf(start) == "" {
+		return 0
+	}
+	if timeOf(end) == "" {
+		end = s.now()
+	}
+	if end.Before(start) {
+		return 0
+	}
+	return int64(end.Sub(start).Seconds())
+}
+
+// Environments are each application's environments, with the revision last
+// deployed there; edited says the application, its components or policies
+// changed after that deploy.
+func (s *projectSource) Environments(ctx context.Context) ([]report.Environment, error) {
+	out := []report.Environment{}
+	for _, app := range s.apps {
+		bindings, err := s.r.Store.List(ctx, &model.EnvBinding{AppPrimaryKey: app.PrimaryKey()}, nil)
+		if err != nil {
+			return nil, err
+		}
+		revisions, err := s.r.Store.List(ctx, &model.ApplicationRevision{AppPrimaryKey: app.PrimaryKey()}, nil)
+		if err != nil {
+			return nil, err
+		}
+		changed := app.UpdateTime
+		for _, kind := range []datastore.Entity{&model.ApplicationComponent{AppPrimaryKey: app.PrimaryKey()}, &model.ApplicationPolicy{AppPrimaryKey: app.PrimaryKey()}} {
+			items, err := s.r.Store.List(ctx, kind, nil)
+			if err != nil {
+				return nil, err
+			}
+			for _, item := range items {
+				var t time.Time
+				switch it := item.(type) {
+				case *model.ApplicationComponent:
+					t = it.UpdateTime
+				case *model.ApplicationPolicy:
+					t = it.UpdateTime
+				}
+				if t.After(changed) {
+					changed = t
+				}
+			}
+		}
+		for _, b := range bindings {
+			binding, ok := b.(*model.EnvBinding)
+			if !ok {
+				continue
+			}
+			env := report.Environment{App: app.Name, Env: binding.Name}
+			if t := binding.UpdateTime; t.After(changed) {
+				changed = t
+			}
+			var latest *model.ApplicationRevision
+			for _, r := range revisions {
+				rev, ok := r.(*model.ApplicationRevision)
+				if ok && rev.EnvName == binding.Name && (latest == nil || rev.CreateTime.After(latest.CreateTime)) {
+					latest = rev
+				}
+			}
+			if latest != nil {
+				env.Revision, env.Status, env.DeployedAt, env.User = latest.Version, latest.Status, timeOf(latest.CreateTime), latest.DeployUser
+				env.Edited = changed.After(latest.CreateTime)
+			} else {
+				env.Edited = true
+			}
+			out = append(out, env)
 		}
 	}
 	return out, nil

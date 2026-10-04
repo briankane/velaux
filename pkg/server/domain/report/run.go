@@ -31,6 +31,7 @@ import (
 
 var (
 	rowsPath      = cue.ParsePath("template.rows")
+	statsPath     = cue.ParsePath("template.stats")
 	linkField     = regexp.MustCompile(`\{([A-Za-z_][A-Za-z0-9_]*)\}`)
 	parameterPath = "template.parameter"
 )
@@ -54,6 +55,11 @@ func Run(ctx context.Context, src string, source Source, parameters map[string]i
 	}
 
 	result := &apisv1.ReportResult{Rows: []apisv1.ReportRow{}}
+	if stats := val.LookupPath(statsPath); stats.Exists() {
+		if err := stats.Decode(&result.Stats); err != nil {
+			return nil, fmt.Errorf("the report's stats: %w", err)
+		}
+	}
 	for _, c := range spec.Columns {
 		result.Columns = append(result.Columns, apisv1.ReportColumn{Key: c.Key, Title: c.Title, Format: c.Format})
 	}

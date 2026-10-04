@@ -54,6 +54,10 @@ func (f *fakeSource) Runs(context.Context) ([]WorkflowRun, error) {
 	}, nil
 }
 
+func (f *fakeSource) Environments(context.Context) ([]Environment, error) {
+	return []Environment{{App: "checkout", Env: "production", Revision: "v3", Edited: true}}, nil
+}
+
 func (f *fakeSource) Definitions(context.Context) ([]Definition, error) {
 	return []Definition{{Name: "webservice", Kind: "component", Latest: "v3", Versions: []string{"v3", "v2"}}}, nil
 }
@@ -226,4 +230,57 @@ func TestParameterSchemas(t *testing.T) {
 	none, err := ParameterSchemas("template: rows: []")
 	require.NoError(t, err)
 	assert.Nil(t, none)
+}
+
+func TestQuantities(t *testing.T) {
+	res, err := Run(context.Background(), `
+import "vela/report"
+template: rows: [...{
+	// +title=In
+	in: string | number
+	// +title=Cores
+	cores?: number
+	// +title=MiB
+	mib?: number
+}]
+template: rows: [
+	for q in ["250m", "1.5", 2] {in: q, cores: (report.#CPU & {"in": q}).out},
+	for q in ["256Mi", "1Gi", "1G", 1048576] {in: q, mib: (report.#Memory & {"in": q}).out},
+]`, &fakeSource{}, nil)
+	require.NoError(t, err)
+	var cores, mib []interface{}
+	for _, r := range res.Rows {
+		if v, ok := r.Values["cores"]; ok {
+			cores = append(cores, v)
+		}
+		if v, ok := r.Values["mib"]; ok {
+			mib = append(mib, v)
+		}
+	}
+	assert.Equal(t, []interface{}{0.25, 1.5, int64(2)}, cores)
+	assert.InDeltaSlice(t, []float64{256, 1024, 953.67431640625, 1}, toFloats(mib), 0.0001)
+}
+
+func toFloats(in []interface{}) []float64 {
+	out := []float64{}
+	for _, v := range in {
+		out = append(out, number(v))
+	}
+	return out
+}
+
+func TestStats(t *testing.T) {
+	res, err := Run(context.Background(), `
+import "vela/report"
+template: {
+	envs: report.#Environments
+	stats: [{label: "Edited since deployed", value: len([for e in envs.$returns if e.edited {e}]), tone: "progressing"}]
+	rows: [...{
+		// +title=App
+		app: string
+	}]
+	rows: [for e in envs.$returns {app: e.app}]
+}`, &fakeSource{}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []apisv1.ReportStat{{Label: "Edited since deployed", Value: int64(1), Tone: "progressing"}}, res.Stats)
 }

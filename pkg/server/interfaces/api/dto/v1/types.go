@@ -2467,6 +2467,15 @@ type ReportChart struct {
 	Points []ReportPoint `json:"points"`
 }
 
+// ReportStat is a headline number of a report, shown above its chart.
+type ReportStat struct {
+	Label  string      `json:"label"`
+	Value  interface{} `json:"value"`
+	Format string      `json:"format,omitempty"`
+	// Tone colours the number: healthy, unhealthy, progressing or neutral.
+	Tone string `json:"tone,omitempty"`
+}
+
 // RunReportRequest is a report's parameters.
 type RunReportRequest struct {
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
@@ -2478,6 +2487,7 @@ type ReportResult struct {
 	Project     string         `json:"project"`
 	GeneratedAt time.Time      `json:"generatedAt"`
 	Columns     []ReportColumn `json:"columns"`
+	Stats       []ReportStat   `json:"stats,omitempty"`
 	Rows        []ReportRow    `json:"rows"`
 	Chart       *ReportChart   `json:"chart,omitempty"`
 }
