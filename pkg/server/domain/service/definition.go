@@ -37,6 +37,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
@@ -47,6 +48,7 @@ import (
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	"github.com/oam-dev/kubevela/apis/types"
 
+	"github.com/kubevela/velaux/pkg/server/infrastructure/datastore"
 	apisv1 "github.com/kubevela/velaux/pkg/server/interfaces/api/dto/v1"
 	"github.com/kubevela/velaux/pkg/server/utils/bcode"
 )
@@ -78,7 +80,8 @@ type DefinitionService interface {
 const DefinitionHidden = "true"
 
 type definitionServiceImpl struct {
-	KubeClient client.Client `inject:"kubeClient"`
+	Store      datastore.DataStore `inject:"datastore"`
+	KubeClient client.Client       `inject:"kubeClient"`
 	// ServerKubeClient reads with VelaUX's own identity, not the user's.
 	ServerKubeClient client.Client `inject:"serverKubeClient"`
 }
@@ -92,6 +95,9 @@ type DefinitionQueryOption struct {
 	Scope            string `json:"scope"`
 	// Namespaces are the namespaces to report each definition's usability in.
 	Namespaces []string `json:"namespaces"`
+	// Project adds the project's own definitions, from its namespace, to the
+	// global ones; empty lists the global ones alone.
+	Project string `json:"project"`
 }
 
 // String return cache key string
@@ -159,9 +165,36 @@ func (d *definitionServiceImpl) listDefinitions(ctx context.Context, list *unstr
 	if err != nil {
 		return nil, err
 	}
-	if err := d.KubeClient.List(ctx, list, &client.ListOptions{
-		LabelSelector: selector,
-	}); err != nil {
+	global, err := d.listIn(ctx, d.KubeClient, list.DeepCopy(), kind, types.DefaultKubeVelaNS, selector, ops)
+	if err != nil {
+		return nil, err
+	}
+	var defs []*apisv1.DefinitionBase
+	if ops.Project == "" {
+		for _, def := range global {
+			def.Namespace, def.Scope = types.DefaultKubeVelaNS, definitionScopeGlobal
+		}
+		defs = global
+	} else {
+		namespace, err := projectNamespace(ctx, d.Store, ops.Project)
+		if err != nil {
+			return nil, err
+		}
+		project, err := d.listIn(ctx, d.ServerKubeClient, list.DeepCopy(), kind, namespace, selector, ops)
+		if err != nil {
+			return nil, err
+		}
+		defs = withProjectDefinitions(project, global, namespace, ops.Namespaces, ops.QueryAll)
+	}
+	if len(ops.Namespaces) > 0 {
+		markUnusableIn(ctx, d.ServerKubeClient, defs, ops.Namespaces)
+	}
+	return defs, nil
+}
+
+// listIn lists the definitions of kind in namespace that ops asks for.
+func (d *definitionServiceImpl) listIn(ctx context.Context, cli client.Client, list *unstructured.UnstructuredList, kind, namespace string, selector labels.Selector, ops DefinitionQueryOption) ([]*apisv1.DefinitionBase, error) {
+	if err := cli.List(ctx, list, &client.ListOptions{LabelSelector: selector, Namespace: namespace}); err != nil {
 		return nil, err
 	}
 
@@ -187,9 +220,6 @@ func (d *definitionServiceImpl) listDefinitions(ctx context.Context, list *unstr
 			continue
 		}
 		defs = append(defs, definition)
-	}
-	if len(ops.Namespaces) > 0 {
-		markUnusableIn(ctx, d.ServerKubeClient, defs, ops.Namespaces)
 	}
 	return defs, nil
 }
@@ -341,7 +371,11 @@ func (d *definitionServiceImpl) DetailDefinitionAt(ctx context.Context, name, de
 	}
 	def.SetAPIVersion(apiVersion)
 	def.SetKind(kind)
-	if err := d.KubeClient.Get(ctx, k8stypes.NamespacedName{Namespace: types.DefaultKubeVelaNS, Name: name}, def); err != nil {
+	place, err := d.placeOf(ctx, kind, name)
+	if err != nil {
+		return nil, err
+	}
+	if err := place.cli.Get(ctx, k8stypes.NamespacedName{Namespace: place.namespace, Name: name}, def); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, bcode.ErrDefinitionNotFound
 		}
@@ -351,12 +385,13 @@ func (d *definitionServiceImpl) DetailDefinitionAt(ctx context.Context, name, de
 	if err != nil {
 		return nil, err
 	}
+	base.Namespace, base.Scope = place.namespace, scopeOfNamespace(place.namespace)
 	schemaName := fmt.Sprintf("%s-schema-%s", defType, name)
 	if version != "" {
 		schemaName = fmt.Sprintf("%s-%s", schemaName, version)
 	}
 	var cm v1.ConfigMap
-	if err := d.KubeClient.Get(ctx, k8stypes.NamespacedName{Namespace: types.DefaultKubeVelaNS, Name: schemaName}, &cm); err != nil {
+	if err := place.cli.Get(ctx, k8stypes.NamespacedName{Namespace: place.namespace, Name: schemaName}, &cm); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return nil, err
 		}
@@ -380,7 +415,7 @@ func (d *definitionServiceImpl) DetailDefinitionAt(ctx context.Context, name, de
 			defaultUISchema = renderDefaultUISchema(schema)
 		}
 		// patch from custom ui schema
-		definition.UISchema = renderCustomUISchema(ctx, d.KubeClient, name, defType, defaultUISchema)
+		definition.UISchema = renderCustomUISchema(ctx, place.cli, place.namespace, name, defType, defaultUISchema)
 	}
 	if data, ok := cm.Data[types.SourceOutputSchema]; ok {
 		output := &openapi3.Schema{}
@@ -408,10 +443,10 @@ func generatedUISchema(cm v1.ConfigMap) []*schema.UIParameter {
 	return ui
 }
 
-func renderCustomUISchema(ctx context.Context, cli client.Client, name, defType string, defaultSchema []*schema.UIParameter) []*schema.UIParameter {
+func renderCustomUISchema(ctx context.Context, cli client.Client, namespace, name, defType string, defaultSchema []*schema.UIParameter) []*schema.UIParameter {
 	var cm v1.ConfigMap
 	if err := cli.Get(ctx, k8stypes.NamespacedName{
-		Namespace: types.DefaultKubeVelaNS,
+		Namespace: namespace,
 		Name:      fmt.Sprintf("%s-uischema-%s", defType, name),
 	}, &cm); err != nil {
 		if !apierrors.IsNotFound(err) {
@@ -438,15 +473,23 @@ func (d *definitionServiceImpl) AddDefinitionUISchema(ctx context.Context, name,
 		klog.Errorf("json marshal failure %s", err.Error())
 		return nil, bcode.ErrInvalidDefinitionUISchema
 	}
+	_, kind, err := getKindAndVersion(defType)
+	if err != nil {
+		return nil, err
+	}
+	place, err := d.placeOf(ctx, kind, name)
+	if err != nil {
+		return nil, err
+	}
 	var cm v1.ConfigMap
-	if err := d.KubeClient.Get(ctx, k8stypes.NamespacedName{
-		Namespace: types.DefaultKubeVelaNS,
+	if err := place.cli.Get(ctx, k8stypes.NamespacedName{
+		Namespace: place.namespace,
 		Name:      fmt.Sprintf("%s-uischema-%s", defType, name),
 	}, &cm); err != nil {
 		if apierrors.IsNotFound(err) {
-			err = d.KubeClient.Create(ctx, &v1.ConfigMap{
+			err = place.cli.Create(ctx, &v1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: types.DefaultKubeVelaNS,
+					Namespace: place.namespace,
 					Name:      fmt.Sprintf("%s-uischema-%s", defType, name),
 				},
 				Data: map[string]string{
@@ -459,7 +502,7 @@ func (d *definitionServiceImpl) AddDefinitionUISchema(ctx context.Context, name,
 		}
 	} else {
 		cm.Data[types.UISchema] = string(dataBate)
-		err := d.KubeClient.Update(ctx, &cm)
+		err := place.cli.Update(ctx, &cm)
 		if err != nil {
 			return nil, err
 		}
@@ -480,7 +523,11 @@ func (d *definitionServiceImpl) UpdateDefinitionStatus(ctx context.Context, name
 	}
 	def.SetAPIVersion(version)
 	def.SetKind(kind)
-	if err := d.KubeClient.Get(ctx, k8stypes.NamespacedName{Namespace: types.DefaultKubeVelaNS, Name: name}, def); err != nil {
+	place, err := d.placeOf(ctx, kind, name)
+	if err != nil {
+		return nil, err
+	}
+	if err := place.cli.Get(ctx, k8stypes.NamespacedName{Namespace: place.namespace, Name: name}, def); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, bcode.ErrDefinitionNotFound
 		}
@@ -491,15 +538,18 @@ func (d *definitionServiceImpl) UpdateDefinitionStatus(ctx context.Context, name
 		labels := def.GetLabels()
 		delete(labels, types.LabelDefinitionHidden)
 		def.SetLabels(labels)
-		if err := d.KubeClient.Update(ctx, def); err != nil {
+		if err := place.cli.Update(ctx, def); err != nil {
 			return nil, err
 		}
 	}
 	if !exist && update.HiddenInUI {
 		labels := def.GetLabels()
+		if labels == nil {
+			labels = map[string]string{}
+		}
 		labels[types.LabelDefinitionHidden] = DefinitionHidden
 		def.SetLabels(labels)
-		if err := d.KubeClient.Update(ctx, def); err != nil {
+		if err := place.cli.Update(ctx, def); err != nil {
 			return nil, err
 		}
 	}
@@ -720,8 +770,16 @@ func (d *definitionServiceImpl) ListDefinitionRevisions(ctx context.Context, nam
 	if !ok {
 		return nil, bcode.ErrDefinitionTypeNotSupport
 	}
+	_, kind, err := getKindAndVersion(defType)
+	if err != nil {
+		return nil, err
+	}
+	place, err := d.placeOf(ctx, kind, name)
+	if err != nil {
+		return nil, err
+	}
 	var list v1beta1.DefinitionRevisionList
-	if err := d.KubeClient.List(ctx, &list, client.InNamespace(types.DefaultKubeVelaNS)); err != nil {
+	if err := place.cli.List(ctx, &list, client.InNamespace(place.namespace)); err != nil {
 		return nil, err
 	}
 	revisions := []apisv1.DefinitionRevision{}
@@ -738,4 +796,12 @@ func (d *definitionServiceImpl) ListDefinitionRevisions(ctx context.Context, nam
 	}
 	sort.Slice(revisions, func(i, j int) bool { return revisions[i].Revision > revisions[j].Revision })
 	return revisions, nil
+}
+
+// scopeOfNamespace is the scope a definition in namespace has.
+func scopeOfNamespace(namespace string) string {
+	if namespace == types.DefaultKubeVelaNS {
+		return definitionScopeGlobal
+	}
+	return definitionScopeProject
 }
