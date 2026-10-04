@@ -17,14 +17,22 @@ limitations under the License.
 package service
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	wfTypesv1alpha1 "github.com/kubevela/pkg/apis/oam/v1alpha1"
 	workflowv1alpha1 "github.com/kubevela/workflow/api/v1alpha1"
+	common2 "github.com/oam-dev/kubevela/pkg/utils/common"
 
 	"github.com/kubevela/velaux/pkg/server/domain/model"
 )
@@ -95,4 +103,55 @@ func TestSharedWorkflowsOf(t *testing.T) {
 		"global/standard": "false",
 	}, got)
 	assert.Equal(t, "local", shared[0].Scope, "local ones are listed first")
+}
+
+func TestSharedWorkflowsReadGlobalAsVelaUX(t *testing.T) {
+	ctx := context.Background()
+	workflow := func(namespace, name string) *wfTypesv1alpha1.Workflow {
+		return &wfTypesv1alpha1.Workflow{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}}
+	}
+	objects := []client.Object{workflow("shop", "release"), workflow("vela-system", "global-release")}
+	// user reads as an impersonated project user: its environment, never vela-system.
+	user := fake.NewClientBuilder().WithScheme(common2.Scheme).WithObjects(objects...).WithInterceptorFuncs(interceptor.Funcs{
+		Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			if key.Namespace == "vela-system" {
+				return apierrors.NewForbidden(schema.GroupResource{Group: "core.oam.dev", Resource: "workflows"}, key.Name, errors.New("no"))
+			}
+			return c.Get(ctx, key, obj, opts...)
+		},
+		List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+			o := &client.ListOptions{}
+			o.ApplyOptions(opts)
+			if o.Namespace == "vela-system" {
+				return apierrors.NewForbidden(schema.GroupResource{Group: "core.oam.dev", Resource: "workflows"}, "", errors.New("no"))
+			}
+			return c.List(ctx, list, opts...)
+		},
+	}).Build()
+	server := fake.NewClientBuilder().WithScheme(common2.Scheme).WithObjects(objects...).Build()
+
+	t.Run("the list holds global ones though the user cannot read vela-system", func(t *testing.T) {
+		shared, unavailable, err := listSharedWorkflows(ctx, user, server, "shop")
+		assert.NoError(t, err)
+		assert.False(t, unavailable)
+		names := []string{}
+		for _, s := range shared {
+			names = append(names, s.Scope+"/"+s.Name)
+		}
+		assert.Equal(t, []string{"local/release", "global/global-release"}, names)
+	})
+
+	t.Run("global ones that cannot be read leave the list with the environment's", func(t *testing.T) {
+		shared, unavailable, err := listSharedWorkflows(ctx, user, user, "shop")
+		assert.NoError(t, err)
+		assert.True(t, unavailable)
+		assert.Len(t, shared, 1)
+	})
+
+	t.Run("a ref resolves to a global one though the user cannot read vela-system", func(t *testing.T) {
+		wf, scope, err := findSharedWorkflow(ctx, user, server, "shop", "global-release")
+		assert.NoError(t, err)
+		assert.Equal(t, "global", scope)
+		assert.Equal(t, "global-release", wf.Name)
+	})
 }

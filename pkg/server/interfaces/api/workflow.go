@@ -123,7 +123,7 @@ func (w *Workflow) listSharedWorkflows(req *restful.Request, res *restful.Respon
 		bcode.ReturnError(req, res, err)
 		return
 	}
-	if err := res.WriteEntity(apis.ListSharedWorkflowsResponse{Workflows: shared}); err != nil {
+	if err := res.WriteEntity(shared); err != nil {
 		bcode.ReturnError(req, res, err)
 		return
 	}

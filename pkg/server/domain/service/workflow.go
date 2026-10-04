@@ -73,7 +73,7 @@ type WorkflowService interface {
 	ListApplicationWorkflow(ctx context.Context, app *model.Application) ([]*apisv1.WorkflowBase, error)
 	GetWorkflow(ctx context.Context, app *model.Application, workflowName string) (*model.Workflow, error)
 	DetailWorkflow(ctx context.Context, workflow *model.Workflow) (*apisv1.DetailWorkflowResponse, error)
-	ListSharedWorkflows(ctx context.Context, envName string) ([]apisv1.SharedWorkflow, error)
+	ListSharedWorkflows(ctx context.Context, envName string) (*apisv1.ListSharedWorkflowsResponse, error)
 	GetApplicationDefaultWorkflow(ctx context.Context, app *model.Application) (*model.Workflow, error)
 	DeleteWorkflow(ctx context.Context, app *model.Application, workflowName string) error
 	DeleteWorkflowByApp(ctx context.Context, app *model.Application) error
@@ -102,12 +102,15 @@ func NewWorkflowService() WorkflowService {
 }
 
 type workflowServiceImpl struct {
-	Store             datastore.DataStore `inject:"datastore"`
-	KubeClient        client.Client       `inject:"kubeClient"`
-	KubeConfig        *rest.Config        `inject:"kubeConfig"`
-	Apply             apply.Applicator    `inject:"apply"`
-	EnvService        EnvService          `inject:""`
-	EnvBindingService EnvBindingService   `inject:""`
+	Store      datastore.DataStore `inject:"datastore"`
+	KubeClient client.Client       `inject:"kubeClient"`
+	// ServerKubeClient reads as VelaUX itself, not as the signed-in user: for
+	// global shared workflows, which every project may use.
+	ServerKubeClient  client.Client     `inject:"serverKubeClient"`
+	KubeConfig        *rest.Config      `inject:"kubeConfig"`
+	Apply             apply.Applicator  `inject:"apply"`
+	EnvService        EnvService        `inject:""`
+	EnvBindingService EnvBindingService `inject:""`
 }
 
 // DeleteWorkflow delete application workflow
@@ -289,28 +292,36 @@ func (w *workflowServiceImpl) DetailWorkflow(ctx context.Context, workflow *mode
 }
 
 // sharedWorkflow is the Workflow named ref that a workflow of the environment
-// named envName runs, found as KubeVela finds it: in the environment's
-// namespace, where its Applications run, else in the system namespace. Its
-// scope says which.
+// named envName runs. Its scope says where it was found.
 func (w *workflowServiceImpl) sharedWorkflow(ctx context.Context, envName, ref string) (*wfTypesv1alpha1.Workflow, string, error) {
 	env, err := repository.GetEnv(ctx, w.Store, envName)
 	if err != nil {
 		return nil, "", err
 	}
-	for _, at := range []struct{ namespace, scope string }{
-		{env.Namespace, sharedScopeLocal},
-		{velatypes.DefaultKubeVelaNS, sharedScopeGlobal},
-	} {
-		shared := &wfTypesv1alpha1.Workflow{}
-		err := w.KubeClient.Get(ctx, types.NamespacedName{Namespace: at.namespace, Name: ref}, shared)
-		if err == nil {
-			return shared, at.scope, nil
-		}
-		if !apierrors.IsNotFound(err) {
-			return nil, "", err
-		}
+	return findSharedWorkflow(ctx, w.KubeClient, w.ServerKubeClient, env.Namespace, ref)
+}
+
+// findSharedWorkflow finds the Workflow named ref as KubeVela finds it: in
+// namespace, where the Applications run, read as the user; else in the system
+// namespace, read as VelaUX, since a global shared workflow is for every
+// project whether or not its users can read the system namespace.
+func findSharedWorkflow(ctx context.Context, user, server client.Reader, namespace, ref string) (*wfTypesv1alpha1.Workflow, string, error) {
+	shared := &wfTypesv1alpha1.Workflow{}
+	err := user.Get(ctx, types.NamespacedName{Namespace: namespace, Name: ref}, shared)
+	if err == nil {
+		return shared, sharedScopeLocal, nil
 	}
-	return nil, "", bcode.ErrSharedWorkflowNotFound
+	if !apierrors.IsNotFound(err) {
+		return nil, "", err
+	}
+	err = server.Get(ctx, types.NamespacedName{Namespace: velatypes.DefaultKubeVelaNS, Name: ref}, shared)
+	if err == nil {
+		return shared, sharedScopeGlobal, nil
+	}
+	if apierrors.IsNotFound(err) {
+		return nil, "", bcode.ErrSharedWorkflowNotFound
+	}
+	return nil, "", err
 }
 
 const (
@@ -319,24 +330,37 @@ const (
 )
 
 // ListSharedWorkflows lists the shared Workflows a workflow of the environment
-// named envName can reference: local ones in its namespace, then global ones in
-// the system namespace.
-func (w *workflowServiceImpl) ListSharedWorkflows(ctx context.Context, envName string) ([]apisv1.SharedWorkflow, error) {
+// named envName can reference.
+func (w *workflowServiceImpl) ListSharedWorkflows(ctx context.Context, envName string) (*apisv1.ListSharedWorkflowsResponse, error) {
 	env, err := repository.GetEnv(ctx, w.Store, envName)
 	if err != nil {
 		return nil, err
 	}
-	local := &wfTypesv1alpha1.WorkflowList{}
-	if err := w.KubeClient.List(ctx, local, client.InNamespace(env.Namespace)); err != nil {
+	shared, unavailable, err := listSharedWorkflows(ctx, w.KubeClient, w.ServerKubeClient, env.Namespace)
+	if err != nil {
 		return nil, err
 	}
+	return &apisv1.ListSharedWorkflowsResponse{Workflows: shared, GlobalUnavailable: unavailable}, nil
+}
+
+// listSharedWorkflows lists the Workflows in namespace, read as the user, then
+// the global ones in the system namespace, read as VelaUX. Global ones that
+// cannot be read leave the list with namespace's alone, saying so.
+func listSharedWorkflows(ctx context.Context, user, server client.Reader, namespace string) ([]apisv1.SharedWorkflow, bool, error) {
+	local := &wfTypesv1alpha1.WorkflowList{}
+	if err := user.List(ctx, local, client.InNamespace(namespace)); err != nil {
+		return nil, false, err
+	}
 	global := &wfTypesv1alpha1.WorkflowList{}
-	if env.Namespace != velatypes.DefaultKubeVelaNS {
-		if err := w.KubeClient.List(ctx, global, client.InNamespace(velatypes.DefaultKubeVelaNS)); err != nil {
-			return nil, err
+	unavailable := false
+	if namespace != velatypes.DefaultKubeVelaNS {
+		if err := server.List(ctx, global, client.InNamespace(velatypes.DefaultKubeVelaNS)); err != nil {
+			klog.Warningf("global shared workflows could not be listed: %v", err)
+			global.Items, unavailable = nil, true
 		}
 	}
-	return sharedWorkflowsOf(local.Items, global.Items)
+	shared, err := sharedWorkflowsOf(local.Items, global.Items)
+	return shared, unavailable, err
 }
 
 // sharedWorkflowsOf lists local Workflows, then global ones, a global one

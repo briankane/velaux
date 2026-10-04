@@ -1361,6 +1361,9 @@ type SharedWorkflow struct {
 // ListSharedWorkflowsResponse lists the shared Workflows a workflow can reference.
 type ListSharedWorkflowsResponse struct {
 	Workflows []SharedWorkflow `json:"workflows"`
+	// GlobalUnavailable says the global shared workflows could not be read, so
+	// only the environment's are listed.
+	GlobalUnavailable bool `json:"globalUnavailable,omitempty"`
 }
 
 // ListWorkflowRecordsResponse list workflow execution record
