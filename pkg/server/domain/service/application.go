@@ -1194,19 +1194,24 @@ func applicationWorkflowSpec(workflow *model.Workflow) *v1beta1.Workflow {
 		}
 		return spec
 	}
-	var steps []wfTypesv1alpha1.WorkflowStep
-	for _, step := range workflow.Steps {
-		workflowStep := wfTypesv1alpha1.WorkflowStep{
+	mode := workflow.Mode
+	return &v1beta1.Workflow{Steps: workflowStepSpecs(workflow.Steps), Mode: &mode}
+}
+
+// workflowStepSpecs is steps as a Workflow resource holds them.
+func workflowStepSpecs(steps []model.WorkflowStep) []wfTypesv1alpha1.WorkflowStep {
+	var specs []wfTypesv1alpha1.WorkflowStep
+	for _, step := range steps {
+		spec := wfTypesv1alpha1.WorkflowStep{
 			WorkflowStepBase: convertWorkflowModel2WorkflowSpec(step.WorkflowStepBase),
 		}
-		workflowStep.Mode = step.Mode
+		spec.Mode = step.Mode
 		for _, subStep := range step.SubSteps {
-			workflowStep.SubSteps = append(workflowStep.SubSteps, convertWorkflowModel2WorkflowSpec(subStep))
+			spec.SubSteps = append(spec.SubSteps, convertWorkflowModel2WorkflowSpec(subStep))
 		}
-		steps = append(steps, workflowStep)
+		specs = append(specs, spec)
 	}
-	mode := workflow.Mode
-	return &v1beta1.Workflow{Steps: steps, Mode: &mode}
+	return specs
 }
 
 func convertWorkflowModel2WorkflowSpec(step model.WorkflowStepBase) wfTypesv1alpha1.WorkflowStepBase {

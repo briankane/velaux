@@ -1,5 +1,6 @@
 import { Balloon, Button, Card, Grid, Loading, Message, Tag, MenuButton } from '@alifd/next';
 import { connect } from 'dva';
+import { Link } from 'dva/router';
 import _ from 'lodash';
 import React from 'react';
 import type { Dispatch } from 'redux';
@@ -22,6 +23,7 @@ import type {
   WorkflowMode,
   DefinitionBase,
   SharedWorkflow,
+  SharedWorkflowScope,
   WorkflowStep,
 } from '@velaux/data';
 import { showAlias } from '../../utils/common';
@@ -55,7 +57,7 @@ type State = {
   mode: WorkflowMode | '';
   subMode: WorkflowMode | '';
   ref?: string;
-  sharedScope?: 'local' | 'global';
+  sharedScope?: SharedWorkflowScope;
   sharedMode?: WorkflowMode;
   sharedSubMode?: WorkflowMode;
   editMode: 'visual' | 'yaml';
@@ -360,9 +362,23 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
                   <Translation>
                     {this.state.sharedScope === 'global'
                       ? 'Steps come from the global shared workflow'
+                      : this.state.sharedScope === 'project'
+                      ? "Steps come from the project's shared workflow"
                       : 'Steps come from the shared workflow'}
                   </Translation>{' '}
-                  <code>{ref}</code>. <Translation>Change them there, or</Translation>
+                  <code>{ref}</code>.{' '}
+                  {this.state.sharedScope === 'global' || this.state.sharedScope === 'project' ? (
+                    <Link
+                      to={`/shared-workflows/${this.state.sharedScope}/${ref}?project=${
+                        applicationDetail?.project?.name || ''
+                      }`}
+                    >
+                      <Translation>Change them there</Translation>
+                    </Link>
+                  ) : (
+                    <Translation>Change them there</Translation>
+                  )}
+                  , <Translation>or</Translation>
                 </span>
                 <Button text type="primary" onClick={this.useCopy}>
                   <Translation>use a copy instead</Translation>

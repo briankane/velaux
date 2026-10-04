@@ -324,17 +324,55 @@ export interface UpdateWorkflowRequest {
   ref?: string;
 }
 
-// SharedWorkflow is a Workflow resource in an environment's namespace that a
-// workflow can reference.
+// SharedWorkflowScope is where a shared Workflow is: the project's namespace,
+// vela-system, or, for a ref only, an environment namespace that is not the
+// project's.
+export type SharedWorkflowScope = 'project' | 'global' | 'environment';
+
+// SharedWorkflow is a Workflow resource that application workflows can
+// reference: the project's or a global one.
 export interface SharedWorkflow {
   name: string;
   namespace: string;
-  // scope is local, in the environment's namespace, or global, in vela-system;
-  // a global one is hidden where a local one has its name.
-  scope: 'local' | 'global';
+  scope: SharedWorkflowScope;
+  alias?: string;
+  description?: string;
+  // hidden: a global one where the project has one of its name.
   hidden?: boolean;
   mode?: WorkflowMode;
   subMode?: WorkflowMode;
+  steps: WorkflowStep[];
+  // usedBy names the project's workflows that run it; usedElsewhere counts
+  // other projects'.
+  usedBy?: SharedWorkflowUse[];
+  usedElsewhere?: number;
+}
+
+// SharedWorkflowUse is an application workflow that runs a shared one.
+export interface SharedWorkflowUse {
+  appName: string;
+  appAlias?: string;
+  workflowName: string;
+  workflowAlias?: string;
+  envName: string;
+}
+
+export interface ListSharedWorkflowsResponse {
+  workflows: SharedWorkflow[];
+  // globalUnavailable: the global ones could not be read.
+  globalUnavailable?: boolean;
+  // projectUnavailable: the environment's Applications run outside the
+  // project's namespace, where KubeVela cannot find the project's.
+  projectUnavailable?: boolean;
+  projectNamespace?: string;
+}
+
+export interface SharedWorkflowRequest {
+  name: string;
+  alias?: string;
+  description?: string;
+  mode?: WorkflowMode | '';
+  subMode?: WorkflowMode | '';
   steps: WorkflowStep[];
 }
 
@@ -478,7 +516,7 @@ export interface Workflow {
   // sharedMode and sharedSubMode are its modes, which apply where mode and
   // subMode are empty.
   ref?: string;
-  sharedScope?: 'local' | 'global';
+  sharedScope?: SharedWorkflowScope;
   sharedMode?: WorkflowMode;
   sharedSubMode?: WorkflowMode;
 }

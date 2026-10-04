@@ -97,12 +97,12 @@ func TestSharedWorkflowsOf(t *testing.T) {
 		got[s.Scope+"/"+s.Name] = fmt.Sprint(s.Hidden)
 	}
 	assert.Equal(t, map[string]string{
-		"local/release":   "false",
-		"local/hotfix":    "false",
+		"project/release": "false",
+		"project/hotfix":  "false",
 		"global/release":  "true",
 		"global/standard": "false",
 	}, got)
-	assert.Equal(t, "local", shared[0].Scope, "local ones are listed first")
+	assert.Equal(t, "project", shared[0].Scope, "the project's are listed first")
 }
 
 func TestSharedWorkflowsReadGlobalAsVelaUX(t *testing.T) {
@@ -138,10 +138,10 @@ func TestSharedWorkflowsReadGlobalAsVelaUX(t *testing.T) {
 		for _, s := range shared {
 			names = append(names, s.Scope+"/"+s.Name)
 		}
-		assert.Equal(t, []string{"local/release", "global/global-release"}, names)
+		assert.Equal(t, []string{"project/release", "global/global-release"}, names)
 	})
 
-	t.Run("global ones that cannot be read leave the list with the environment's", func(t *testing.T) {
+	t.Run("global ones that cannot be read leave the list with the project's", func(t *testing.T) {
 		shared, unavailable, err := listSharedWorkflows(ctx, user, user, "shop")
 		assert.NoError(t, err)
 		assert.True(t, unavailable)
@@ -149,7 +149,7 @@ func TestSharedWorkflowsReadGlobalAsVelaUX(t *testing.T) {
 	})
 
 	t.Run("a ref resolves to a global one though the user cannot read vela-system", func(t *testing.T) {
-		wf, scope, err := findSharedWorkflow(ctx, user, server, "shop", "global-release")
+		wf, scope, err := findSharedWorkflow(ctx, user, server, "shop", "shop", "global-release")
 		assert.NoError(t, err)
 		assert.Equal(t, "global", scope)
 		assert.Equal(t, "global-release", wf.Name)
