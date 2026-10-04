@@ -168,6 +168,10 @@ func FromCRWorkflowStepBase(step wfTypesv1alpha1.WorkflowStepBase) (*model.Workf
 		If:        step.If,
 		Timeout:   step.Timeout,
 	}
+	// A step's alias is kept in its meta, where VelaUX writes it too.
+	if step.Meta != nil {
+		base.Alias = step.Meta.Alias
+	}
 	if step.Properties != nil {
 		properties, err := model.NewJSONStruct(step.Properties)
 		if err != nil {
