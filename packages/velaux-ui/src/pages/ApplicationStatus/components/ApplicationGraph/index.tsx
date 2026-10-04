@@ -306,6 +306,7 @@ class ApplicationGraph extends React.Component<Props, State> {
           <If condition={showResource && resource}>
             {resource && (
               <ShowResource
+                project={application?.project?.name || ''}
                 onClose={() => {
                   this.setState({ showResource: false, resource: undefined });
                 }}
