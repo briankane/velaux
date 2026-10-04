@@ -81,6 +81,8 @@ func asUser(t *testing.T, seen *[]string) client.Client {
 			return "ResourceTracker"
 		case *corev1.NamespaceList:
 			return "Namespace"
+		case *corev1.ConfigMapList:
+			return "ConfigMap"
 		}
 		return "Pod"
 	}
@@ -134,6 +136,14 @@ func TestGuard(t *testing.T) {
 		seen = nil
 		require.NoError(t, g.List(ctx, &corev1.NamespaceList{}))
 		assert.Equal(t, []string{"Namespace:velaux"}, seen)
+	})
+
+	t.Run("the resource topology rules are listed as VelaUX, other ConfigMaps as the user", func(t *testing.T) {
+		seen = nil
+		require.NoError(t, g.List(ctx, &corev1.ConfigMapList{}, client.InNamespace("vela-system"), client.HasLabels{oam.LabelResourceRules}))
+		require.NoError(t, g.List(ctx, &corev1.ConfigMapList{}, client.InNamespace("vela-system")))
+		require.NoError(t, g.List(ctx, &corev1.ConfigMapList{}, client.InNamespace("shop"), client.HasLabels{oam.LabelResourceRules}))
+		assert.Equal(t, []string{"ConfigMap:velaux", "ConfigMap:shop-dev", "ConfigMap:shop-dev"}, seen)
 	})
 
 	t.Run("everything else is read as the user", func(t *testing.T) {
