@@ -24,12 +24,14 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apiserver/pkg/endpoints/request"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
+	"github.com/oam-dev/kubevela/apis/types"
 	"github.com/oam-dev/kubevela/pkg/oam"
 )
 
@@ -44,7 +46,9 @@ var resourceTrackers = schema.GroupResource{Group: v1beta1.Group, Resource: "res
 //   - ResourceTrackers, cluster-scoped, which say what an Application applied:
 //     read as VelaUX, and only those of an Application in one of namespaces;
 //   - Namespaces, listed as VelaUX, so a project can pick one for an
-//     environment.
+//     environment;
+//   - the resource topology rules, ConfigMaps in vela-system that say how
+//     kinds relate in a resource tree: platform configuration, listed as VelaUX.
 func Guard(base client.Client, namespaces []string) client.Client {
 	allowed := map[string]bool{}
 	for _, ns := range namespaces {
@@ -91,8 +95,29 @@ func (g *guard) List(ctx context.Context, list client.ObjectList, opts ...client
 		return g.Client.List(asVelaUX(ctx), list, opts...)
 	case "Namespace":
 		return g.Client.List(asVelaUX(ctx), list, opts...)
+	case "ConfigMap":
+		if topologyRules(opts) {
+			return g.Client.List(asVelaUX(ctx), list, opts...)
+		}
 	}
 	return g.Client.List(ctx, list, opts...)
+}
+
+// topologyRules is whether a list asks for the resource topology rules: in
+// vela-system, labelled as rules.
+func topologyRules(opts []client.ListOption) bool {
+	o := &client.ListOptions{}
+	o.ApplyOptions(opts)
+	if o.Namespace != types.DefaultKubeVelaNS || o.LabelSelector == nil {
+		return false
+	}
+	requirements, _ := o.LabelSelector.Requirements()
+	for _, r := range requirements {
+		if r.Key() == oam.LabelResourceRules && r.Operator() == selection.Exists {
+			return true
+		}
+	}
+	return false
 }
 
 // kindOf is the kind a list holds.
@@ -102,6 +127,8 @@ func kindOf(list client.ObjectList) string {
 		return "ResourceTracker"
 	case *corev1.NamespaceList:
 		return "Namespace"
+	case *corev1.ConfigMapList:
+		return "ConfigMap"
 	case *unstructured.UnstructuredList:
 		return strings.TrimSuffix(l.GetKind(), "List")
 	}
