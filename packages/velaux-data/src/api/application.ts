@@ -314,10 +314,24 @@ export type WorkflowMode = 'StepByStep' | 'DAG';
 export interface UpdateWorkflowRequest {
   alias?: string;
   description?: string;
-  mode: WorkflowMode;
-  subMode: WorkflowMode;
+  // mode and subMode may be empty for a workflow with a ref, to follow the
+  // shared workflow's.
+  mode: WorkflowMode | '';
+  subMode: WorkflowMode | '';
   steps: WorkflowStep[];
   default?: boolean;
+  // ref names a shared Workflow to run in place of steps.
+  ref?: string;
+}
+
+// SharedWorkflow is a Workflow resource in an environment's namespace that a
+// workflow can reference.
+export interface SharedWorkflow {
+  name: string;
+  namespace: string;
+  mode?: WorkflowMode;
+  subMode?: WorkflowMode;
+  steps: WorkflowStep[];
 }
 
 export interface CreateWorkflowRequest {
@@ -325,8 +339,9 @@ export interface CreateWorkflowRequest {
   envName: string;
   alias?: string;
   description?: string;
-  mode: WorkflowMode;
-  subMode: WorkflowMode;
+  mode: WorkflowMode | '';
+  subMode: WorkflowMode | '';
+  ref?: string;
   steps: WorkflowStep[];
   default?: boolean;
 }
@@ -452,9 +467,15 @@ export interface Workflow {
   default: boolean;
   createTime?: string;
   enable: boolean;
-  mode: WorkflowMode;
-  subMode: WorkflowMode;
+  mode: WorkflowMode | '';
+  subMode: WorkflowMode | '';
   steps: WorkflowStep[];
+  // ref names the shared Workflow this one runs, whose steps are in steps;
+  // sharedMode and sharedSubMode are its modes, which apply where mode and
+  // subMode are empty.
+  ref?: string;
+  sharedMode?: WorkflowMode;
+  sharedSubMode?: WorkflowMode;
 }
 
 export interface UpdateComponentProperties {

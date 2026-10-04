@@ -44,6 +44,8 @@ type StudioGraphProps = {
   // onLink makes step `to` wait on step `from`; onUnlink stops it.
   onLink: (from: string, to: string, group?: string) => void;
   onUnlink: (from: string, to: string, group?: string) => void;
+  // readOnly draws the steps with none of the controls that change them.
+  readOnly?: boolean;
   onResize?: () => void;
 };
 
@@ -211,11 +213,24 @@ const PreviewTree = (props: { root: string; nodes: PreviewNode[]; caption: strin
 // card edits it, and hovering a card shows its moves and Delete. A group holds
 // its own steps the same way, in its own mode.
 export const StudioGraph = (props: StudioGraphProps) => {
-  const { steps, mode, subMode, group, onAdd, onEdit, onDelete, onGroupMode, onMove, onLink, onUnlink, onResize } =
-    props;
+  const {
+    steps,
+    mode,
+    subMode,
+    group,
+    onAdd,
+    onEdit,
+    onDelete,
+    onGroupMode,
+    onMove,
+    onLink,
+    onUnlink,
+    readOnly,
+    onResize,
+  } = props;
   // Lines are drawn and removed by hand only where steps run in parallel: in
   // order, the order is the dependency.
-  const linking = mode === 'DAG';
+  const linking = mode === 'DAG' && !readOnly;
   const [drag, setDrag] = React.useState<Drag>();
   const [picked, setPicked] = React.useState<StepEdge>();
   const [, setNestedResizes] = React.useState(0);
@@ -224,14 +239,15 @@ export const StudioGraph = (props: StudioGraphProps) => {
   // In order, a step waiting on a later one would wait for ever.
   const forward = mode === 'StepByStep' ? forwardWaits(steps) : [];
   const isForward = (from: string, to: string) => forward.some((f) => f.step === to && f.waitsOn === from);
-  const tools = (step: WorkflowStep, index: number) => (
-    <StepTools
-      onDelete={() => onDelete(step.name, group)}
-      onMove={mode === 'StepByStep' ? (delta) => onMove(step.name, group, delta) : undefined}
-      earlier={canMove(steps, index, -1)}
-      later={canMove(steps, index, 1)}
-    />
-  );
+  const tools = (step: WorkflowStep, index: number) =>
+    readOnly ? null : (
+      <StepTools
+        onDelete={() => onDelete(step.name, group)}
+        onMove={mode === 'StepByStep' ? (delta) => onMove(step.name, group, delta) : undefined}
+        earlier={canMove(steps, index, -1)}
+        later={canMove(steps, index, 1)}
+      />
+    );
   // addItems are what can be added: no group inside a group, and no loop yet.
   const addItems: AddItem[] = [
     { key: 'step', label: 'Step', icon: <BsSquare /> },
@@ -424,7 +440,9 @@ export const StudioGraph = (props: StudioGraphProps) => {
                 style={isGroup ? undefined : { width: stepWidth }}
                 onClick={(event) => {
                   event.stopPropagation();
-                  onEdit(step, group);
+                  if (!readOnly) {
+                    onEdit(step, group);
+                  }
                 }}
               >
                 {isGroup && (
@@ -456,6 +474,7 @@ export const StudioGraph = (props: StudioGraphProps) => {
                           value={ownMode}
                           dataSource={modeOptions()}
                           title={i18n.t('How the steps in this group run').toString()}
+                          disabled={readOnly}
                           onChange={(value: WorkflowMode) => onGroupMode(step.name, value)}
                         />
                       </span>
@@ -492,12 +511,13 @@ export const StudioGraph = (props: StudioGraphProps) => {
                       onMove={onMove}
                       onLink={onLink}
                       onUnlink={onUnlink}
+                      readOnly={readOnly}
                       onResize={nestedResized}
                     />
                   </div>
                 )}
               </div>
-              {addPair(step)}
+              {!readOnly && addPair(step)}
               {linking && (
                 <span
                   className="studio-port"
@@ -509,22 +529,24 @@ export const StudioGraph = (props: StudioGraphProps) => {
           );
         })}
       </div>
-      <AddMenu
-        items={addItems.filter((item) => item.key !== 'branch')}
-        onPick={(key) => key !== 'loop' && onAdd({ kind: key === 'group' ? 'group' : 'step', group })}
-      >
-        <button
-          type="button"
-          className="studio-add-step"
-          onClick={(event) => {
-            event.stopPropagation();
-            onAdd({ kind: 'step', group });
-          }}
+      {!readOnly && (
+        <AddMenu
+          items={addItems.filter((item) => item.key !== 'branch')}
+          onPick={(key) => key !== 'loop' && onAdd({ kind: key === 'group' ? 'group' : 'step', group })}
         >
-          <BsPlusLg />
-          <Translation>{group ? 'Add to this group' : 'Add'}</Translation>
-        </button>
-      </AddMenu>
+          <button
+            type="button"
+            className="studio-add-step"
+            onClick={(event) => {
+              event.stopPropagation();
+              onAdd({ kind: 'step', group });
+            }}
+          >
+            <BsPlusLg />
+            <Translation>{group ? 'Add to this group' : 'Add'}</Translation>
+          </button>
+        </AddMenu>
+      )}
     </div>
   );
 };

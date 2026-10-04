@@ -1018,5 +1018,16 @@
   "Click to select, then remove": "点击选中后可移除",
   "This step reads the other one's outputs; change its Inputs to remove this": "此步骤读取另一步骤的输出；请修改其输入以移除",
   "Remove this dependency": "移除此依赖",
-  "Drag onto a step that should wait on this one": "拖到应等待此步骤的步骤上"
+  "Drag onto a step that should wait on this one": "拖到应等待此步骤的步骤上",
+  "Shared": "共享",
+  "Steps from": "步骤来源",
+  "This workflow": "此工作流",
+  "A shared workflow": "共享工作流",
+  "Shared workflow": "共享工作流",
+  "There are no shared workflows in this environment's namespace.": "此环境的命名空间中没有共享工作流。",
+  "Choose a shared workflow": "请选择共享工作流",
+  "Use the shared workflow's": "使用共享工作流的设置",
+  "Steps come from the shared workflow": "步骤来自共享工作流",
+  "Change them there, or": "请在那里修改，或",
+  "use a copy instead": "改用副本"
 }

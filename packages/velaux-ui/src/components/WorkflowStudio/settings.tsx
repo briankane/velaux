@@ -1,33 +1,38 @@
-import { Button, Checkbox, Field, Form, Input, Select } from '@alifd/next';
+import { Button, Checkbox, Field, Form, Input, Radio, Select } from '@alifd/next';
 import React from 'react';
 
-import type { WorkflowMode } from '@velaux/data';
+import type { SharedWorkflow, WorkflowMode } from '@velaux/data';
 
 import i18n from '../../i18n';
 import { locale } from '../../utils/locale';
 import DrawerWithFooter from '../Drawer';
 import { Translation } from '../Translation';
 
-// WorkflowSettings are a workflow's own fields, apart from its steps.
+// WorkflowSettings are a workflow's own fields, apart from its steps. With a
+// ref, its steps come from that shared Workflow, and an empty mode follows the
+// shared one's.
 export type WorkflowSettings = {
   name: string;
   alias?: string;
   description?: string;
-  mode: WorkflowMode;
-  subMode: WorkflowMode;
+  mode: WorkflowMode | '';
+  subMode: WorkflowMode | '';
   default?: boolean;
+  ref?: string;
 };
 
-const modeOptions = () => [
-  { value: 'StepByStep', label: i18n.t('In order').toString(), title: 'StepByStep' },
-  { value: 'DAG', label: i18n.t('In parallel').toString(), title: 'DAG' },
-];
+const modeLabel = (mode?: WorkflowMode | '') => (mode === 'DAG' ? 'In parallel' : 'In order');
 
-const modeLabel = (mode: WorkflowMode) => (mode === 'DAG' ? 'In parallel' : 'In order');
-
-// settingsSummary is the toolbar's one-line account of how a workflow runs.
-export const SettingsSummary = (props: { mode: WorkflowMode; subMode: WorkflowMode }) => (
+// SettingsSummary is the toolbar's one-line account of how a workflow runs,
+// naming the shared workflow it uses, if any.
+export const SettingsSummary = (props: { mode: WorkflowMode; subMode: WorkflowMode; shared?: string }) => (
   <span className="studio-settings-summary">
+    {props.shared && (
+      <>
+        <Translation>Shared</Translation> <code>{props.shared}</code>
+        <span className="studio-settings-sep">·</span>
+      </>
+    )}
     <Translation>{modeLabel(props.mode)}</Translation>
     <span className="studio-settings-sep">·</span>
     <Translation>groups</Translation> <Translation>{modeLabel(props.subMode).toLowerCase()}</Translation>
@@ -39,30 +44,76 @@ type Props = {
   // withDefault offers whether the workflow is its environment's default; a
   // pipeline has none.
   withDefault?: boolean;
-  onApply: (settings: WorkflowSettings) => void;
+  // loadShared, where given, offers running a shared Workflow's steps.
+  loadShared?: () => Promise<SharedWorkflow[]>;
+  // onApply hands back the settings and, with a ref, the shared Workflow.
+  onApply: (settings: WorkflowSettings, shared?: SharedWorkflow) => void;
   onClose: () => void;
+};
+
+type State = {
+  stepsFrom: 'own' | 'shared';
+  shared?: SharedWorkflow[];
 };
 
 // WorkflowSettingsPanel edits a workflow's own fields. Apply hands them back to
 // the studio as unsaved changes; the studio's Save stores them with the steps.
-export class WorkflowSettingsPanel extends React.Component<Props> {
+export class WorkflowSettingsPanel extends React.Component<Props, State> {
   field = new Field(this);
+
+  constructor(props: Props) {
+    super(props);
+    this.state = { stepsFrom: props.settings.ref ? 'shared' : 'own' };
+  }
 
   componentDidMount() {
     this.field.setValues(this.props.settings);
+    if (this.props.loadShared) {
+      this.props.loadShared().then((shared) => this.setState({ shared: shared || [] }));
+    }
   }
+
+  chosen = () => this.state.shared?.find((s) => s.name === this.field.getValue('ref'));
 
   apply = () => {
     this.field.validate((error, values: any) => {
-      if (!error) {
-        this.props.onApply({ ...this.props.settings, ...values });
+      if (error) {
+        return;
       }
+      if (this.state.stepsFrom === 'own') {
+        // Running its own steps, the workflow follows no shared modes.
+        const { mode, subMode } = values;
+        this.props.onApply({
+          ...this.props.settings,
+          ...values,
+          ref: undefined,
+          mode: mode || 'StepByStep',
+          subMode: subMode || 'DAG',
+        });
+        return;
+      }
+      this.props.onApply({ ...this.props.settings, ...values }, this.chosen());
     });
   };
 
+  modeOptions = (shared?: WorkflowMode) => [
+    ...(this.state.stepsFrom === 'shared'
+      ? [
+          {
+            value: '',
+            label: `${i18n.t("Use the shared workflow's").toString()} (${i18n.t(modeLabel(shared)).toString()})`,
+          },
+        ]
+      : []),
+    { value: 'StepByStep', label: i18n.t('In order').toString(), title: 'StepByStep' },
+    { value: 'DAG', label: i18n.t('In parallel').toString(), title: 'DAG' },
+  ];
+
   render() {
     const { init } = this.field;
-    const { settings, withDefault, onClose } = this.props;
+    const { settings, withDefault, loadShared, onClose } = this.props;
+    const { stepsFrom, shared } = this.state;
+    const chosen = this.chosen();
     return (
       <DrawerWithFooter
         title={<Translation>Workflow settings</Translation>}
@@ -98,6 +149,52 @@ export class WorkflowSettingsPanel extends React.Component<Props> {
               })}
             />
           </Form.Item>
+          {loadShared && (
+            <Form.Item label={<Translation>Steps from</Translation>}>
+              <Radio.Group
+                value={stepsFrom}
+                onChange={(value) => {
+                  const from = value as State['stepsFrom'];
+                  this.setState({ stepsFrom: from });
+                  // A shared workflow starts by following its modes.
+                  if (from === 'shared' && !settings.ref) {
+                    this.field.setValues({ mode: '', subMode: '' });
+                  }
+                }}
+              >
+                <Radio value="own">
+                  <Translation>This workflow</Translation>
+                </Radio>
+                <Radio value="shared">
+                  <Translation>A shared workflow</Translation>
+                </Radio>
+              </Radio.Group>
+            </Form.Item>
+          )}
+          {stepsFrom === 'shared' && (
+            <Form.Item
+              label={<Translation>Shared workflow</Translation>}
+              required
+              help={
+                shared && shared.length === 0
+                  ? i18n.t("There are no shared workflows in this environment's namespace.").toString()
+                  : chosen
+                  ? `${chosen.namespace} · ${chosen.steps.length} ${i18n
+                      .t(chosen.steps.length === 1 ? 'step' : 'steps')
+                      .toString()}`
+                  : undefined
+              }
+            >
+              <Select
+                locale={locale().Select}
+                state={!shared ? 'loading' : undefined}
+                dataSource={(shared || []).map((s) => ({ value: s.name, label: s.name }))}
+                {...init('ref', {
+                  rules: [{ required: true, message: i18n.t('Choose a shared workflow').toString() }],
+                })}
+              />
+            </Form.Item>
+          )}
           <Form.Item
             label={<Translation>Steps run</Translation>}
             help={i18n
@@ -106,13 +203,17 @@ export class WorkflowSettingsPanel extends React.Component<Props> {
               )
               .toString()}
           >
-            <Select locale={locale().Select} dataSource={modeOptions()} {...init('mode')} />
+            <Select locale={locale().Select} dataSource={this.modeOptions(chosen?.mode)} {...init('mode')} />
           </Form.Item>
           <Form.Item
             label={<Translation>Steps in groups run</Translation>}
             help={i18n.t('For a group that does not choose its own.').toString()}
           >
-            <Select locale={locale().Select} dataSource={modeOptions()} {...init('subMode')} />
+            <Select
+              locale={locale().Select}
+              dataSource={this.modeOptions(chosen?.subMode || 'DAG')}
+              {...init('subMode')}
+            />
           </Form.Item>
           {withDefault && (
             <Form.Item>

@@ -4,7 +4,7 @@ import _ from 'lodash';
 import React from 'react';
 import type { Dispatch } from 'redux';
 
-import { detailWorkflow, getWorkflowDefinitions, updateWorkflow } from '../../api/workflows';
+import { detailWorkflow, getWorkflowDefinitions, listSharedWorkflows, updateWorkflow } from '../../api/workflows';
 import Item from '../../components/Item';
 import { Translation } from '../../components/Translation';
 import { WorkflowPrompt } from '../../components/WorkflowPrompt';
@@ -15,7 +15,15 @@ import { AiOutlineSetting } from 'react-icons/ai';
 import { WorkflowContext } from '../../context';
 import type { WorkflowData } from '../../context/index';
 import { deployNamespaces } from '../../utils/restrictions';
-import type { ApplicationDetail, EnvBinding, Workflow, WorkflowMode, DefinitionBase, WorkflowStep } from '@velaux/data';
+import type {
+  ApplicationDetail,
+  EnvBinding,
+  Workflow,
+  WorkflowMode,
+  DefinitionBase,
+  SharedWorkflow,
+  WorkflowStep,
+} from '@velaux/data';
 import { showAlias } from '../../utils/common';
 
 import './index.less';
@@ -42,8 +50,13 @@ type State = {
   steps?: WorkflowStep[];
   changed: boolean;
   saveLoading?: boolean;
-  mode: WorkflowMode;
-  subMode: WorkflowMode;
+  // mode and subMode are empty where a referenced workflow follows the shared
+  // one's, sharedMode and sharedSubMode.
+  mode: WorkflowMode | '';
+  subMode: WorkflowMode | '';
+  ref?: string;
+  sharedMode?: WorkflowMode;
+  sharedSubMode?: WorkflowMode;
   editMode: 'visual' | 'yaml';
   setCanary?: boolean;
   // alias, description and isDefault are the workflow's own fields as edited.
@@ -97,6 +110,9 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
         alias: res.alias,
         description: res.description,
         isDefault: res.default,
+        ref: res.ref,
+        sharedMode: res.sharedMode,
+        sharedSubMode: res.sharedSubMode,
       });
     });
   };
@@ -154,7 +170,7 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
   };
 
   onSave = () => {
-    const { workflow, steps, mode, subMode, alias, description, isDefault } = this.state;
+    const { workflow, steps, mode, subMode, alias, description, isDefault, ref } = this.state;
     const { applicationDetail } = this.props;
     if (workflow && applicationDetail) {
       this.setState({ saveLoading: true });
@@ -166,7 +182,8 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
           default: isDefault,
           mode: mode,
           subMode: subMode,
-          steps: steps || [],
+          ref: ref,
+          steps: ref ? [] : steps || [],
         }
       )
         .then((res) => {
@@ -183,8 +200,23 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
     }
   };
 
+  // effectiveModes are how the steps run: as set, else as the shared workflow
+  // sets them, else KubeVela's defaults.
+  effectiveModes = (): [WorkflowMode, WorkflowMode] => {
+    const { mode, subMode, sharedMode, sharedSubMode } = this.state;
+    return [mode || sharedMode || 'StepByStep', subMode || sharedSubMode || 'DAG'];
+  };
+
+  // useCopy stops referencing the shared workflow, keeping its steps and modes
+  // as this workflow's own, to edit.
+  useCopy = () => {
+    const [mode, subMode] = this.effectiveModes();
+    this.setState({ ref: undefined, sharedMode: undefined, sharedSubMode: undefined, mode, subMode, changed: true });
+  };
+
   render() {
-    const { workflow, definitions, changed, saveLoading, mode, subMode, editMode, setCanary, steps } = this.state;
+    const { workflow, definitions, changed, saveLoading, mode, subMode, editMode, setCanary, steps, ref } = this.state;
+    const [runMode, runSubMode] = this.effectiveModes();
     const { applicationDetail, dispatch } = this.props;
     const envbinding = this.getEnvbindingByName();
     return (
@@ -242,6 +274,7 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
                     this.setState({ editMode: 'yaml' });
                   }}
                   className={classNames('edit-mode', 'two', { active: editMode === 'yaml' })}
+                  disabled={!!ref}
                 >
                   YAML
                 </Button>
@@ -283,13 +316,13 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
                 >
                   <AiOutlineSetting />
                   <Translation>Settings</Translation>
-                  <SettingsSummary mode={mode} subMode={subMode} />
+                  <SettingsSummary mode={runMode} subMode={runSubMode} shared={ref} />
                 </Button>
                 <Button
                   disabled={!changed}
                   loading={saveLoading}
                   type="primary"
-                  onClick={() => confirmOrderedSave(this.state.steps || [], mode, subMode, this.onSave)}
+                  onClick={() => confirmOrderedSave(this.state.steps || [], runMode, runSubMode, this.onSave)}
                 >
                   <Translation>Save</Translation>
                 </Button>
@@ -311,11 +344,23 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
               workflow: workflow as WorkflowData,
             }}
           >
+            {ref && (
+              <div className="studio-shared-banner">
+                <span>
+                  <Translation>Steps come from the shared workflow</Translation> <code>{ref}</code>.{' '}
+                  <Translation>Change them there, or</Translation>
+                </span>
+                <Button text type="primary" onClick={this.useCopy}>
+                  <Translation>use a copy instead</Translation>
+                </Button>
+              </div>
+            )}
             <WorkflowStudio
-              mode={mode}
-              subMode={subMode}
+              mode={runMode}
+              subMode={runSubMode}
               definitions={definitions}
               steps={steps}
+              readOnly={!!ref}
               onChange={this.onChange}
             />
           </WorkflowContext.Provider>
@@ -330,15 +375,28 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
               mode,
               subMode,
               default: this.state.isDefault,
+              ref,
             }}
+            loadShared={() =>
+              listSharedWorkflows({ appName: applicationDetail?.name || '', workflowName: workflow.name }).then(
+                (res: { workflows?: SharedWorkflow[] }) => res?.workflows || []
+              )
+            }
             onClose={() => this.setState({ showSettings: false })}
-            onApply={(settings) =>
+            onApply={(settings, shared) =>
               this.setState({
                 alias: settings.alias,
                 description: settings.description,
                 isDefault: settings.default,
                 mode: settings.mode,
                 subMode: settings.subMode,
+                ref: settings.ref,
+                // A shared workflow's steps are shown, not edited; leaving one
+                // keeps its steps as this workflow's own.
+                steps: settings.ref ? shared?.steps || [] : steps,
+                sharedMode: settings.ref ? shared?.mode : undefined,
+                sharedSubMode: settings.ref ? shared?.subMode : undefined,
+                editMode: settings.ref ? 'visual' : editMode,
                 showSettings: false,
                 changed: true,
               })

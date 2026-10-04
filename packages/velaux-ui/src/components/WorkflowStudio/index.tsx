@@ -22,6 +22,9 @@ type Props = {
   mode?: WorkflowMode;
   subMode?: WorkflowMode;
   definitions?: DefinitionBase[];
+  // readOnly shows the steps without letting them be changed: they belong to
+  // a shared workflow.
+  readOnly?: boolean;
   dispatch?: Dispatch<any>;
   onChange: (steps: WorkflowStep[]) => void;
 };
@@ -208,6 +211,7 @@ class WorkflowStudio extends React.Component<Props, State> {
                 onMove={this.onMove}
                 onLink={this.onLink}
                 onUnlink={this.onUnlink}
+                readOnly={this.props.readOnly}
               />
             </div>
           </Draggable>

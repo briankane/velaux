@@ -280,8 +280,8 @@ class PipelineStudio extends React.Component<Props, State> {
                 this.setState({
                   alias: settings.alias,
                   description: settings.description,
-                  mode: settings.mode,
-                  subMode: settings.subMode,
+                  mode: (settings.mode || 'StepByStep') as WorkflowMode,
+                  subMode: (settings.subMode || 'DAG') as WorkflowMode,
                   showSettings: false,
                   changed: true,
                 })
