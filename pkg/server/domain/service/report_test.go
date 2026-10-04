@@ -362,7 +362,7 @@ func TestBuiltinReports(t *testing.T) {
 		&model.EnvBinding{AppPrimaryKey: "storefront", Name: "production"},
 		&model.Workflow{AppPrimaryKey: "storefront", Name: "workflow-production", EnvName: "production"},
 		&model.ApplicationRevision{AppPrimaryKey: "storefront", Version: "v1", EnvName: "production", DeployUser: "alice", Note: "First", TriggerType: "web"},
-		&model.ApplicationRevision{AppPrimaryKey: "storefront", Version: "v2", EnvName: "production", DeployUser: "bob", TriggerType: "api"},
+		&model.ApplicationRevision{AppPrimaryKey: "storefront", Version: "v2", EnvName: "production", DeployUser: "bob", TriggerType: "api", Status: "failure"},
 		&model.WorkflowRecord{AppPrimaryKey: "storefront", WorkflowName: "workflow-production", Name: "run-1", Status: "failed", RevisionPrimaryKey: "v1",
 			StartTime: at(300), EndTime: at(295),
 			Steps: []model.WorkflowStepStatus{{StepStatus: model.StepStatus{Name: "check", Phase: "failed", Message: "timed out"}}}},
@@ -425,7 +425,7 @@ func TestBuiltinReports(t *testing.T) {
 	t.Run("environment drift", func(t *testing.T) {
 		res := fx.run(t, "shop", "builtin-environment-drift", map[string]interface{}{"all": true})
 		assert.Equal(t, []interface{}{"production"}, column(res, "env"))
-		assert.Len(t, column(res, "state"), 1)
+		assert.Equal(t, []interface{}{"Last deploy failed"}, column(res, "state"), "the cluster refused v2")
 	})
 	t.Run("autoscaler saturation", func(t *testing.T) {
 		res := fx.run(t, "shop", "builtin-autoscaler-saturation", nil)
@@ -517,9 +517,9 @@ func TestReportData(t *testing.T) {
 
 	t.Run("environments say what is deployed and whether the app now differs from it", func(t *testing.T) {
 		differs := false
-		fx.svc.undeployed = func(_ context.Context, app *model.Application, revision string) (bool, error) {
+		fx.svc.undeployed = func(_ context.Context, app *model.Application, env string) (bool, error) {
 			assert.Equal(t, "storefront", app.Name)
-			assert.Equal(t, "v2", revision, "the environment's latest revision")
+			assert.Equal(t, "production", env)
 			return differs, nil
 		}
 		envs, err := source.Environments(ctx)
@@ -531,7 +531,7 @@ func TestReportData(t *testing.T) {
 		differs = true
 		envs, err = source.Environments(ctx)
 		require.NoError(t, err)
-		assert.True(t, envs[0].Edited, "the app as it would deploy now differs from v2")
+		assert.True(t, envs[0].Edited, "the app as it would deploy now differs from what runs")
 	})
 
 	t.Run("List reads the environments' namespaces too", func(t *testing.T) {

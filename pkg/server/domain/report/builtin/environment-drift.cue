@@ -1,5 +1,5 @@
 // +title=Environment drift
-// +description=Environments running an older deploy than another, or not running the application as it is now
+// +description=Environments whose last deploy failed, running an older deploy than another, or not running the application as it is now
 // +chart=pie
 // +chart:x=state
 // +chart:title=Environments by state
@@ -31,6 +31,7 @@ template: {
 			user:       [if e.user != _|_ {e.user}, ""][0]
 			state: [
 				if at == "" {"Never deployed"},
+				if e.status != _|_ if e.status == "failure" {"Last deploy failed"},
 				if e.edited {"Changed since deployed"},
 				if at < latest {"Behind another environment"},
 				"Up to date",

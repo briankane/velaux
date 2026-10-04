@@ -17,6 +17,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -72,22 +73,29 @@ type reportServiceImpl struct {
 	// lists.
 	ServerKubeClient client.Client       `inject:"serverKubeClient"`
 	Store            datastore.DataStore `inject:"datastore"`
-	// ApplicationService compares an application as it is now with what it
-	// last deployed.
+	// ApplicationService compares an application as it is now with what runs.
 	ApplicationService ApplicationService `inject:""`
 	// now is the clock elapsed times are read against; time.Now unless a test
 	// fixes it.
 	now func() time.Time
 	// undeployed says the application as VelaUX would deploy it now differs
-	// from what revision deployed; DiffersFromDeployed unless a test replaces it.
-	undeployed func(ctx context.Context, app *model.Application, revision string) (bool, error)
+	// from what runs in env; CompareApp unless a test replaces it.
+	undeployed func(ctx context.Context, app *model.Application, env string) (bool, error)
 }
 
-func (r *reportServiceImpl) differsFromDeployed(ctx context.Context, app *model.Application, revision string) (bool, error) {
+// differsFromRunning compares as the application page does, so the two agree.
+func (r *reportServiceImpl) differsFromRunning(ctx context.Context, app *model.Application, env string) (bool, error) {
 	if r.undeployed != nil {
-		return r.undeployed(ctx, app, revision)
+		return r.undeployed(ctx, app, env)
 	}
-	return r.ApplicationService.DiffersFromDeployed(ctx, app, revision)
+	res, err := r.ApplicationService.CompareApp(ctx, app, apisv1.AppCompareReq{CompareLatestWithRunning: &apisv1.CompareLatestWithRunningOption{Env: env}})
+	if err != nil {
+		return false, err
+	}
+	if res.Error != "" {
+		return false, errors.New(res.Error)
+	}
+	return res.IsDiff, nil
 }
 
 // NewReportService is the reports.
@@ -410,7 +418,8 @@ func (s *projectSource) elapsed(start, end time.Time) int64 {
 
 // Environments are each application's environments, with the revision last
 // deployed there; edited says the application as VelaUX would deploy it now
-// differs from what that revision deployed.
+// differs from what runs there. The latest revision may not be what runs: a
+// deploy the cluster refused leaves a failed revision and the earlier spec.
 func (s *projectSource) Environments(ctx context.Context) ([]report.Environment, error) {
 	out := []report.Environment{}
 	var compares []envCompare
@@ -446,7 +455,8 @@ func (s *projectSource) Environments(ctx context.Context) ([]report.Environment,
 			compares = append(compares, envCompare{index: len(out) - 1, app: app})
 		}
 	}
-	// Each comparison renders the application, so they run a few at a time.
+	// Each comparison renders the application and reads what runs, so they run
+	// a few at a time.
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, compareConcurrency)
 	for _, c := range compares {
@@ -454,7 +464,7 @@ func (s *projectSource) Environments(ctx context.Context) ([]report.Environment,
 		sem <- struct{}{}
 		go func(c envCompare) {
 			defer func() { <-sem; wg.Done() }()
-			differs, err := s.r.differsFromDeployed(ctx, c.app, out[c.index].Revision)
+			differs, err := s.r.differsFromRunning(ctx, c.app, out[c.index].Env)
 			if err != nil {
 				klog.Warningf("report: compare %s in %s: %v", c.app.Name, out[c.index].Env, err)
 			}
