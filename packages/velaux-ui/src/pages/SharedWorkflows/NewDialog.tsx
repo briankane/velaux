@@ -43,7 +43,7 @@ export const NewDialog = (props: Props) => {
             <Translation>Copy</Translation> <code>{props.copyOf}</code>
           </span>
         ) : (
-          <Translation>New shared workflow</Translation>
+          <Translation>New Workflow</Translation>
         )
       }
       onClose={props.onClose}
