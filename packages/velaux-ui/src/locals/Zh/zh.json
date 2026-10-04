@@ -1031,5 +1031,6 @@
   "Steps come from the global shared workflow": "步骤来自全局共享工作流",
   "This environment": "此环境",
   "There are no shared workflows for this environment, nor global ones.": "此环境没有共享工作流，也没有全局共享工作流。",
-  "hidden by this environment's": "被此环境的同名工作流覆盖"
+  "hidden by this environment's": "被此环境的同名工作流覆盖",
+  "Global shared workflows could not be loaded.": "无法加载全局共享工作流。"
 }

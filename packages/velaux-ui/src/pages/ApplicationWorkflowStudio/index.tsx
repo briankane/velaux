@@ -393,7 +393,10 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
             }}
             loadShared={() =>
               listSharedWorkflows({ appName: applicationDetail?.name || '', workflowName: workflow.name }).then(
-                (res: { workflows?: SharedWorkflow[] }) => res?.workflows || []
+                (res: { workflows?: SharedWorkflow[]; globalUnavailable?: boolean }) => ({
+                  workflows: res?.workflows || [],
+                  globalUnavailable: !!res?.globalUnavailable,
+                })
               )
             }
             onClose={() => this.setState({ showSettings: false })}

@@ -24,8 +24,8 @@ export type WorkflowSettings = {
 const modeLabel = (mode?: WorkflowMode | '') => (mode === 'DAG' ? 'In parallel' : 'In order');
 
 // sharedOptions groups shared workflows as the picker shows them: this
-// environment's, then global ones, a global one hidden by a local one of its name offered but
-// disabled, saying why.
+// environment's, then global ones, a global one hidden by one of this
+// environment's of its name offered but disabled, saying why.
 const sharedOptions = (shared: SharedWorkflow[]) =>
   [
     { scope: 'local', label: i18n.t('This environment').toString() },
@@ -69,8 +69,9 @@ type Props = {
   // withDefault offers whether the workflow is its environment's default; a
   // pipeline has none.
   withDefault?: boolean;
-  // loadShared, where given, offers running a shared Workflow's steps.
-  loadShared?: () => Promise<SharedWorkflow[]>;
+  // loadShared, where given, offers running a shared Workflow's steps;
+  // globalUnavailable says the global ones could not be read.
+  loadShared?: () => Promise<{ workflows: SharedWorkflow[]; globalUnavailable?: boolean }>;
   // onApply hands back the settings and, with a ref, the shared Workflow.
   onApply: (settings: WorkflowSettings, shared?: SharedWorkflow) => void;
   onClose: () => void;
@@ -79,6 +80,7 @@ type Props = {
 type State = {
   stepsFrom: 'own' | 'shared';
   shared?: SharedWorkflow[];
+  globalUnavailable?: boolean;
 };
 
 // WorkflowSettingsPanel edits a workflow's own fields. Apply hands them back to
@@ -94,7 +96,9 @@ export class WorkflowSettingsPanel extends React.Component<Props, State> {
   componentDidMount() {
     this.field.setValues(this.props.settings);
     if (this.props.loadShared) {
-      this.props.loadShared().then((shared) => this.setState({ shared: shared || [] }));
+      this.props
+        .loadShared()
+        .then((res) => this.setState({ shared: res.workflows, globalUnavailable: res.globalUnavailable }));
     }
   }
 
@@ -139,7 +143,7 @@ export class WorkflowSettingsPanel extends React.Component<Props, State> {
   render() {
     const { init } = this.field;
     const { settings, withDefault, loadShared, onClose } = this.props;
-    const { stepsFrom, shared } = this.state;
+    const { stepsFrom, shared, globalUnavailable } = this.state;
     const chosen = this.chosen();
     return (
       <DrawerWithFooter
@@ -203,7 +207,9 @@ export class WorkflowSettingsPanel extends React.Component<Props, State> {
               label={<Translation>Shared workflow</Translation>}
               required
               help={
-                shared && shared.length === 0
+                globalUnavailable && !chosen
+                  ? i18n.t('Global shared workflows could not be loaded.').toString()
+                  : shared && shared.length === 0
                   ? i18n.t('There are no shared workflows for this environment, nor global ones.').toString()
                   : chosen
                   ? `${i18n.t(chosen.scope === 'global' ? 'Global' : 'This environment').toString()} · ${
