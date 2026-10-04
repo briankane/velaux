@@ -13,7 +13,7 @@ import { insertAfter } from './edit';
 import type { AddAt } from './graph';
 import { StudioGraph } from './graph';
 import StepForm from './step-form';
-import TypeSelect from './type-select';
+import AddStep from './add-step';
 
 import './index.less';
 
@@ -75,14 +75,16 @@ class WorkflowStudio extends React.Component<Props, State> {
   checkStepName = (name: string) =>
     this.state.steps.some((step) => step.name === name || step.subSteps?.some((sub) => sub.name === name));
 
-  addStep = (step: WorkflowStepBase) => {
+  // place puts step where adding says, as the workflow would hold it, and
+  // returns the steps with it and the step as placed.
+  place = (step: WorkflowStepBase): { steps: WorkflowStep[]; step: WorkflowStepBase } => {
     const { adding, steps } = this.state;
     const { mode = 'StepByStep', subMode = 'DAG' } = this.props;
     if (!adding) {
-      return;
+      return { steps, step };
     }
     const opts = { branch: !!adding.branch };
-    let added: WorkflowStepBase = step;
+    let placed: WorkflowStepBase = step;
     let next: WorkflowStep[];
     if (adding.group) {
       next = steps.map((s) => {
@@ -93,24 +95,24 @@ class WorkflowStudio extends React.Component<Props, State> {
           ...opts,
           mode: groupMode(s.mode, undefined, subMode),
         });
-        added = subSteps.find((sub) => sub.name === step.name) || step;
+        placed = subSteps.find((sub) => sub.name === step.name) || step;
         return { ...s, subSteps };
       });
     } else {
       next = insertAfter(steps, adding.after, step as WorkflowStep, { ...opts, mode });
-      added = next.find((s) => s.name === step.name) || step;
+      placed = next.find((s) => s.name === step.name) || step;
     }
-    // A new group goes straight on to its first step; a new step to its form.
+    return { steps: next, step: placed };
+  };
+
+  addStep = (step: WorkflowStepBase) => {
+    if (!this.state.adding) {
+      return;
+    }
+    const { steps } = this.place(step);
+    // A new group goes straight on to adding its first step.
     const group = step.type == 'step-group';
-    this.setState(
-      {
-        steps: next,
-        adding: group ? { kind: 'step', group: step.name } : undefined,
-        showStep: group ? undefined : added,
-        showGroup: adding.group,
-      },
-      this.onChange
-    );
+    this.setState({ steps, adding: group ? { kind: 'step', group: step.name } : undefined }, this.onChange);
   };
 
   onUpdateStep = (step: WorkflowStepBase) => {
@@ -191,14 +193,16 @@ class WorkflowStudio extends React.Component<Props, State> {
           </Draggable>
         </div>
         {adding && (
-          <TypeSelect
+          <AddStep
             key={JSON.stringify(adding)}
             checkStepName={this.checkStepName}
             onClose={() => {
               this.setState({ adding: undefined });
             }}
             addSub={!!adding.group}
-            addStep={this.addStep}
+            draft={this.place}
+            onAdd={this.addStep}
+            subMode={this.props.subMode}
             definitions={definitions?.filter((d) => (adding.kind === 'group') === (d.name === 'step-group'))}
           />
         )}

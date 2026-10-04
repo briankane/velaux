@@ -42,6 +42,12 @@ describe('insertAfter', () => {
     const out = insertAfter(steps, 'migrate', added, { mode: 'DAG', branch: false });
     expect(out.find((s) => s.name === 'reads')).to.deep.equal(steps[4]);
   });
+  it('keeps the dependsOn the new step was given, in place of the anchor', () => {
+    const given: S = { name: 'backup', type: 'suspend', dependsOn: ['deploy'] };
+    const out = insertAfter(steps, 'migrate', given, { mode: 'DAG', branch: false });
+    expect(out.find((s) => s.name === 'backup')?.dependsOn).to.deep.equal(['deploy']);
+    expect(out.find((s) => s.name === 'canary')?.dependsOn).to.deep.equal(['backup']);
+  });
   it('appends with no dependencies when there is no anchor', () => {
     const out = insertAfter(steps, undefined, added, { mode: 'DAG', branch: false });
     expect(out[out.length - 1]).to.deep.equal(added);

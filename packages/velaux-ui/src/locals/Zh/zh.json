@@ -1003,5 +1003,9 @@
   "Loop": "循环",
   "Add inline": "按顺序添加",
   "Add a branch": "添加分支",
-  "Branches need steps to run in parallel": "分支需要步骤并行执行"
+  "Branches need steps to run in parallel": "分支需要步骤并行执行",
+  "Add Step": "添加步骤",
+  "Add Group": "添加分组",
+  "Back": "上一步",
+  "Next": "下一步"
 }
