@@ -438,20 +438,14 @@
 }
 
 // The studio toolbar's Settings button: the label, then how the workflow runs.
-.studio-settings-button {
+.next-btn.studio-settings-button {
   display: inline-flex;
   flex: none;
   gap: 6px;
   align-items: center;
   white-space: nowrap;
-  .next-btn-helper {
-    display: inline-flex;
-    align-items: center;
-  }
-  > svg,
-  .next-btn-helper > svg {
-    display: block;
-    margin-right: 6px;
+  > svg {
+    flex: none;
   }
   .studio-settings-summary {
     margin-left: 4px;
