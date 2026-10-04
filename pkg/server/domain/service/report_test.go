@@ -30,6 +30,7 @@ import (
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/endpoints/request"
@@ -37,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	apicommon "github.com/oam-dev/kubevela/apis/core.oam.dev/common"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	common2 "github.com/oam-dev/kubevela/pkg/utils/common"
 
@@ -135,7 +137,8 @@ func newReportFixture(t *testing.T, serverFails bool) *reportFixture {
 	ctx := context.Background()
 	fx := &reportFixture{}
 	deploy := func(ns, name, app string) *appsv1.Deployment {
-		return &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: map[string]string{"app.oam.dev/name": app}}}
+		return &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: map[string]string{"app.oam.dev/name": app}},
+			Spec: appsv1.DeploymentSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "web", Image: "web:1"}}}}}}
 	}
 	objects := []client.Object{
 		deploy("shop-prod", "storefront-web", "storefront"), deploy("other-prod", "secret-api", "secret"),
@@ -298,72 +301,183 @@ func TestRunReport(t *testing.T) {
 func TestBuiltinReports(t *testing.T) {
 	fx := newReportFixture(t, false)
 	ctx := context.Background()
+	now := time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC)
+	fx.svc.now = func() time.Time { return now }
 	for name, src := range report.Builtins() {
 		require.NoError(t, fx.svc.ServerKubeClient.Create(ctx, reportConfigMap("vela-system", "builtin-"+name, src)))
 	}
+	labels := map[string]string{"app.oam.dev/name": "storefront"}
 	min, cpu, target := int32(1), int32(80), int32(60)
+	replicas := int32(2)
+	container := func(name, image, cpu, memory string) corev1.Container {
+		c := corev1.Container{Name: name, Image: image}
+		if cpu != "" {
+			c.Resources.Requests = corev1.ResourceList{corev1.ResourceCPU: resource.MustParse(cpu), corev1.ResourceMemory: resource.MustParse(memory)}
+			c.Resources.Limits = corev1.ResourceList{corev1.ResourceMemory: resource.MustParse(memory)}
+		}
+		return c
+	}
+	pod := func(ns, name, image string, restarts int32, waiting string) *corev1.Pod {
+		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels}, Spec: corev1.PodSpec{Containers: []corev1.Container{container("web", image, "", "")}}}
+		st := corev1.ContainerStatus{Name: "web", RestartCount: restarts}
+		if waiting != "" {
+			st.State.Waiting = &corev1.ContainerStateWaiting{Reason: waiting}
+			st.LastTerminationState.Terminated = &corev1.ContainerStateTerminated{Reason: "Error"}
+		}
+		p.Status.ContainerStatuses = []corev1.ContainerStatus{st}
+		return p
+	}
+	app := &v1beta1.Application{ObjectMeta: metav1.ObjectMeta{Name: "storefront", Namespace: "shop"}}
+	app.Status.Phase = "running"
+	app.Status.Services = []apicommon.ApplicationComponentStatus{{Name: "storefront-web", Healthy: false, Message: "0/2 ready",
+		Traits: []apicommon.ApplicationTraitStatus{{Type: "cpuscaler", Healthy: false, Message: "no metrics"}}}}
 	for _, obj := range []client.Object{
-		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "storefront", Namespace: "shop-prod"}, Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP}},
+		app,
+		&appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: "storefront-db", Namespace: "shop-prod", Labels: labels},
+			Spec: appsv1.StatefulSetSpec{Replicas: &replicas, Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{container("db", "postgres:16", "500m", "512Mi")}}}}},
+		pod("shop-prod", "storefront-web-1", "shop/storefront:1.2", 5, "CrashLoopBackOff"),
+		pod("shop-prod", "storefront-web-2", "shop/storefront:latest", 0, ""),
+		pod("other-prod", "secret-api-1", "secret/api:1", 9, "CrashLoopBackOff"),
+		&corev1.Event{ObjectMeta: metav1.ObjectMeta{Name: "e1", Namespace: "shop-prod"}, Type: "Warning", Reason: "BackOff", Count: 4,
+			InvolvedObject: corev1.ObjectReference{Kind: "Pod", Name: "storefront-web-1"}, LastTimestamp: metav1.NewTime(now)},
+		&corev1.Event{ObjectMeta: metav1.ObjectMeta{Name: "e2", Namespace: "shop-prod"}, Type: "Normal", Reason: "Pulled"},
+		&corev1.Event{ObjectMeta: metav1.ObjectMeta{Name: "e3", Namespace: "other-prod"}, Type: "Warning", Reason: "BackOff"},
+		&corev1.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "shop", Namespace: "shop-prod"}, Status: corev1.ResourceQuotaStatus{
+			Hard: corev1.ResourceList{"cpu": resource.MustParse("4"), "requests.memory": resource.MustParse("8Gi"), "pods": resource.MustParse("20")},
+			Used: corev1.ResourceList{"cpu": resource.MustParse("3"), "requests.memory": resource.MustParse("2Gi"), "pods": resource.MustParse("5")},
+		}},
 		&autoscalingv1.HorizontalPodAutoscaler{
-			ObjectMeta: metav1.ObjectMeta{Name: "storefront-web", Namespace: "shop-prod", Labels: map[string]string{"app.oam.dev/name": "storefront"}},
+			ObjectMeta: metav1.ObjectMeta{Name: "storefront-web", Namespace: "shop-prod", Labels: labels},
 			Spec:       autoscalingv1.HorizontalPodAutoscalerSpec{MinReplicas: &min, MaxReplicas: 5, TargetCPUUtilizationPercentage: &target},
-			Status:     autoscalingv1.HorizontalPodAutoscalerStatus{CurrentReplicas: 2, CurrentCPUUtilizationPercentage: &cpu},
+			Status:     autoscalingv1.HorizontalPodAutoscalerStatus{CurrentReplicas: 5, CurrentCPUUtilizationPercentage: &cpu},
 		},
 	} {
 		require.NoError(t, fx.svc.ServerKubeClient.Create(ctx, obj))
 	}
-	ended := time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC)
+	at := func(minutes int) time.Time { return now.Add(time.Duration(-minutes) * time.Minute) }
 	for _, e := range []datastore.Entity{
+		&model.Env{Name: "production", Project: "shop", Namespace: "shop"},
+		&model.Env{Name: "other", Project: "other", Namespace: "other"},
+		&model.EnvBinding{AppPrimaryKey: "storefront", Name: "production"},
 		&model.Workflow{AppPrimaryKey: "storefront", Name: "workflow-production", EnvName: "production"},
-		&model.WorkflowRecord{AppPrimaryKey: "storefront", WorkflowName: "workflow-production", Name: "run-1", Status: "failed", EndTime: ended,
-			Steps: []model.WorkflowStepStatus{{StepStatus: model.StepStatus{Name: "deploy", Phase: "succeeded"}}, {StepStatus: model.StepStatus{Name: "check", Phase: "failed", Message: "timed out"}}}},
-		&model.WorkflowRecord{AppPrimaryKey: "storefront", WorkflowName: "workflow-production", Name: "run-2", Status: "succeeded", EndTime: ended},
-		&model.WorkflowRecord{AppPrimaryKey: "secret", WorkflowName: "workflow-production", Name: "run-3", Status: "failed", EndTime: ended},
+		&model.ApplicationRevision{AppPrimaryKey: "storefront", Version: "v1", EnvName: "production", DeployUser: "alice", Note: "First", TriggerType: "web"},
+		&model.ApplicationRevision{AppPrimaryKey: "storefront", Version: "v2", EnvName: "production", DeployUser: "bob", TriggerType: "api"},
+		&model.WorkflowRecord{AppPrimaryKey: "storefront", WorkflowName: "workflow-production", Name: "run-1", Status: "failed", RevisionPrimaryKey: "v1",
+			StartTime: at(300), EndTime: at(295),
+			Steps: []model.WorkflowStepStatus{{StepStatus: model.StepStatus{Name: "check", Phase: "failed", Message: "timed out"}}}},
+		&model.WorkflowRecord{AppPrimaryKey: "storefront", WorkflowName: "workflow-production", Name: "run-2", Status: "succeeded", RevisionPrimaryKey: "v1",
+			StartTime: at(200), EndTime: at(198)},
+		&model.WorkflowRecord{AppPrimaryKey: "storefront", WorkflowName: "workflow-production", Name: "run-3", Status: "suspending", RevisionPrimaryKey: "v2",
+			StartTime: at(30), Steps: []model.WorkflowStepStatus{
+				{StepStatus: model.StepStatus{Name: "deploy", Phase: "succeeded", FirstExecuteTime: at(30), LastExecuteTime: at(29)}},
+				{StepStatus: model.StepStatus{Name: "approve", Alias: "Approve release", Phase: "suspending", FirstExecuteTime: at(20)}},
+			}},
+		&model.WorkflowRecord{AppPrimaryKey: "secret", WorkflowName: "workflow-production", Name: "run-9", Status: "failed", StartTime: at(10), EndTime: at(9)},
 	} {
 		require.NoError(t, fx.svc.Store.Add(ctx, e))
 	}
 
 	list, err := fx.svc.ListReports(ctx, "shop")
 	require.NoError(t, err)
+	builtins := 0
 	for _, r := range list.Reports {
 		if strings.HasPrefix(r.ID, "builtin-") {
+			builtins++
 			assert.Empty(t, r.Error, r.ID)
 		}
 	}
+	assert.Equal(t, 12, builtins)
 
-	t.Run("unpinned", func(t *testing.T) {
-		res := fx.run(t, "shop", "builtin-unpinned", nil)
-		assert.Equal(t, []interface{}{"webapp"}, column(res, "type"))
-		assert.Equal(t, []interface{}{"v1"}, column(res, "latest"))
-		assert.Equal(t, "pie", res.Chart.Type)
+	stat := func(res *apisv1.ReportResult, label string) interface{} {
+		for _, s := range res.Stats {
+			if s.Label == label {
+				return s.Value
+			}
+		}
+		return "no stat " + label
+	}
+	t.Run("unhealthy applications", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-unhealthy-applications", nil)
+		assert.Equal(t, []interface{}{"storefront-web", "storefront-web / cpuscaler"}, column(res, "name"))
+		assert.Equal(t, []interface{}{"0/2 ready", "no metrics"}, column(res, "message"))
+		assert.Equal(t, int64(1), stat(res, "Unhealthy"))
 	})
-	t.Run("pruned", func(t *testing.T) {
-		assert.Equal(t, []interface{}{"cpuscaler@v9"}, column(fx.run(t, "shop", "builtin-pruned", nil), "type"))
+	t.Run("delivery", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-delivery", nil)
+		assert.Equal(t, []interface{}{"run-3", "run-2", "run-1"}, column(res, "run"), "only shop's, latest first")
+		assert.Equal(t, []interface{}{"", "", "check"}, column(res, "step"))
+		assert.Equal(t, 50.0, number(stat(res, "Success rate")))
+		assert.Equal(t, 120.0, number(stat(res, "Average deploy")))
+		assert.Equal(t, []interface{}{"run-1"}, column(fx.run(t, "shop", "builtin-delivery", map[string]interface{}{"failuresOnly": true}), "run"))
 	})
-	t.Run("failed runs", func(t *testing.T) {
-		res := fx.run(t, "shop", "builtin-failed-runs", nil)
-		assert.Equal(t, []interface{}{"run-1"}, column(res, "run"), "only shop's, only failed")
-		assert.Equal(t, []interface{}{"check"}, column(res, "step"))
-		assert.Equal(t, []interface{}{"timed out"}, column(res, "message"))
-		assert.Equal(t, "/applications/storefront/envbinding/production/workflow/records/run-1", res.Rows[0].Links["run"])
-		assert.Equal(t, []apisv1.ReportPoint{{Label: "2026-10-02", Values: map[string]float64{"failed": 1}}}, res.Chart.Points)
+	t.Run("waiting", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-waiting", nil)
+		assert.Equal(t, []interface{}{"Approve release"}, column(res, "step"))
+		assert.Equal(t, []interface{}{int64(1200)}, column(res, "waited"))
+		assert.Equal(t, []interface{}{"bob"}, column(res, "user"))
 	})
-	t.Run("inventory", func(t *testing.T) {
-		res := fx.run(t, "shop", "builtin-inventory", nil)
-		assert.ElementsMatch(t, []interface{}{"storefront-web", "storefront", "storefront-web"}, column(res, "name"), "only shop's namespaces")
-		assert.ElementsMatch(t, []interface{}{"0/0 ready", "ClusterIP", "2 replicas"}, column(res, "status"))
+	t.Run("recent changes", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-recent-changes", map[string]interface{}{"count": 2})
+		assert.Equal(t, []interface{}{"v2", "v1"}, column(res, "revision"))
+		assert.Equal(t, []interface{}{"bob", "alice"}, column(res, "user"))
 	})
-	t.Run("expressions", func(t *testing.T) {
-		res := fx.run(t, "shop", "builtin-expressions", nil)
-		assert.Equal(t, []interface{}{"replicas"}, column(res, "property"))
-		assert.Equal(t, []interface{}{"source"}, column(res, "reads"))
+	t.Run("environment drift", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-environment-drift", map[string]interface{}{"all": true})
+		assert.Equal(t, []interface{}{"production"}, column(res, "env"))
+		assert.Len(t, column(res, "state"), 1)
 	})
-	t.Run("autoscaling", func(t *testing.T) {
-		res := fx.run(t, "shop", "builtin-autoscaling", nil)
+	t.Run("autoscaler saturation", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-autoscaler-saturation", nil)
+		assert.Equal(t, []interface{}{"At maximum"}, column(res, "state"))
 		assert.Equal(t, []interface{}{"1-5"}, column(res, "bounds"))
-		assert.Equal(t, []interface{}{int64(80)}, column(res, "cpu"))
-		assert.Equal(t, []apisv1.ReportPoint{{Label: "storefront-web", Values: map[string]float64{"replicas": 2}}}, res.Chart.Points)
 	})
+	t.Run("restarting pods", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-restarting-pods", nil)
+		assert.Equal(t, []interface{}{"storefront-web-1"}, column(res, "pod"), "only shop's, only those restarting")
+		assert.Equal(t, []interface{}{"CrashLoopBackOff"}, column(res, "reason"))
+		assert.Equal(t, []interface{}{"Error"}, column(res, "lastExit"))
+	})
+	t.Run("type versions", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-type-versions", nil)
+		assert.Equal(t, []interface{}{"cpuscaler"}, column(res, "type"))
+		assert.Equal(t, []interface{}{"Pinned to a missing version"}, column(res, "state"))
+		assert.Len(t, fx.run(t, "shop", "builtin-type-versions", map[string]interface{}{"all": true}).Rows, 2)
+	})
+	t.Run("requests and limits", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-requests-and-limits", nil)
+		assert.Equal(t, []interface{}{"storefront-db", "storefront-web"}, column(res, "workload"))
+		assert.Equal(t, 1.0, number(res.Rows[0].Values["cpu"]), "500m twice")
+		assert.Equal(t, 1024.0, number(res.Rows[0].Values["memory"]), "512Mi twice")
+		assert.Equal(t, "", res.Rows[0].Values["missing"])
+		assert.Equal(t, int64(1), stat(res, "Workloads missing requests or limits"))
+	})
+	t.Run("running images", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-running-images", nil)
+		assert.Equal(t, []interface{}{"1.2", "latest"}, column(res, "tag"), "only shop's")
+		assert.Equal(t, []interface{}{"Several tags in use", "Uses latest"}, column(res, "flag"))
+	})
+	t.Run("warning events", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-warning-events", nil)
+		assert.Equal(t, []interface{}{"Pod/storefront-web-1"}, column(res, "object"), "only shop's warnings")
+		assert.Equal(t, int64(4), stat(res, "Warnings"))
+	})
+	t.Run("quota usage", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-quota-usage", nil)
+		assert.Equal(t, []interface{}{"cpu", "pods", "requests.memory"}, column(res, "resource"))
+		assert.Equal(t, []float64{75, 25, 25}, []float64{number(res.Rows[0].Values["percent"]), number(res.Rows[1].Values["percent"]), number(res.Rows[2].Values["percent"])})
+	})
+}
+
+func number(v interface{}) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case int64:
+		return float64(n)
+	case int:
+		return float64(n)
+	}
+	return -1
 }
 
 func TestReportData(t *testing.T) {

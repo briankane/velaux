@@ -91,3 +91,27 @@ func TestInstallBuiltinReports(t *testing.T) {
 	c, _ = get("c")
 	assert.Equal(t, "an admin's", c.Data[reportTemplateKey], "an edited built-in is the admin's")
 }
+
+func TestRetireBuiltinReports(t *testing.T) {
+	ctx := context.Background()
+	cli := fake.NewClientBuilder().WithScheme(common2.Scheme).Build()
+	store, err := kubeapi.New(ctx, datastore.Config{Database: "kubevela"}, cli)
+	require.NoError(t, err)
+	svc := &reportServiceImpl{ServerKubeClient: cli, Store: store}
+	exists := func(name string) bool {
+		return cli.Get(ctx, k8stypes.NamespacedName{Namespace: "vela-system", Name: name}, &corev1.ConfigMap{}) == nil
+	}
+
+	require.NoError(t, svc.installBuiltins(ctx, map[string]string{"kept": "v1", "old": "v1", "old-edited": "v1"}))
+	edited := &corev1.ConfigMap{}
+	require.NoError(t, cli.Get(ctx, k8stypes.NamespacedName{Namespace: "vela-system", Name: "old-edited"}, edited))
+	edited.Data[reportTemplateKey] = "an admin's"
+	require.NoError(t, cli.Update(ctx, edited))
+
+	require.NoError(t, svc.installBuiltins(ctx, map[string]string{"kept": "v1"}))
+	assert.True(t, exists("kept"))
+	assert.False(t, exists("old"), "a retired built-in, unedited, is removed")
+	assert.True(t, exists("old-edited"), "a retired built-in an admin edited is theirs")
+	err = store.Get(ctx, &model.BuiltinReport{Name: "old-edited"})
+	assert.ErrorIs(t, err, datastore.ErrRecordNotExist, "and VelaUX no longer tracks it")
+}

@@ -284,3 +284,29 @@ template: {
 	require.NoError(t, err)
 	assert.Equal(t, []apisv1.ReportStat{{Label: "Edited since deployed", Value: int64(1), Tone: "progressing"}}, res.Stats)
 }
+
+// objSource lists the given objects for any kind.
+type objSource struct {
+	fakeSource
+	objs []Object
+}
+
+func (o *objSource) List(context.Context, string, string) ([]Object, error) { return o.objs, nil }
+
+func TestListDropsNulls(t *testing.T) {
+	src := Builtins()["requests-and-limits"]
+	for name, spec := range map[string]map[string]interface{}{
+		"null":    {"template": map[string]interface{}{"spec": map[string]interface{}{"containers": nil}}},
+		"missing": {"template": map[string]interface{}{}},
+		"a list": {"replicas": 2, "template": map[string]interface{}{"spec": map[string]interface{}{"containers": []interface{}{
+			map[string]interface{}{"name": "a", "resources": map[string]interface{}{"requests": map[string]interface{}{"cpu": "500m", "memory": "1Gi"}, "limits": nil}},
+		}}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			obj := Object{Cluster: "local", Namespace: "ns", Object: map[string]interface{}{"metadata": map[string]interface{}{"name": "w"}, "spec": spec}}
+			res, err := Run(context.Background(), src, &objSource{objs: []Object{obj}}, nil)
+			require.NoError(t, err, "a null field reads as absent")
+			require.Len(t, res.Rows, 2, "the one object, listed as a Deployment and as a StatefulSet")
+		})
+	}
+}

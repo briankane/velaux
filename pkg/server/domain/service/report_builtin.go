@@ -57,8 +57,9 @@ func (r *reportServiceImpl) Init(ctx context.Context) error {
 }
 
 // installBuiltins installs each built-in as decideBuiltin says, recording what
-// it installed. A built-in it cannot install is logged, not fatal: reports are
-// not what VelaUX needs to start.
+// it installed, and retires those it installed that it no longer ships. A
+// built-in it cannot install is logged, not fatal: reports are not what VelaUX
+// needs to start.
 func (r *reportServiceImpl) installBuiltins(ctx context.Context, builtins map[string]string) error {
 	names := make([]string, 0, len(builtins))
 	for name := range builtins {
@@ -70,7 +71,40 @@ func (r *reportServiceImpl) installBuiltins(ctx context.Context, builtins map[st
 			klog.Warningf("built-in report %s: %v", name, err)
 		}
 	}
+	records, err := r.Store.List(ctx, &model.BuiltinReport{}, nil)
+	if err != nil {
+		klog.Warningf("built-in reports: %v", err)
+		return nil
+	}
+	for _, e := range records {
+		if record, ok := e.(*model.BuiltinReport); ok {
+			if _, shipped := builtins[record.Name]; !shipped {
+				if err := r.retireBuiltin(ctx, record); err != nil {
+					klog.Warningf("retired built-in report %s: %v", record.Name, err)
+				}
+			}
+		}
+	}
 	return nil
+}
+
+// retireBuiltin removes a built-in VelaUX no longer ships, unless an admin
+// edited it, which makes it theirs; either way VelaUX stops tracking it.
+func (r *reportServiceImpl) retireBuiltin(ctx context.Context, record *model.BuiltinReport) error {
+	cm := &corev1.ConfigMap{}
+	err := r.ServerKubeClient.Get(ctx, k8stypes.NamespacedName{Namespace: types.DefaultKubeVelaNS, Name: record.Name}, cm)
+	switch {
+	case err == nil:
+		installedAs := cm.Annotations[builtinHashAnnotation]
+		if installedAs == record.Hash && hashOf(cm.Data[reportTemplateKey]) == installedAs {
+			if err := r.ServerKubeClient.Delete(ctx, cm); err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
+		}
+	case !apierrors.IsNotFound(err):
+		return err
+	}
+	return r.Store.Delete(ctx, record)
 }
 
 func (r *reportServiceImpl) installBuiltin(ctx context.Context, name, src string) error {

@@ -67,7 +67,31 @@ var compiler = cuex.NewCompilerWithInternalPackages(
 		"environments": read(func(s Source, ctx context.Context, _ none) ([]Environment, error) { return s.Environments(ctx) }),
 		"definitions":  read(func(s Source, ctx context.Context, _ none) ([]Definition, error) { return s.Definitions(ctx) }),
 		"list": read(func(s Source, ctx context.Context, p listParams) ([]Object, error) {
-			return s.List(ctx, p.APIVersion, p.Kind)
+			objects, err := s.List(ctx, p.APIVersion, p.Kind)
+			for i := range objects {
+				objects[i].Object = withoutNulls(objects[i].Object)
+			}
+			return objects, err
 		}),
 	})),
 )
+
+// withoutNulls drops null fields, at any depth. A null reaches CUE as top, not
+// null, where neither != _|_ nor a comparison can test it; absent, it can be.
+func withoutNulls(m map[string]interface{}) map[string]interface{} {
+	for k, v := range m {
+		switch val := v.(type) {
+		case nil:
+			delete(m, k)
+		case map[string]interface{}:
+			m[k] = withoutNulls(val)
+		case []interface{}:
+			for i, item := range val {
+				if sub, ok := item.(map[string]interface{}); ok {
+					val[i] = withoutNulls(sub)
+				}
+			}
+		}
+	}
+	return m
+}
