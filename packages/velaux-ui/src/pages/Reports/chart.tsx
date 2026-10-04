@@ -39,6 +39,7 @@ export const ReportChartView = (props: { chart: ReportChart }) => {
         <Pie
           data={slices}
           dataKey={series}
+          animationBegin={0}
           animationDuration={500}
           nameKey="label"
           innerRadius="55%"
@@ -69,6 +70,7 @@ export const ReportChartView = (props: { chart: ReportChart }) => {
             stroke={colour(i)}
             strokeWidth={2}
             dot={{ r: 3 }}
+            animationBegin={0}
             animationDuration={500}
           />
         ))}
@@ -97,6 +99,7 @@ export const ReportChartView = (props: { chart: ReportChart }) => {
         {legend && <Legend iconType="circle" />}
         {chart.series.map((s, i) => (
           <Bar
+            animationBegin={0}
             animationDuration={500}
             key={s}
             dataKey={s}
