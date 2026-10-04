@@ -1345,25 +1345,54 @@ type WorkflowBase struct {
 	SharedSubMode string `json:"sharedSubMode,omitempty"`
 }
 
-// SharedWorkflow is a Workflow resource a workflow can reference: local, in
-// its environment's namespace, or global, in the system namespace. A global
-// one is hidden where a local one has its name, as KubeVela runs the local one.
+// SharedWorkflow is a Workflow resource a workflow can reference: the
+// project's, in its namespace, or global, in the system namespace. A global
+// one is hidden where the project has one of its name, as KubeVela runs that.
 type SharedWorkflow struct {
-	Name      string         `json:"name"`
-	Namespace string         `json:"namespace"`
-	Scope     string         `json:"scope"`
-	Hidden    bool           `json:"hidden,omitempty"`
-	Mode      string         `json:"mode,omitempty"`
-	SubMode   string         `json:"subMode,omitempty"`
-	Steps     []WorkflowStep `json:"steps"`
+	Name        string         `json:"name"`
+	Namespace   string         `json:"namespace"`
+	Scope       string         `json:"scope"`
+	Alias       string         `json:"alias,omitempty"`
+	Description string         `json:"description,omitempty"`
+	Hidden      bool           `json:"hidden,omitempty"`
+	Mode        string         `json:"mode,omitempty"`
+	SubMode     string         `json:"subMode,omitempty"`
+	Steps       []WorkflowStep `json:"steps"`
+	// UsedBy lists the project's workflows that run this one; UsedElsewhere
+	// counts other projects' workflows, which are not named.
+	UsedBy        []SharedWorkflowUse `json:"usedBy,omitempty"`
+	UsedElsewhere int                 `json:"usedElsewhere,omitempty"`
+}
+
+// SharedWorkflowUse is an application workflow that references a shared one.
+type SharedWorkflowUse struct {
+	AppName       string `json:"appName"`
+	AppAlias      string `json:"appAlias,omitempty"`
+	WorkflowName  string `json:"workflowName"`
+	WorkflowAlias string `json:"workflowAlias,omitempty"`
+	EnvName       string `json:"envName"`
 }
 
 // ListSharedWorkflowsResponse lists the shared Workflows a workflow can reference.
 type ListSharedWorkflowsResponse struct {
 	Workflows []SharedWorkflow `json:"workflows"`
 	// GlobalUnavailable says the global shared workflows could not be read, so
-	// only the environment's are listed.
+	// only the project's are listed.
 	GlobalUnavailable bool `json:"globalUnavailable,omitempty"`
+	// ProjectUnavailable says the environment's Applications run outside the
+	// project's namespace, so KubeVela cannot find the project's workflows.
+	ProjectUnavailable bool `json:"projectUnavailable,omitempty"`
+}
+
+// SharedWorkflowRequest creates or updates a shared Workflow. Name is only read
+// on create.
+type SharedWorkflowRequest struct {
+	Name        string         `json:"name" validate:"checkname"`
+	Alias       string         `json:"alias" validate:"checkalias" optional:"true"`
+	Description string         `json:"description" optional:"true"`
+	Mode        string         `json:"mode" validate:"omitempty,oneof=DAG StepByStep"`
+	SubMode     string         `json:"subMode" validate:"omitempty,oneof=DAG StepByStep"`
+	Steps       []WorkflowStep `json:"steps"`
 }
 
 // ListWorkflowRecordsResponse list workflow execution record

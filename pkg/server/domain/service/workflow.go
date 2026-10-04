@@ -50,8 +50,6 @@ import (
 	"github.com/oam-dev/kubevela/pkg/utils/apply"
 	"github.com/oam-dev/kubevela/pkg/workflow/operation"
 
-	velatypes "github.com/oam-dev/kubevela/apis/types"
-
 	"github.com/kubevela/velaux/pkg/server/domain/model"
 	"github.com/kubevela/velaux/pkg/server/domain/repository"
 	"github.com/kubevela/velaux/pkg/server/event/sync/convert"
@@ -298,110 +296,38 @@ func (w *workflowServiceImpl) sharedWorkflow(ctx context.Context, envName, ref s
 	if err != nil {
 		return nil, "", err
 	}
-	return findSharedWorkflow(ctx, w.KubeClient, w.ServerKubeClient, env.Namespace, ref)
-}
-
-// findSharedWorkflow finds the Workflow named ref as KubeVela finds it: in
-// namespace, where the Applications run, read as the user; else in the system
-// namespace, read as VelaUX, since a global shared workflow is for every
-// project whether or not its users can read the system namespace.
-func findSharedWorkflow(ctx context.Context, user, server client.Reader, namespace, ref string) (*wfTypesv1alpha1.Workflow, string, error) {
-	shared := &wfTypesv1alpha1.Workflow{}
-	err := user.Get(ctx, types.NamespacedName{Namespace: namespace, Name: ref}, shared)
-	if err == nil {
-		return shared, sharedScopeLocal, nil
-	}
-	if !apierrors.IsNotFound(err) {
+	projectNs, err := projectNamespace(ctx, w.Store, env.Project)
+	if err != nil {
 		return nil, "", err
 	}
-	err = server.Get(ctx, types.NamespacedName{Namespace: velatypes.DefaultKubeVelaNS, Name: ref}, shared)
-	if err == nil {
-		return shared, sharedScopeGlobal, nil
-	}
-	if apierrors.IsNotFound(err) {
-		return nil, "", bcode.ErrSharedWorkflowNotFound
-	}
-	return nil, "", err
+	return findSharedWorkflow(ctx, w.KubeClient, w.ServerKubeClient, env.Namespace, projectNs, ref)
 }
 
-const (
-	sharedScopeLocal  = "local"
-	sharedScopeGlobal = "global"
-)
-
 // ListSharedWorkflows lists the shared Workflows a workflow of the environment
-// named envName can reference.
+// named envName can reference: the project's and the global ones. Where the
+// environment's Applications run outside the project's namespace, KubeVela
+// cannot find the project's, so they are listed as unavailable and hide no
+// global one.
 func (w *workflowServiceImpl) ListSharedWorkflows(ctx context.Context, envName string) (*apisv1.ListSharedWorkflowsResponse, error) {
 	env, err := repository.GetEnv(ctx, w.Store, envName)
 	if err != nil {
 		return nil, err
 	}
-	shared, unavailable, err := listSharedWorkflows(ctx, w.KubeClient, w.ServerKubeClient, env.Namespace)
+	projectNs, err := projectNamespace(ctx, w.Store, env.Project)
 	if err != nil {
 		return nil, err
 	}
-	return &apisv1.ListSharedWorkflowsResponse{Workflows: shared, GlobalUnavailable: unavailable}, nil
-}
-
-// listSharedWorkflows lists the Workflows in namespace, read as the user, then
-// the global ones in the system namespace, read as VelaUX. Global ones that
-// cannot be read leave the list with namespace's alone, saying so.
-func listSharedWorkflows(ctx context.Context, user, server client.Reader, namespace string) ([]apisv1.SharedWorkflow, bool, error) {
-	local := &wfTypesv1alpha1.WorkflowList{}
-	if err := user.List(ctx, local, client.InNamespace(namespace)); err != nil {
-		return nil, false, err
+	shared, unavailable, err := listSharedWorkflows(ctx, w.KubeClient, w.ServerKubeClient, projectNs)
+	if err != nil {
+		return nil, err
 	}
-	global := &wfTypesv1alpha1.WorkflowList{}
-	unavailable := false
-	if namespace != velatypes.DefaultKubeVelaNS {
-		if err := server.List(ctx, global, client.InNamespace(velatypes.DefaultKubeVelaNS)); err != nil {
-			klog.Warningf("global shared workflows could not be listed: %v", err)
-			global.Items, unavailable = nil, true
+	outside := env.Namespace != projectNs
+	if outside {
+		for i := range shared {
+			shared[i].Hidden = false
 		}
 	}
-	shared, err := sharedWorkflowsOf(local.Items, global.Items)
-	return shared, unavailable, err
-}
-
-// sharedWorkflowsOf lists local Workflows, then global ones, a global one
-// hidden where a local one has its name.
-func sharedWorkflowsOf(local, global []wfTypesv1alpha1.Workflow) ([]apisv1.SharedWorkflow, error) {
-	shared := []apisv1.SharedWorkflow{}
-	localNames := map[string]bool{}
-	add := func(item wfTypesv1alpha1.Workflow, scope string) error {
-		steps, err := convert.FromCRWorkflowSteps(item.Steps)
-		if err != nil {
-			return err
-		}
-		s := apisv1.SharedWorkflow{
-			Name:      item.Name,
-			Namespace: item.Namespace,
-			Scope:     scope,
-			Hidden:    scope == sharedScopeGlobal && localNames[item.Name],
-			Steps:     []apisv1.WorkflowStep{},
-		}
-		for _, step := range steps {
-			s.Steps = append(s.Steps, assembler.ConvertFromWorkflowStepModel(step))
-		}
-		if item.Mode != nil {
-			s.Mode = string(item.Mode.Steps)
-			s.SubMode = string(item.Mode.SubSteps)
-		}
-		shared = append(shared, s)
-		return nil
-	}
-	for _, item := range local {
-		localNames[item.Name] = true
-		if err := add(item, sharedScopeLocal); err != nil {
-			return nil, err
-		}
-	}
-	for _, item := range global {
-		if err := add(item, sharedScopeGlobal); err != nil {
-			return nil, err
-		}
-	}
-	return shared, nil
+	return &apisv1.ListSharedWorkflowsResponse{Workflows: shared, GlobalUnavailable: unavailable, ProjectUnavailable: outside}, nil
 }
 
 // GetWorkflow get workflow model
