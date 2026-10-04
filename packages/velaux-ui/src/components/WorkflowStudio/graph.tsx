@@ -345,7 +345,8 @@ export const StudioGraph = (props: StudioGraphProps) => {
                   {isGroup ? (
                     <>
                       <span className="step-type">
-                        {step.subSteps?.length || 0} <Translation>steps</Translation>
+                        {step.subSteps?.length || 0}{' '}
+                        <Translation>{step.subSteps?.length === 1 ? 'step' : 'steps'}</Translation>
                       </span>
                       <span className="studio-group-mode" onClick={(event) => event.stopPropagation()}>
                         <Select
