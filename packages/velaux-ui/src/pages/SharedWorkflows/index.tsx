@@ -131,7 +131,7 @@ const SharedWorkflows = (props: Props) => {
     <div className="shared-workflows">
       <ListTitle
         title="Shared Workflows"
-        subTitle="Workflows the project's applications can run in place of their own steps: the project's and the global ones"
+        subTitle="Workflows the project's applications can run in place of their own steps"
         extButtons={[
           <Button
             key="new"
