@@ -1726,13 +1726,17 @@ func (c *applicationServiceImpl) DiffersFromDeployed(ctx context.Context, appMod
 	return specDiffers(deployed, current)
 }
 
-// specDiffers compares two Applications' specs as CompareApp normalises them,
-// as JSON, so neither key order nor the spacing of stored properties counts.
+// specDiffers compares two Applications as ignoreSomeParams normalises them,
+// their specs and the annotations that change the render, as JSON, so neither
+// key order nor the spacing of stored properties counts.
 func specDiffers(deployed, current *v1beta1.Application) (bool, error) {
 	normal := func(app *v1beta1.Application) (interface{}, error) {
 		app = app.DeepCopy()
 		ignoreSomeParams(app)
-		raw, err := json.Marshal(app.Spec)
+		raw, err := json.Marshal(struct {
+			Annotations map[string]string       `json:"annotations,omitempty"`
+			Spec        v1beta1.ApplicationSpec `json:"spec"`
+		}{app.Annotations, app.Spec})
 		if err != nil {
 			return nil, err
 		}
@@ -1834,26 +1838,23 @@ func (c *applicationServiceImpl) CompareApp(ctx context.Context, appModel *model
 		return compareResponse, nil
 	}
 
-	args := commonutil.Args{
-		Schema: commonutil.Scheme,
-	}
-	_ = args.SetConfig(c.KubeConfig)
-	args.SetClient(c.KubeClient)
-	diffResult, buff, err := compare(ctx, args, compareTarget, base)
-	return compareOutcome(compareResponse, diffResult, buff, err), nil
+	// The Applications' specs are compared, not their rendered resources: a
+	// render outside the controller has no placement, so a source keyed on where
+	// a component lands would read the wrong namespace.
+	differs, err := specDiffers(base, compareTarget)
+	return compareOutcome(compareResponse, differs, err), nil
 }
 
-// compareOutcome is a comparison's answer: whether the two differ and how, or,
-// where the comparison failed, why. Either way both Applications stay in it.
-func compareOutcome(resp *apisv1.AppCompareResponse, diff *dryrun.DiffEntry, report bytes.Buffer, err error) *apisv1.AppCompareResponse {
+// compareOutcome is a comparison's answer: whether the two differ, or, where the
+// comparison failed, why. Either way both Applications stay in it.
+func compareOutcome(resp *apisv1.AppCompareResponse, differs bool, err error) *apisv1.AppCompareResponse {
 	if err != nil {
 		klog.Errorf("fail to compare the application: %s", err.Error())
 		resp.IsDiff = false
 		resp.Error = err.Error()
 		return resp
 	}
-	resp.IsDiff = diff.DiffType != ""
-	resp.DiffReport = report.String()
+	resp.IsDiff = differs
 	return resp
 }
 
@@ -2148,31 +2149,6 @@ func ignoreSomeParams(o *v1beta1.Application) {
 		return defaultApplication.Spec.Components[i].Name < defaultApplication.Spec.Components[j].Name
 	})
 	*o = defaultApplication
-}
-
-func compare(ctx context.Context, c commonutil.Args, targetApp *v1beta1.Application, baseApp *v1beta1.Application) (*dryrun.DiffEntry, bytes.Buffer, error) {
-	var buff = bytes.Buffer{}
-	_, err := c.GetClient()
-	if err != nil {
-		return nil, buff, err
-	}
-	config, err := c.GetConfig()
-	if err != nil {
-		return nil, buff, err
-	}
-	var objs []*unstructured.Unstructured
-	client, err := c.GetClient()
-	if err != nil {
-		return nil, buff, err
-	}
-	liveDiffOption := dryrun.NewLiveDiffOption(client, config, objs)
-	diffResult, err := liveDiffOption.DiffApps(ctx, baseApp, targetApp)
-	if err != nil {
-		return nil, buff, err
-	}
-	reportDiffOpt := dryrun.NewReportDiffOption(10, &buff)
-	reportDiffOpt.PrintDiffReport(diffResult)
-	return diffResult, buff, nil
 }
 
 // NewTestApplicationService create the application service instance for testing

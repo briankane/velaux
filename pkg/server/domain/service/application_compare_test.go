@@ -17,7 +17,6 @@ limitations under the License.
 package service
 
 import (
-	"bytes"
 	"errors"
 	"testing"
 
@@ -25,7 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
-	"github.com/oam-dev/kubevela/pkg/appfile/dryrun"
 	"github.com/oam-dev/kubevela/pkg/oam"
 
 	apisv1 "github.com/kubevela/velaux/pkg/server/interfaces/api/dto/v1"
@@ -60,16 +58,15 @@ func TestCompareOutcome(t *testing.T) {
 		return &apisv1.AppCompareResponse{IsDiff: true, BaseAppYAML: "a", TargetAppYAML: "b"}
 	}
 	t.Run("a comparison that fails says so, not that nothing differs", func(t *testing.T) {
-		out := compareOutcome(resp(), nil, bytes.Buffer{}, errors.New("cannot dry-run"))
+		out := compareOutcome(resp(), false, errors.New("cannot render"))
 		assert.False(t, out.IsDiff)
-		assert.Contains(t, out.Error, "cannot dry-run")
+		assert.Contains(t, out.Error, "cannot render")
 		assert.Equal(t, "a", out.BaseAppYAML, "both Applications are still there to show")
 	})
-	t.Run("a comparison reports its difference", func(t *testing.T) {
-		out := compareOutcome(resp(), &dryrun.DiffEntry{DiffType: "modify"}, *bytes.NewBufferString("report"), nil)
-		assert.True(t, out.IsDiff)
-		assert.Equal(t, "report", out.DiffReport)
+	t.Run("a comparison says whether the two differ", func(t *testing.T) {
+		assert.True(t, compareOutcome(resp(), true, nil).IsDiff)
+		out := compareOutcome(resp(), false, nil)
+		assert.False(t, out.IsDiff)
 		assert.Empty(t, out.Error)
-		assert.False(t, compareOutcome(resp(), &dryrun.DiffEntry{}, bytes.Buffer{}, nil).IsDiff)
 	})
 }

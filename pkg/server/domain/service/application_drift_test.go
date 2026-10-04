@@ -26,6 +26,7 @@ import (
 
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/common"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
+	"github.com/oam-dev/kubevela/pkg/oam"
 )
 
 func TestSpecDiffers(t *testing.T) {
@@ -46,6 +47,11 @@ func TestSpecDiffers(t *testing.T) {
 		"metadata alone differs":          {app(`{}`, "api"), func() *v1beta1.Application { a := app(`{}`, "api"); a.Labels = nil; return a }(), false},
 		"a property changed":              {app(`{"image":"nginx:1.27"}`, "api"), app(`{"image":"nginx:1.27.1"}`, "api"), true},
 		"a component added":               {app(`{}`, "api"), app(`{}`, "api", "db"), true},
+		"an annotation that changes the render": {app(`{}`, "api"), func() *v1beta1.Application {
+			a := app(`{}`, "api")
+			a.Annotations = map[string]string{oam.AnnotationCelExpressions: "true"}
+			return a
+		}(), true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			got, err := specDiffers(c.deployed, c.current)
