@@ -14,6 +14,7 @@ import (
 template: {
 	parameter: {
 		// +usage=Only failed and terminated runs in the table
+		// +ui:label=Failures only
 		failuresOnly: *false | bool
 	}
 	runs: report.#Runs

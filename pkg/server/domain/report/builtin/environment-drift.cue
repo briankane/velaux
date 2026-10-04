@@ -11,6 +11,7 @@ import (
 template: {
 	parameter: {
 		// +usage=Show environments that are up to date as well
+		// +ui:label=Include those up to date
 		all: *false | bool
 	}
 	environments: report.#Environments

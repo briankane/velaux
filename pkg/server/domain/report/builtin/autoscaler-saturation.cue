@@ -9,6 +9,7 @@ import "vela/report"
 template: {
 	parameter: {
 		// +usage=Show every autoscaler, not only the saturated ones
+		// +ui:label=Include those with headroom
 		all: *false | bool
 	}
 	autoscalers: report.#List & {$params: {apiVersion: "autoscaling/v1", kind: "HorizontalPodAutoscaler"}}

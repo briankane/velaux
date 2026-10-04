@@ -8,6 +8,7 @@ import (
 template: {
 	parameter: {
 		// +usage=How many of the latest deploys to show
+		// +ui:label=How many
 		count: *50 | int & >=1 & <=500
 	}
 	runs: report.#Runs

@@ -55,7 +55,8 @@ const Cell = (props: { value: any; format?: ReportFormat; link?: string }) => {
   return props.link ? <Link to={props.link}>{text}</Link> : <>{text}</>;
 };
 
-// Stats are a report's headline numbers, as tiles.
+// Stats are a report's headline numbers, as tiles. A report's own text is
+// shown as its author wrote it, not looked up as a translation.
 const Stats = (props: { stats: ReportStat[] }) => (
   <div className="report-stats">
     {props.stats.map((s) => (
@@ -63,9 +64,7 @@ const Stats = (props: { stats: ReportStat[] }) => (
         <div className="report-stat-value">
           {s.value === null || s.value === undefined ? '-' : formatCell(s.value, s.format)}
         </div>
-        <div className="report-stat-label">
-          <Translation>{s.label}</Translation>
-        </div>
+        <div className="report-stat-label">{s.label}</div>
       </div>
     ))}
   </div>
@@ -169,16 +168,14 @@ const ReportsView = (props: { currentProject?: { current: string; resolved: bool
             title={r.hidden ? i18n.t("Hidden by this project's report of the same name").toString() : undefined}
             onClick={() => setSelected(key(r))}
           >
-            <span className="reports-item-title">
-              <Translation>{r.title}</Translation>
-            </span>
+            <span className="reports-item-title">{r.title}</span>
             <span className="reports-item-description">
               {r.hidden ? (
                 <Translation>{"Hidden by this project's report of the same name"}</Translation>
               ) : r.error ? (
                 <Translation>Not a valid report</Translation>
               ) : (
-                <Translation>{r.description}</Translation>
+                r.description
               )}
             </span>
           </button>
@@ -212,18 +209,14 @@ const ReportsView = (props: { currentProject?: { current: string; resolved: bool
             <div className="reports-result-head">
               <div>
                 <div className="reports-result-title">
-                  {report && <Translation>{report.title}</Translation>}
+                  {report?.title}
                   {report?.scope === 'global' && (
                     <span className="reports-scope">
                       <Translation>Global</Translation>
                     </span>
                   )}
                 </div>
-                {report?.description && (
-                  <div className="reports-result-description">
-                    <Translation>{report.description}</Translation>
-                  </div>
-                )}
+                {report?.description && <div className="reports-result-description">{report.description}</div>}
                 {result && (
                   <div className="reports-result-meta">
                     {result.rows.length} <Translation>rows</Translation> · <Translation>generated</Translation>{' '}
@@ -274,7 +267,7 @@ const ReportsView = (props: { currentProject?: { current: string; resolved: bool
                 {(result?.columns || []).map((col) => (
                   <Table.Column
                     key={col.key}
-                    title={<Translation>{col.title}</Translation>}
+                    title={col.title}
                     dataIndex={col.key}
                     cell={(_: any, __: number, row: ReportResult['rows'][number]) => (
                       <Cell value={row.values[col.key]} format={col.format} link={row.links?.[col.key]} />

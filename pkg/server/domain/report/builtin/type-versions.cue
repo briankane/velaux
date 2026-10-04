@@ -12,6 +12,7 @@ import (
 template: {
 	parameter: {
 		// +usage=Show those on the latest version as well
+		// +ui:label=Include those on the latest
 		all: *false | bool
 	}
 	components:  report.#Components

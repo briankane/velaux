@@ -12,6 +12,7 @@ import (
 template: {
 	parameter: {
 		// +usage=Restarts at which a container is listed even when it is running now
+		// +ui:label=Restarts to list
 		restarts: *3 | int & >=1
 	}
 	pods: report.#List & {$params: {apiVersion: "v1", kind: "Pod"}}

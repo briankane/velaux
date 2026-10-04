@@ -15,12 +15,13 @@ import {
   YAxis,
 } from 'recharts';
 
-import { Translation } from '../../components/Translation';
 import type { ReportChart } from './view';
-import { chartRows, pieRows } from './view';
+import { chartRows, pieRows, statusColour } from './view';
 
 const palette = ['#1b58f4', '#00b578', '#ff8f1f', '#7c3aed', '#e5484d', '#0ea5e9', '#d946ef', '#64748b'];
 const colour = (i: number) => palette[i % palette.length];
+// colourOf is a label's status colour, else the palette's i-th.
+const colourOf = (label: string, i: number) => statusColour(label) || colour(i);
 const axis = { fontSize: 11, fill: '#64748b' };
 
 // ReportChartView draws a report's chart: bars (stacked by series, sideways
@@ -47,7 +48,7 @@ export const ReportChartView = (props: { chart: ReportChart }) => {
           paddingAngle={1}
         >
           {slices.map((r, i) => (
-            <Cell key={String(r.label)} fill={colour(i)} />
+            <Cell key={String(r.label)} fill={colourOf(String(r.label), i)} />
           ))}
         </Pie>
         <Tooltip />
@@ -67,7 +68,7 @@ export const ReportChartView = (props: { chart: ReportChart }) => {
             key={s}
             type="linear"
             dataKey={s}
-            stroke={colour(i)}
+            stroke={colourOf(s, i)}
             strokeWidth={2}
             dot={{ r: 3 }}
             animationBegin={0}
@@ -104,7 +105,7 @@ export const ReportChartView = (props: { chart: ReportChart }) => {
             key={s}
             dataKey={s}
             stackId="all"
-            fill={colour(i)}
+            fill={colourOf(s, i)}
             maxBarSize={36}
             radius={i === chart.series.length - 1 ? 3 : 0}
           />
@@ -115,11 +116,7 @@ export const ReportChartView = (props: { chart: ReportChart }) => {
   const height = chart.type === 'bar' && many ? Math.min(28 * rows.length + 40, 520) : 240;
   return (
     <div className="report-chart">
-      {chart.title && (
-        <div className="report-chart-title">
-          <Translation>{chart.title}</Translation>
-        </div>
-      )}
+      {chart.title && <div className="report-chart-title">{chart.title}</div>}
       <ResponsiveContainer width="100%" height={height}>
         {body}
       </ResponsiveContainer>

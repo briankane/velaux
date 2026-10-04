@@ -1,5 +1,5 @@
 // +title=Running images
-// +description=The images and tags running in the project, flagging :latest and images running at more than one tag
+// +description=The images and tags running in the project, flagging latest tags and images running at more than one tag
 // +chart=pie
 // +chart:x=tag
 // +chart:title=Containers by tag

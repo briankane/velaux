@@ -84,3 +84,27 @@ export function pieRows(chart: ReportChart, series: string): Array<Record<string
   const other = rows.slice(pieSlices).reduce((sum, r) => sum + Number(r[series]), 0);
   return [...rows.slice(0, pieSlices), { label: 'Other', [series]: other }];
 }
+
+export const statusColours = { bad: '#e5484d', good: '#00b578', waiting: '#ff8f1f', active: '#1b58f4' };
+
+// statusColour is the colour a series or slice takes from what its label
+// means, a failure red and a success green, or undefined for a label that
+// means no outcome. Warnings are matched first, so "behind the latest" is not
+// read as good.
+export function statusColour(label: string): string | undefined {
+  const l = label.toLowerCase();
+  const has = (...words: string[]) => words.some((w) => l.includes(w));
+  if (has('behind', 'changed', 'suspend', 'wait', 'pending')) {
+    return statusColours.waiting;
+  }
+  if (has('fail', 'missing', 'unhealthy', 'terminat', 'cannot', 'error')) {
+    return statusColours.bad;
+  }
+  if (has('succeed', 'healthy', 'up to date', 'follows')) {
+    return statusColours.good;
+  }
+  if (has('running', 'executing')) {
+    return statusColours.active;
+  }
+  return undefined;
+}

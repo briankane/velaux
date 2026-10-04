@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { chartRows, formatCell, latestOnly, pieRows } from '../../pages/Reports/view';
+import { chartRows, formatCell, latestOnly, pieRows, statusColour, statusColours } from '../../pages/Reports/view';
 
 describe('formatCell', () => {
   it('shows a percent', () => {
@@ -67,5 +67,20 @@ describe('pieRows', () => {
     const rows = pieRows(chart(10), 'count');
     expect(rows.map((r) => r.label)).to.deep.equal(['t9', 't8', 't7', 't6', 't5', 't4', 't3', 'Other']);
     expect(rows[7].count).to.equal(1 + 2 + 3);
+  });
+});
+
+describe('statusColour', () => {
+  it('colours outcomes by what they mean', () => {
+    expect(statusColour('failed')).to.equal(statusColours.bad);
+    expect(statusColour('Pinned to a missing version')).to.equal(statusColours.bad);
+    expect(statusColour('succeeded')).to.equal(statusColours.good);
+    expect(statusColour('Up to date')).to.equal(statusColours.good);
+    expect(statusColour('suspending')).to.equal(statusColours.waiting);
+    expect(statusColour('Pinned behind the latest')).to.equal(statusColours.waiting);
+    expect(statusColour('running')).to.equal(statusColours.active);
+  });
+  it('leaves anything else to the palette', () => {
+    expect(statusColour('webapp')).to.equal(undefined);
   });
 });
