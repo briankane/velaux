@@ -26,7 +26,8 @@ const DefinitionDoc = (props: Props) => {
   useEffect(() => {
     setLoading(true);
     getDefinitionDoc({
-      ...place,
+      project,
+      where,
       name: definitionName,
       type: definitionType,
       lang: getLanguage() === 'zh' ? 'zh' : 'en',
