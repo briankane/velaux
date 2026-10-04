@@ -204,7 +204,8 @@ func newReportFixture(t *testing.T, serverFails bool) *reportFixture {
 	} {
 		require.NoError(t, store.Add(ctx, e))
 	}
-	fx.svc = &reportServiceImpl{KubeClient: user, ServerKubeClient: server, Store: store}
+	fx.svc = &reportServiceImpl{KubeClient: user, ServerKubeClient: server, Store: store,
+		undeployed: func(context.Context, *model.Application, string) (bool, error) { return false, nil }}
 	return fx
 }
 
@@ -514,20 +515,23 @@ func TestReportData(t *testing.T) {
 		assert.Equal(t, int64(540), r.Steps[1].Seconds, "waiting: up to now")
 	})
 
-	t.Run("environments say what is deployed and whether the app changed since", func(t *testing.T) {
+	t.Run("environments say what is deployed and whether it differs from the app now", func(t *testing.T) {
+		differs := false
+		fx.svc.undeployed = func(_ context.Context, app *model.Application, env string) (bool, error) {
+			assert.Equal(t, "storefront", app.Name)
+			assert.Equal(t, "production", env)
+			return differs, nil
+		}
 		envs, err := source.Environments(ctx)
 		require.NoError(t, err)
 		require.Len(t, envs, 1)
 		assert.Equal(t, "v2", envs[0].Revision)
-		assert.False(t, envs[0].Edited, "nothing changed after v2")
+		assert.False(t, envs[0].Edited)
 
-		comp := &model.ApplicationComponent{AppPrimaryKey: "storefront", Name: "storefront-web"}
-		require.NoError(t, fx.svc.Store.Get(ctx, comp))
-		time.Sleep(10 * time.Millisecond)
-		require.NoError(t, fx.svc.Store.Put(ctx, comp))
+		differs = true
 		envs, err = source.Environments(ctx)
 		require.NoError(t, err)
-		assert.True(t, envs[0].Edited, "a component changed after v2")
+		assert.True(t, envs[0].Edited, "the app as it is now differs from what runs")
 	})
 
 	t.Run("List reads the environments' namespaces too", func(t *testing.T) {

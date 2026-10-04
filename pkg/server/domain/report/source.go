@@ -29,7 +29,7 @@ type Source interface {
 	// Runs are the workflow runs of the project's applications.
 	Runs(ctx context.Context) ([]WorkflowRun, error)
 	// Environments are each application's environments: what is deployed there,
-	// and whether the application changed since.
+	// and whether the application as it is now differs from it.
 	Environments(ctx context.Context) ([]Environment, error)
 	// Definitions are the component and trait definitions and their versions.
 	Definitions(ctx context.Context) ([]Definition, error)
@@ -93,7 +93,7 @@ type RunStep struct {
 }
 
 // Environment is an application's environment: the revision last deployed
-// there, and whether the application was edited after it.
+// there, and whether the application as it is now differs from what runs.
 type Environment struct {
 	App        string `json:"app"`
 	Env        string `json:"env"`

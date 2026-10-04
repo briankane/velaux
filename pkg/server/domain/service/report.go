@@ -71,9 +71,25 @@ type reportServiceImpl struct {
 	// lists.
 	ServerKubeClient client.Client       `inject:"serverKubeClient"`
 	Store            datastore.DataStore `inject:"datastore"`
+	// ApplicationService compares an application as it is now with what runs.
+	ApplicationService ApplicationService `inject:""`
 	// now is the clock elapsed times are read against; time.Now unless a test
 	// fixes it.
 	now func() time.Time
+	// undeployed says the application, rendered as it is now for env, differs
+	// from what runs there; CompareApp unless a test replaces it.
+	undeployed func(ctx context.Context, app *model.Application, env string) (bool, error)
+}
+
+func (r *reportServiceImpl) differsFromRunning(ctx context.Context, app *model.Application, env string) (bool, error) {
+	if r.undeployed != nil {
+		return r.undeployed(ctx, app, env)
+	}
+	res, err := r.ApplicationService.CompareApp(ctx, app, apisv1.AppCompareReq{CompareLatestWithRunning: &apisv1.CompareLatestWithRunningOption{Env: env}})
+	if err != nil {
+		return false, err
+	}
+	return res.IsDiff, nil
 }
 
 // NewReportService is the reports.
@@ -395,8 +411,8 @@ func (s *projectSource) elapsed(start, end time.Time) int64 {
 }
 
 // Environments are each application's environments, with the revision last
-// deployed there; edited says the application, its components or policies
-// changed after that deploy.
+// deployed there; edited says the application as it is now differs from what
+// runs there, as VelaUX's own comparison finds.
 func (s *projectSource) Environments(ctx context.Context) ([]report.Environment, error) {
 	out := []report.Environment{}
 	for _, app := range s.apps {
@@ -408,34 +424,12 @@ func (s *projectSource) Environments(ctx context.Context) ([]report.Environment,
 		if err != nil {
 			return nil, err
 		}
-		changed := app.UpdateTime
-		for _, kind := range []datastore.Entity{&model.ApplicationComponent{AppPrimaryKey: app.PrimaryKey()}, &model.ApplicationPolicy{AppPrimaryKey: app.PrimaryKey()}} {
-			items, err := s.r.Store.List(ctx, kind, nil)
-			if err != nil {
-				return nil, err
-			}
-			for _, item := range items {
-				var t time.Time
-				switch it := item.(type) {
-				case *model.ApplicationComponent:
-					t = it.UpdateTime
-				case *model.ApplicationPolicy:
-					t = it.UpdateTime
-				}
-				if t.After(changed) {
-					changed = t
-				}
-			}
-		}
 		for _, b := range bindings {
 			binding, ok := b.(*model.EnvBinding)
 			if !ok {
 				continue
 			}
 			env := report.Environment{App: app.Name, Env: binding.Name}
-			if t := binding.UpdateTime; t.After(changed) {
-				changed = t
-			}
 			var latest *model.ApplicationRevision
 			for _, r := range revisions {
 				rev, ok := r.(*model.ApplicationRevision)
@@ -443,12 +437,17 @@ func (s *projectSource) Environments(ctx context.Context) ([]report.Environment,
 					latest = rev
 				}
 			}
-			if latest != nil {
-				env.Revision, env.Status, env.DeployedAt, env.User = latest.Version, latest.Status, timeOf(latest.CreateTime), latest.DeployUser
-				env.Edited = changed.After(latest.CreateTime)
-			} else {
+			if latest == nil {
 				env.Edited = true
+				out = append(out, env)
+				continue
 			}
+			env.Revision, env.Status, env.DeployedAt, env.User = latest.Version, latest.Status, timeOf(latest.CreateTime), latest.DeployUser
+			differs, err := s.r.differsFromRunning(ctx, app, binding.Name)
+			if err != nil {
+				klog.Warningf("report: compare %s in %s: %v", app.Name, binding.Name, err)
+			}
+			env.Edited = differs
 			out = append(out, env)
 		}
 	}

@@ -65,7 +65,8 @@ import (
 }
 
 // #Environments are each application's environments: the revision last
-// deployed there, and whether the application was edited after it.
+// deployed there, and whether the application as it is now differs from what
+// runs there (edited).
 #Environments: {
 	#do:       "environments"
 	#provider: "report"
