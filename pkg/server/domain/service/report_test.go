@@ -20,11 +20,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,6 +41,7 @@ import (
 	common2 "github.com/oam-dev/kubevela/pkg/utils/common"
 
 	"github.com/kubevela/velaux/pkg/server/domain/model"
+	"github.com/kubevela/velaux/pkg/server/domain/report"
 	"github.com/kubevela/velaux/pkg/server/infrastructure/datastore"
 	"github.com/kubevela/velaux/pkg/server/infrastructure/datastore/kubeapi"
 	apisv1 "github.com/kubevela/velaux/pkg/server/interfaces/api/dto/v1"
@@ -288,5 +292,76 @@ func TestRunReport(t *testing.T) {
 	t.Run("an empty report is an empty table", func(t *testing.T) {
 		res := fx.run(t, "shop", "deployments", map[string]interface{}{"name": "nope"})
 		assert.NotNil(t, res.Rows)
+	})
+}
+
+func TestBuiltinReports(t *testing.T) {
+	fx := newReportFixture(t, false)
+	ctx := context.Background()
+	for name, src := range report.Builtins() {
+		require.NoError(t, fx.svc.ServerKubeClient.Create(ctx, reportConfigMap("vela-system", "builtin-"+name, src)))
+	}
+	min, cpu, target := int32(1), int32(80), int32(60)
+	for _, obj := range []client.Object{
+		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "storefront", Namespace: "shop-prod"}, Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP}},
+		&autoscalingv1.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{Name: "storefront-web", Namespace: "shop-prod", Labels: map[string]string{"app.oam.dev/name": "storefront"}},
+			Spec:       autoscalingv1.HorizontalPodAutoscalerSpec{MinReplicas: &min, MaxReplicas: 5, TargetCPUUtilizationPercentage: &target},
+			Status:     autoscalingv1.HorizontalPodAutoscalerStatus{CurrentReplicas: 2, CurrentCPUUtilizationPercentage: &cpu},
+		},
+	} {
+		require.NoError(t, fx.svc.ServerKubeClient.Create(ctx, obj))
+	}
+	ended := time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC)
+	for _, e := range []datastore.Entity{
+		&model.Workflow{AppPrimaryKey: "storefront", Name: "workflow-production", EnvName: "production"},
+		&model.WorkflowRecord{AppPrimaryKey: "storefront", WorkflowName: "workflow-production", Name: "run-1", Status: "failed", EndTime: ended,
+			Steps: []model.WorkflowStepStatus{{StepStatus: model.StepStatus{Name: "deploy", Phase: "succeeded"}}, {StepStatus: model.StepStatus{Name: "check", Phase: "failed", Message: "timed out"}}}},
+		&model.WorkflowRecord{AppPrimaryKey: "storefront", WorkflowName: "workflow-production", Name: "run-2", Status: "succeeded", EndTime: ended},
+		&model.WorkflowRecord{AppPrimaryKey: "secret", WorkflowName: "workflow-production", Name: "run-3", Status: "failed", EndTime: ended},
+	} {
+		require.NoError(t, fx.svc.Store.Add(ctx, e))
+	}
+
+	list, err := fx.svc.ListReports(ctx, "shop")
+	require.NoError(t, err)
+	for _, r := range list.Reports {
+		if strings.HasPrefix(r.ID, "builtin-") {
+			assert.Empty(t, r.Error, r.ID)
+		}
+	}
+
+	t.Run("unpinned", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-unpinned", nil)
+		assert.Equal(t, []interface{}{"webapp"}, column(res, "type"))
+		assert.Equal(t, []interface{}{"v1"}, column(res, "latest"))
+		assert.Equal(t, "pie", res.Chart.Type)
+	})
+	t.Run("pruned", func(t *testing.T) {
+		assert.Equal(t, []interface{}{"cpuscaler@v9"}, column(fx.run(t, "shop", "builtin-pruned", nil), "type"))
+	})
+	t.Run("failed runs", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-failed-runs", nil)
+		assert.Equal(t, []interface{}{"run-1"}, column(res, "run"), "only shop's, only failed")
+		assert.Equal(t, []interface{}{"check"}, column(res, "step"))
+		assert.Equal(t, []interface{}{"timed out"}, column(res, "message"))
+		assert.Equal(t, "/applications/storefront/envbinding/production/workflow/records/run-1", res.Rows[0].Links["run"])
+		assert.Equal(t, []apisv1.ReportPoint{{Label: "2026-10-02", Values: map[string]float64{"failed": 1}}}, res.Chart.Points)
+	})
+	t.Run("inventory", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-inventory", nil)
+		assert.ElementsMatch(t, []interface{}{"storefront-web", "storefront", "storefront-web"}, column(res, "name"), "only shop's namespaces")
+		assert.ElementsMatch(t, []interface{}{"0/0 ready", "ClusterIP", "2 replicas"}, column(res, "status"))
+	})
+	t.Run("expressions", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-expressions", nil)
+		assert.Equal(t, []interface{}{"replicas"}, column(res, "property"))
+		assert.Equal(t, []interface{}{"source"}, column(res, "reads"))
+	})
+	t.Run("autoscaling", func(t *testing.T) {
+		res := fx.run(t, "shop", "builtin-autoscaling", nil)
+		assert.Equal(t, []interface{}{"1-5"}, column(res, "bounds"))
+		assert.Equal(t, []interface{}{int64(80)}, column(res, "cpu"))
+		assert.Equal(t, []apisv1.ReportPoint{{Label: "storefront-web", Values: map[string]float64{"replicas": 2}}}, res.Chart.Points)
 	})
 }
