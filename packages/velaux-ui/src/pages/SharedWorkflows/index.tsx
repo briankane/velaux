@@ -139,7 +139,7 @@ const SharedWorkflows = (props: Props) => {
             disabled={!canProject && !canGlobal}
             onClick={() => setCreating({ initial: { name: '', scope: canProject ? 'project' : 'global' } })}
           >
-            <Translation>New shared workflow</Translation>
+            <Translation>New Workflow</Translation>
           </Button>,
         ]}
       />
