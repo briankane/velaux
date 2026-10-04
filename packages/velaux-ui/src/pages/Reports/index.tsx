@@ -33,9 +33,11 @@ type ReportMeta = {
   error?: string;
   parameters?: UIParam[];
 };
+type ReportStat = { label: string; value: any; format?: ReportFormat; tone?: string };
 type ReportResult = {
   report: ReportMeta;
   generatedAt: string;
+  stats?: ReportStat[];
   columns: Array<{ key: string; title: string; format?: ReportFormat }>;
   rows: Array<{ values: Record<string, any>; links?: Record<string, string> }>;
   chart?: ReportChart;
@@ -52,6 +54,22 @@ const Cell = (props: { value: any; format?: ReportFormat; link?: string }) => {
   const text = formatCell(props.value, props.format);
   return props.link ? <Link to={props.link}>{text}</Link> : <>{text}</>;
 };
+
+// Stats are a report's headline numbers, as tiles.
+const Stats = (props: { stats: ReportStat[] }) => (
+  <div className="report-stats">
+    {props.stats.map((s) => (
+      <div key={s.label} className={`report-stat tone-${s.tone || 'neutral'}`}>
+        <div className="report-stat-value">
+          {s.value === null || s.value === undefined ? '-' : formatCell(s.value, s.format)}
+        </div>
+        <div className="report-stat-label">
+          <Translation>{s.label}</Translation>
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 // Reports runs reports over the project picked in the top bar: the project's
 // own, then the global ones.
@@ -250,6 +268,7 @@ const ReportsView = (props: { currentProject?: { current: string; resolved: bool
               </div>
             )}
             <Loading visible={loading} style={{ width: '100%' }}>
+              {result?.stats && result.stats.length > 0 && <Stats stats={result.stats} />}
               {result?.chart && result.rows.length > 0 && <ReportChartView chart={result.chart} />}
               <Table locale={locale().Table} dataSource={result?.rows || []}>
                 {(result?.columns || []).map((col) => (

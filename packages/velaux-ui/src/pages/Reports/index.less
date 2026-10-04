@@ -152,3 +152,43 @@
     margin-bottom: 16px;
   }
 }
+
+.report-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.report-stat {
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #cbd5e1;
+  border-radius: 8px;
+  .report-stat-value {
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 22px;
+    line-height: 28px;
+  }
+  .report-stat-label {
+    color: #64748b;
+    font-size: 12px;
+  }
+  &.tone-healthy {
+    border-left-color: #00b578;
+  }
+  &.tone-progressing {
+    border-left-color: #ff8f1f;
+    .report-stat-value {
+      color: #c2410c;
+    }
+  }
+  &.tone-unhealthy {
+    border-left-color: #e5484d;
+    .report-stat-value {
+      color: #dc2626;
+    }
+  }
+}
