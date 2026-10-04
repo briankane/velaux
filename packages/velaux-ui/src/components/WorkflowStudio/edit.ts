@@ -1,6 +1,6 @@
 // Edits to a list of workflow steps, as the studio makes them.
 
-import { waitsOn } from '../PipelineGraph/dependencies';
+import { orderByDependencies, waitsOn } from '../PipelineGraph/dependencies';
 
 type Step = { name: string; dependsOn?: string[] };
 
@@ -99,4 +99,34 @@ export function removeDependency<T extends Step>(steps: T[], from: string, to: s
     return undefined;
   }
   return steps.map((s) => (s.name === to ? { ...s, dependsOn: (s.dependsOn || []).filter((d) => d !== from) } : s));
+}
+
+type StudioView<T> = { steps?: T[]; mode?: string; subMode?: string; readOnly?: boolean };
+
+// studioUpdate is what the studio's steps become as its props change from prev
+// to next, or undefined where they stay as they are. New steps are taken as
+// given; switching to run in order then orders them (or, with no new steps,
+// the current ones) so none waits on a later one, and changed says the
+// ordering is the studio's to hand back. Read-only steps belong to a shared
+// workflow and are never reordered.
+export function studioUpdate<T extends Step & { type?: string; mode?: string; subSteps?: Step[] }>(
+  prev: StudioView<T>,
+  next: StudioView<T>,
+  current: T[]
+): { steps: T[]; changed: boolean } | undefined {
+  const toOrder = (from?: string, to?: string) => from !== 'StepByStep' && to === 'StepByStep';
+  const stepsChanged = prev.steps !== next.steps;
+  const ordersTop = !next.readOnly && toOrder(prev.mode, next.mode);
+  const ordersGroups = !next.readOnly && toOrder(prev.subMode, next.subMode);
+  if (!stepsChanged && !ordersTop && !ordersGroups) {
+    return undefined;
+  }
+  const base = stepsChanged ? next.steps || [] : current;
+  let steps = ordersTop ? orderByDependencies(base) : base;
+  if (ordersGroups) {
+    steps = steps.map((s) =>
+      s.type === 'step-group' && !s.mode ? { ...s, subSteps: orderByDependencies(s.subSteps || []) } : s
+    );
+  }
+  return { steps, changed: JSON.stringify(steps) !== JSON.stringify(base) };
 }

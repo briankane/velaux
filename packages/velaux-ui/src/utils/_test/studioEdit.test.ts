@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { addPreview, insertAfter } from '../../components/WorkflowStudio/edit';
+import { addPreview, insertAfter, studioUpdate } from '../../components/WorkflowStudio/edit';
 
 type S = {
   name: string;
@@ -77,5 +77,42 @@ describe('addPreview', () => {
     ];
     expect(addPreview(chain, 'a', 'step', 'StepByStep')).to.deep.equal({ moved: ['b'], stay: [] });
     expect(addPreview(chain, 'c', 'step', 'StepByStep')).to.deep.equal({ moved: [], stay: [] });
+  });
+});
+
+describe('studioUpdate', () => {
+  const own: S[] = [
+    { name: 'b', type: 's', dependsOn: ['a'] },
+    { name: 'a', type: 's' },
+  ];
+  const shared: S[] = [
+    { name: 'x', type: 's' },
+    { name: 'y', type: 's', dependsOn: ['x'] },
+  ];
+
+  it('takes new steps as given', () => {
+    const out = studioUpdate({ steps: own, mode: 'DAG' }, { steps: shared, mode: 'DAG' }, own);
+    expect(out?.steps.map((s) => s.name)).to.deep.equal(['x', 'y']);
+    expect(out?.changed).to.equal(false);
+  });
+  it('takes new steps before ordering them when the mode turns to in order with them', () => {
+    const reversed: S[] = [shared[1], shared[0]];
+    const out = studioUpdate({ steps: own, mode: 'DAG' }, { steps: reversed, mode: 'StepByStep' }, own);
+    expect(out?.steps.map((s) => s.name)).to.deep.equal(['x', 'y']);
+    expect(out?.changed).to.equal(true);
+  });
+  it('orders the current steps when only the mode turns to in order', () => {
+    const out = studioUpdate({ steps: own, mode: 'DAG' }, { steps: own, mode: 'StepByStep' }, own);
+    expect(out?.steps.map((s) => s.name)).to.deep.equal(['a', 'b']);
+    expect(out?.changed).to.equal(true);
+  });
+  it('never reorders read-only steps, which belong to a shared workflow', () => {
+    const reversed: S[] = [shared[1], shared[0]];
+    const out = studioUpdate({ steps: own, mode: 'DAG' }, { steps: reversed, mode: 'StepByStep', readOnly: true }, own);
+    expect(out?.steps.map((s) => s.name)).to.deep.equal(['y', 'x']);
+    expect(out?.changed).to.equal(false);
+  });
+  it('does nothing when nothing changed', () => {
+    expect(studioUpdate({ steps: own, mode: 'DAG' }, { steps: own, mode: 'DAG' }, own)).to.equal(undefined);
   });
 });
