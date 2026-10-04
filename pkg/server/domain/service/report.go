@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -415,6 +416,7 @@ func (s *projectSource) elapsed(start, end time.Time) int64 {
 // runs there, as VelaUX's own comparison finds.
 func (s *projectSource) Environments(ctx context.Context) ([]report.Environment, error) {
 	out := []report.Environment{}
+	var compares []envCompare
 	for _, app := range s.apps {
 		bindings, err := s.r.Store.List(ctx, &model.EnvBinding{AppPrimaryKey: app.PrimaryKey()}, nil)
 		if err != nil {
@@ -443,15 +445,35 @@ func (s *projectSource) Environments(ctx context.Context) ([]report.Environment,
 				continue
 			}
 			env.Revision, env.Status, env.DeployedAt, env.User = latest.Version, latest.Status, timeOf(latest.CreateTime), latest.DeployUser
-			differs, err := s.r.differsFromRunning(ctx, app, binding.Name)
-			if err != nil {
-				klog.Warningf("report: compare %s in %s: %v", app.Name, binding.Name, err)
-			}
-			env.Edited = differs
 			out = append(out, env)
+			compares = append(compares, envCompare{index: len(out) - 1, app: app})
 		}
 	}
+	// Each comparison renders the application, so they run a few at a time.
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, compareConcurrency)
+	for _, c := range compares {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(c envCompare) {
+			defer func() { <-sem; wg.Done() }()
+			differs, err := s.r.differsFromRunning(ctx, c.app, out[c.index].Env)
+			if err != nil {
+				klog.Warningf("report: compare %s in %s: %v", c.app.Name, out[c.index].Env, err)
+			}
+			out[c.index].Edited = differs
+		}(c)
+	}
+	wg.Wait()
 	return out, nil
+}
+
+// compareConcurrency is how many environments Environments compares at once.
+const compareConcurrency = 4
+
+type envCompare struct {
+	index int
+	app   *model.Application
 }
 
 func timeOf(t time.Time) string {
