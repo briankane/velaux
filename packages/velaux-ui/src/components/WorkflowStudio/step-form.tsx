@@ -116,8 +116,14 @@ class StepForm extends Component<Props, State> {
     const FormItem = Form.Item;
     const { onClose } = this.props;
     const { definitionDetail, propertiesMode } = this.state;
+    // The properties are checked by their form; a step with none to show (a
+    // group) has nothing to check.
     const validator = (rule: Rule, value: any, callback: (error?: string) => void) => {
-      this.uiSchemaRef.current?.validate(callback);
+      if (!this.uiSchemaRef.current) {
+        callback();
+        return;
+      }
+      this.uiSchemaRef.current.validate(callback);
     };
 
     const groupStep = this.field.getValue('type') == 'step-group';
