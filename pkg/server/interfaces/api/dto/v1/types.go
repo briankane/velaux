@@ -486,7 +486,10 @@ type EnvStatusSummary struct {
 
 // AppCompareResponse application compare result
 type AppCompareResponse struct {
-	IsDiff        bool   `json:"isDiff"`
+	IsDiff bool `json:"isDiff"`
+	// Error says why the two could not be compared; IsDiff is then false
+	// because nothing is known, not because nothing differs.
+	Error         string `json:"error,omitempty"`
 	DiffReport    string `json:"diffReport"`
 	BaseAppYAML   string `json:"baseAppYAML"`
 	TargetAppYAML string `json:"targetAppYAML"`

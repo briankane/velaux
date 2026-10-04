@@ -1840,14 +1840,21 @@ func (c *applicationServiceImpl) CompareApp(ctx context.Context, appModel *model
 	_ = args.SetConfig(c.KubeConfig)
 	args.SetClient(c.KubeClient)
 	diffResult, buff, err := compare(ctx, args, compareTarget, base)
+	return compareOutcome(compareResponse, diffResult, buff, err), nil
+}
+
+// compareOutcome is a comparison's answer: whether the two differ and how, or,
+// where the comparison failed, why. Either way both Applications stay in it.
+func compareOutcome(resp *apisv1.AppCompareResponse, diff *dryrun.DiffEntry, report bytes.Buffer, err error) *apisv1.AppCompareResponse {
 	if err != nil {
-		klog.Errorf("fail to compare the appUtil %s", err.Error())
-		compareResponse.IsDiff = false
-		return compareResponse, nil
+		klog.Errorf("fail to compare the application: %s", err.Error())
+		resp.IsDiff = false
+		resp.Error = err.Error()
+		return resp
 	}
-	compareResponse.IsDiff = diffResult.DiffType != ""
-	compareResponse.DiffReport = buff.String()
-	return compareResponse, nil
+	resp.IsDiff = diff.DiffType != ""
+	resp.DiffReport = report.String()
+	return resp
 }
 
 // ResetAppToLatestRevision reset appUtil's component to last revision
@@ -2109,11 +2116,30 @@ func dryRunApplication(ctx context.Context, c commonutil.Args, app *v1beta1.Appl
 
 // ignoreSomeParams ignore some parameters before comparing the appUtil changes.
 // ignore the workflow spec
+// renderAnnotations are the Application annotations that change how KubeVela
+// renders it, which a comparison keeps.
+var renderAnnotations = []string{
+	oam.AnnotationCelExpressions,
+	oam.AnnotationAutoUpdate,
+	oam.AnnotationFilterAnnotationKeys,
+	oam.AnnotationFilterLabelKeys,
+}
+
+// ignoreSomeParams reduces an Application to what decides its render: its name,
+// namespace, spec and renderAnnotations, with components and policies sorted.
 func ignoreSomeParams(o *v1beta1.Application) {
 	var defaultApplication = v1beta1.Application{}
 	defaultApplication.Spec = o.Spec
 	defaultApplication.Name = o.Name
 	defaultApplication.Namespace = o.Namespace
+	for _, key := range renderAnnotations {
+		if v, ok := o.Annotations[key]; ok {
+			if defaultApplication.Annotations == nil {
+				defaultApplication.Annotations = map[string]string{}
+			}
+			defaultApplication.Annotations[key] = v
+		}
+	}
 
 	sort.Slice(defaultApplication.Spec.Policies, func(i, j int) bool {
 		return defaultApplication.Spec.Policies[i].Name < defaultApplication.Spec.Policies[j].Name

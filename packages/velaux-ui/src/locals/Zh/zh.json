@@ -1037,5 +1037,7 @@
   "Hidden by this project's report of the same name": "被此项目的同名报表覆盖",
   "Not a valid report": "不是有效的报表",
   "Global reports could not be loaded.": "无法加载全局报表。",
-  "The report failed": "报表运行失败"
+  "The report failed": "报表运行失败",
+  "Could not compare": "无法比较",
+  "Could not compare with what runs": "无法与正在运行的版本比较"
 }
