@@ -1,4 +1,4 @@
-import { Balloon, Button, Card, Form, Grid, Loading, Message, Select, Tag, MenuButton } from '@alifd/next';
+import { Balloon, Button, Card, Grid, Loading, Message, Tag, MenuButton } from '@alifd/next';
 import { connect } from 'dva';
 import _ from 'lodash';
 import React from 'react';
@@ -10,12 +10,13 @@ import { Translation } from '../../components/Translation';
 import { WorkflowPrompt } from '../../components/WorkflowPrompt';
 import WorkflowStudio from '../../components/WorkflowStudio';
 import { confirmOrderedSave } from '../../components/WorkflowStudio/confirm';
+import { SettingsSummary, WorkflowSettingsPanel } from '../../components/WorkflowStudio/settings';
+import { AiOutlineSetting } from 'react-icons/ai';
 import { WorkflowContext } from '../../context';
 import type { WorkflowData } from '../../context/index';
 import { deployNamespaces } from '../../utils/restrictions';
 import type { ApplicationDetail, EnvBinding, Workflow, WorkflowMode, DefinitionBase, WorkflowStep } from '@velaux/data';
 import { showAlias } from '../../utils/common';
-import { locale } from '../../utils/locale';
 
 import './index.less';
 import classNames from 'classnames';
@@ -45,20 +46,12 @@ type State = {
   subMode: WorkflowMode;
   editMode: 'visual' | 'yaml';
   setCanary?: boolean;
+  // alias, description and isDefault are the workflow's own fields as edited.
+  alias?: string;
+  description?: string;
+  isDefault?: boolean;
+  showSettings?: boolean;
 };
-
-export const WorkflowModeOptions = [
-  {
-    value: 'StepByStep',
-    label: i18n.t('In order'),
-    title: 'StepByStep: each step waits for the one before it.',
-  },
-  {
-    value: 'DAG',
-    label: i18n.t('In parallel'),
-    title: 'DAG: steps run as soon as the steps they depend on finish.',
-  },
-];
 
 @connect((store: any) => {
   return { ...store.application };
@@ -96,7 +89,15 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
       params: { appName, workflowName },
     } = this.props.match;
     detailWorkflow({ appName: appName, name: workflowName }).then((res: Workflow) => {
-      this.setState({ workflow: res, mode: res.mode, subMode: res.subMode, steps: res.steps });
+      this.setState({
+        workflow: res,
+        mode: res.mode,
+        subMode: res.subMode,
+        steps: res.steps,
+        alias: res.alias,
+        description: res.description,
+        isDefault: res.default,
+      });
     });
   };
 
@@ -153,16 +154,16 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
   };
 
   onSave = () => {
-    const { workflow, steps, mode, subMode } = this.state;
+    const { workflow, steps, mode, subMode, alias, description, isDefault } = this.state;
     const { applicationDetail } = this.props;
     if (workflow && applicationDetail) {
       this.setState({ saveLoading: true });
       updateWorkflow(
         { appName: applicationDetail.name, workflowName: workflow.name },
         {
-          alias: workflow.alias,
-          description: workflow.description,
-          default: workflow.default,
+          alias: alias,
+          description: description,
+          default: isDefault,
           mode: mode,
           subMode: subMode,
           steps: steps || [],
@@ -275,32 +276,15 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
                     <Translation>Canary Rollout Setting</Translation>
                   </MenuButton.Item>
                 </MenuButton>
-                <Form.Item label={i18n.t('Steps run').toString()} labelAlign="inset" style={{ marginRight: '8px' }}>
-                  <Select
-                    locale={locale().Select}
-                    defaultValue="StepByStep"
-                    value={mode}
-                    dataSource={WorkflowModeOptions}
-                    onChange={(value) => {
-                      this.setState({ mode: value, changed: this.state.mode !== value });
-                    }}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={i18n.t('Steps in groups run').toString()}
-                  labelAlign="inset"
+                <Button
+                  className="studio-settings-button"
                   style={{ marginRight: '8px' }}
+                  onClick={() => this.setState({ showSettings: true })}
                 >
-                  <Select
-                    locale={locale().Select}
-                    defaultValue="DAG"
-                    value={subMode}
-                    onChange={(value) => {
-                      this.setState({ subMode: value, changed: this.state.subMode !== value });
-                    }}
-                    dataSource={WorkflowModeOptions}
-                  />
-                </Form.Item>
+                  <AiOutlineSetting />
+                  <Translation>Settings</Translation>
+                  <SettingsSummary mode={mode} subMode={subMode} />
+                </Button>
                 <Button
                   disabled={!changed}
                   loading={saveLoading}
@@ -335,6 +319,31 @@ class ApplicationWorkflowStudio extends React.Component<Props, State> {
               onChange={this.onChange}
             />
           </WorkflowContext.Provider>
+        )}
+        {workflow && this.state.showSettings && (
+          <WorkflowSettingsPanel
+            withDefault
+            settings={{
+              name: workflow.name,
+              alias: this.state.alias,
+              description: this.state.description,
+              mode,
+              subMode,
+              default: this.state.isDefault,
+            }}
+            onClose={() => this.setState({ showSettings: false })}
+            onApply={(settings) =>
+              this.setState({
+                alias: settings.alias,
+                description: settings.description,
+                isDefault: settings.default,
+                mode: settings.mode,
+                subMode: settings.subMode,
+                showSettings: false,
+                changed: true,
+              })
+            }
+          />
         )}
         {workflow && editMode === 'yaml' && (
           <WorkflowYAML steps={steps} name={workflow.name} onChange={this.onChange} />

@@ -1,4 +1,4 @@
-import { Button, Card, Form, Grid, Loading, Message, Select } from '@alifd/next';
+import { Button, Card, Grid, Loading, Message } from '@alifd/next';
 
 import classNames from 'classnames';
 import { connect } from 'dva';
@@ -16,12 +16,12 @@ import { Translation } from '../../components/Translation';
 import { WorkflowPrompt } from '../../components/WorkflowPrompt';
 import WorkflowStudio from '../../components/WorkflowStudio';
 import { confirmOrderedSave } from '../../components/WorkflowStudio/confirm';
+import { SettingsSummary, WorkflowSettingsPanel } from '../../components/WorkflowStudio/settings';
+import { AiOutlineSetting } from 'react-icons/ai';
 import { WorkflowYAML } from '../../components/WorkflowYAML';
 import { WorkflowContext } from '../../context';
 import i18n from '../../i18n';
 import type { WorkflowMode, DefinitionBase, PipelineDetail, WorkflowStep } from '@velaux/data';
-import { locale } from '../../utils/locale';
-import { WorkflowModeOptions } from '../ApplicationWorkflowStudio';
 
 const { Row, Col } = Grid;
 const ButtonGroup = Button.Group;
@@ -41,6 +41,10 @@ type State = {
   subMode: WorkflowMode;
   editMode: 'visual' | 'yaml';
   showRunPipeline?: boolean;
+  // alias and description are the pipeline's own fields as edited.
+  alias?: string;
+  description?: string;
+  showSettings?: boolean;
 };
 
 @connect(() => {
@@ -79,6 +83,8 @@ class PipelineStudio extends React.Component<Props, State> {
         mode: res.spec.mode?.steps || 'StepByStep',
         subMode: res.spec.mode?.subSteps || 'DAG',
         steps: res.spec.steps,
+        alias: res.alias,
+        description: res.description,
       });
     });
   };
@@ -99,12 +105,12 @@ class PipelineStudio extends React.Component<Props, State> {
   };
 
   onSave = () => {
-    const { pipeline, steps, mode, subMode } = this.state;
+    const { pipeline, steps, mode, subMode, alias, description } = this.state;
     if (pipeline) {
       this.setState({ saveLoading: true });
       updatePipeline({
-        alias: pipeline.alias,
-        description: pipeline.description,
+        alias: alias,
+        description: description,
         name: pipeline.name,
         project: pipeline.project.name,
         spec: {
@@ -216,32 +222,15 @@ class PipelineStudio extends React.Component<Props, State> {
                     <Translation>Unsaved changes</Translation>
                   </div>
                 )}
-                <Form.Item label={i18n.t('Steps run').toString()} labelAlign="inset" style={{ marginRight: '8px' }}>
-                  <Select
-                    locale={locale().Select}
-                    defaultValue="StepByStep"
-                    value={mode}
-                    dataSource={WorkflowModeOptions}
-                    onChange={(value) => {
-                      this.setState({ mode: value, changed: this.state.mode !== value });
-                    }}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={i18n.t('Steps in groups run').toString()}
-                  labelAlign="inset"
+                <Button
+                  className="studio-settings-button"
                   style={{ marginRight: '8px' }}
+                  onClick={() => this.setState({ showSettings: true })}
                 >
-                  <Select
-                    locale={locale().Select}
-                    defaultValue="DAG"
-                    value={subMode}
-                    onChange={(value) => {
-                      this.setState({ subMode: value, changed: this.state.subMode !== value });
-                    }}
-                    dataSource={WorkflowModeOptions}
-                  />
-                </Form.Item>
+                  <AiOutlineSetting />
+                  <Translation>Settings</Translation>
+                  <SettingsSummary mode={mode} subMode={subMode} />
+                </Button>
                 <Button
                   disabled={!changed}
                   loading={saveLoading}
@@ -276,6 +265,28 @@ class PipelineStudio extends React.Component<Props, State> {
                 onChange={this.onChange}
               />
             </WorkflowContext.Provider>
+          )}
+          {pipeline && this.state.showSettings && (
+            <WorkflowSettingsPanel
+              settings={{
+                name: pipeline.name,
+                alias: this.state.alias,
+                description: this.state.description,
+                mode,
+                subMode,
+              }}
+              onClose={() => this.setState({ showSettings: false })}
+              onApply={(settings) =>
+                this.setState({
+                  alias: settings.alias,
+                  description: settings.description,
+                  mode: settings.mode,
+                  subMode: settings.subMode,
+                  showSettings: false,
+                  changed: true,
+                })
+              }
+            />
           )}
           {pipeline && editMode === 'yaml' && (
             <WorkflowYAML steps={_.cloneDeep(pipeline.spec.steps)} name={pipeline.name} onChange={this.onChange} />
