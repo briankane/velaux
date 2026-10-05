@@ -23,6 +23,7 @@ import (
 
 	workflowv1alpha1 "github.com/kubevela/workflow/api/v1alpha1"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/common"
+	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1alpha1"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	"github.com/oam-dev/kubevela/apis/types"
 	"github.com/oam-dev/kubevela/pkg/oam"
@@ -32,6 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -382,4 +384,31 @@ func TestDefKitCreateNeedsAddonAndOneSource(t *testing.T) {
 	assert.Equal(t, defkitPhaseRendering, m.Phase)
 	_, err = svc.CreateModule(ctx, apisv1.CreateDefKitModuleRequest{Name: "defs", DefKitSource: apisv1.DefKitSource{Git: "x"}})
 	assert.Equal(t, bcode.ErrDefKitModuleExist, err)
+}
+
+func TestDefkitApplicationLeavesFinishedRenderJobsGone(t *testing.T) {
+	src := apisv1.DefKitSource{Ref: "example.com/defs", Version: "v1"}
+	for _, settings := range []apisv1.DefKitSettings{{}, {AutoUpdate: true, Interval: "10m"}} {
+		app := defkitApplication("defs", src, settings)
+		var policy *v1alpha1.ApplyOncePolicySpec
+		for _, p := range app.Spec.Policies {
+			if p.Type == v1alpha1.ApplyOncePolicyType {
+				policy = &v1alpha1.ApplyOncePolicySpec{}
+				require.NoError(t, json.Unmarshal(p.Properties.Raw, policy))
+			}
+		}
+		require.NotNil(t, policy, "an apply-once policy, so KubeVela does not recreate a render Job its TTL deleted")
+		assert.True(t, policy.Enable)
+		job := &unstructured.Unstructured{}
+		job.SetAPIVersion("batch/v1")
+		job.SetKind("Job")
+		strategy := policy.FindStrategy(job)
+		require.NotNil(t, strategy, "it covers Jobs")
+		assert.Equal(t, []string{"*"}, strategy.Path)
+		assert.Equal(t, v1alpha1.ApplyOnceStrategyOnAppStateKeep, strategy.ApplyOnceAffectStrategy)
+		cm := &unstructured.Unstructured{}
+		cm.SetAPIVersion("v1")
+		cm.SetKind("ConfigMap")
+		assert.Nil(t, policy.FindStrategy(cm), "and only Jobs")
+	}
 }
