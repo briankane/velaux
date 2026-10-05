@@ -513,6 +513,16 @@ func defkitApplication(name string, src apisv1.DefKitSource, settings apisv1.Def
 	// the conflicts it picks, and the apply step skips any definition it does
 	// not own.
 	gc, _ := json.Marshal(map[string]interface{}{"keepLegacyResource": false, "rules": gcRules(settings)})
+	// The render step's Jobs expire after they finish. KubeVela tracks them
+	// as the Application's own, so its state keeping would recreate each one
+	// its TTL deleted, and render again; apply-once on state keep stops that.
+	renderJobs, _ := json.Marshal(map[string]interface{}{
+		"enable": true,
+		"rules": []interface{}{map[string]interface{}{
+			"selector": map[string]interface{}{"resourceTypes": []string{"Job"}},
+			"strategy": map[string]interface{}{"path": []string{"*"}, "affect": "onStateKeep"},
+		}},
+	})
 	stored, _ := json.Marshal(settings)
 	annotations := map[string]string{defkitSettingsAnnotation: string(stored)}
 	steps := []oamv1alpha1.WorkflowStep{
@@ -543,6 +553,7 @@ func defkitApplication(name string, src apisv1.DefKitSource, settings apisv1.Def
 			Components: []common.ApplicationComponent{},
 			Policies: []v1beta1.AppPolicy{
 				{Name: "definition-deletion", Type: "garbage-collect", Properties: &runtime.RawExtension{Raw: gc}},
+				{Name: "render-jobs", Type: "apply-once", Properties: &runtime.RawExtension{Raw: renderJobs}},
 			},
 			Workflow: &v1beta1.Workflow{Steps: steps},
 		},
