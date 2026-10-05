@@ -55,28 +55,25 @@ var defaultPluginResource = "plugin"
 // AdminRole is the admin role name
 const AdminRole = "admin"
 
+// defaultProjectPermissionTemplate are the permissions each project is given:
+// a View (list, detail) and a Management (everything) for each feature, and
+// Project View for the project itself, its members and roles.
 var defaultProjectPermissionTemplate = []*model.PermissionTemplate{
 	{
-		Name:  "project-view",
-		Alias: "Project View",
-		Resources: []string{
-			"project:{projectName}",
-			"project:{projectName}/config:*",
-			"project:{projectName}/provider:*",
-			"project:{projectName}/role:*",
-			"project:{projectName}/projectUser:*",
-			"project:{projectName}/permission:*",
-			"project:{projectName}/environment:*",
-			"project:{projectName}/application:*/*",
-			"project:{projectName}/pipeline:*/*",
-			"project:{projectName}/workflow:*",
-			"project:{projectName}/definition:*",
-			"project:{projectName}/report:*",
-			"project:{projectName}/query:*",
-		},
-		Actions: []string{"detail", "list"},
-		Effect:  "Allow",
-		Scope:   "project",
+		Name:      "project-view",
+		Alias:     "Project View",
+		Resources: []string{"project:{projectName}", "project:{projectName}/role:*", "project:{projectName}/projectUser:*", "project:{projectName}/permission:*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "project",
+	},
+	{
+		Name:      "app-view",
+		Alias:     "App View",
+		Resources: []string{"project:{projectName}/application:*/*", "project:{projectName}/query:*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "project",
 	},
 	{
 		Name:      "app-management",
@@ -87,18 +84,10 @@ var defaultProjectPermissionTemplate = []*model.PermissionTemplate{
 		Scope:     "project",
 	},
 	{
-		Name:      "workflow-management",
-		Alias:     "Workflow Management",
-		Resources: []string{"project:{projectName}/workflow:*"},
-		Actions:   []string{"*"},
-		Effect:    "Allow",
-		Scope:     "project",
-	},
-	{
-		Name:      "definition-management",
-		Alias:     "Definition Management",
-		Resources: []string{"project:{projectName}/definition:*"},
-		Actions:   []string{"*"},
+		Name:      "env-view",
+		Alias:     "Environment View",
+		Resources: []string{"project:{projectName}/environment:*"},
+		Actions:   []string{"detail", "list"},
 		Effect:    "Allow",
 		Scope:     "project",
 	},
@@ -111,10 +100,42 @@ var defaultProjectPermissionTemplate = []*model.PermissionTemplate{
 		Scope:     "project",
 	},
 	{
-		Name:      "role-management",
-		Alias:     "Role Management",
-		Resources: []string{"project:{projectName}/role:*", "project:{projectName}/projectUser:*", "project:{projectName}/permission:*"},
+		Name:      "workflow-view",
+		Alias:     "Workflow View",
+		Resources: []string{"project:{projectName}/workflow:*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "project",
+	},
+	{
+		Name:      "workflow-management",
+		Alias:     "Workflow Management",
+		Resources: []string{"project:{projectName}/workflow:*"},
 		Actions:   []string{"*"},
+		Effect:    "Allow",
+		Scope:     "project",
+	},
+	{
+		Name:      "definition-view",
+		Alias:     "Definition View",
+		Resources: []string{"project:{projectName}/definition:*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "project",
+	},
+	{
+		Name:      "definition-management",
+		Alias:     "Definition Management",
+		Resources: []string{"project:{projectName}/definition:*"},
+		Actions:   []string{"*"},
+		Effect:    "Allow",
+		Scope:     "project",
+	},
+	{
+		Name:      "config-view",
+		Alias:     "Config View",
+		Resources: []string{"project:{projectName}/config:*", "project:{projectName}/provider:*"},
+		Actions:   []string{"detail", "list"},
 		Effect:    "Allow",
 		Scope:     "project",
 	},
@@ -127,14 +148,36 @@ var defaultProjectPermissionTemplate = []*model.PermissionTemplate{
 		Scope:     "project",
 	},
 	{
-		Name:  "pipeline-management",
-		Alias: "Pipeline Management",
-		Resources: []string{
-			"project:{projectName}/pipeline:*/*",
-		},
-		Actions: []string{"*"},
-		Effect:  "Allow",
-		Scope:   "project",
+		Name:      "pipeline-view",
+		Alias:     "Pipeline View",
+		Resources: []string{"project:{projectName}/pipeline:*/*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "project",
+	},
+	{
+		Name:      "pipeline-management",
+		Alias:     "Pipeline Management",
+		Resources: []string{"project:{projectName}/pipeline:*/*"},
+		Actions:   []string{"*"},
+		Effect:    "Allow",
+		Scope:     "project",
+	},
+	{
+		Name:      "report-view",
+		Alias:     "Report View",
+		Resources: []string{"project:{projectName}/report:*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "project",
+	},
+	{
+		Name:      "role-management",
+		Alias:     "Role Management",
+		Resources: []string{"project:{projectName}/role:*", "project:{projectName}/projectUser:*", "project:{projectName}/permission:*"},
+		Actions:   []string{"*"},
+		Effect:    "Allow",
+		Scope:     "project",
 	},
 }
 
@@ -208,6 +251,62 @@ var defaultPlatformPermission = []*model.PermissionTemplate{
 		Alias:     "Config Management",
 		Resources: []string{"config:*/*"},
 		Actions:   []string{"*"},
+		Effect:    "Allow",
+		Scope:     "platform",
+	},
+	{
+		Name:      "cluster-view",
+		Alias:     "Cluster View",
+		Resources: []string{"cluster:*/*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "platform",
+	},
+	{
+		Name:      "addon-view",
+		Alias:     "Addon View",
+		Resources: []string{"addon:*", "addonRegistry:*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "platform",
+	},
+	{
+		Name:      "target-view",
+		Alias:     "Target View",
+		Resources: []string{"target:*", "cluster:*/namespace:*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "platform",
+	},
+	{
+		Name:      "user-view",
+		Alias:     "User View",
+		Resources: []string{"user:*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "platform",
+	},
+	{
+		Name:      "role-view",
+		Alias:     "Role View",
+		Resources: []string{"role:*", "permission:*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "platform",
+	},
+	{
+		Name:      "config-view",
+		Alias:     "Config View",
+		Resources: []string{"config:*/*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "platform",
+	},
+	{
+		Name:      "defkit-view",
+		Alias:     "DefKit View",
+		Resources: []string{"defkit:*"},
+		Actions:   []string{"detail", "list"},
 		Effect:    "Allow",
 		Scope:     "platform",
 	},
@@ -606,6 +705,105 @@ var permissionMigrations = []struct {
 	apply func(context.Context, *rbacServiceImpl) error
 }{
 	{"2026-10-05-feature-permissions", migrateFeaturePermissions},
+	{"2026-10-05-feature-views", migrateFeatureViews},
+}
+
+// featureViews are the View templates migrateFeatureViews gives each project.
+var featureViews = []string{"app-view", "env-view", "workflow-view", "definition-view", "config-view", "pipeline-view", "report-view"}
+
+// migrateFeatureViews gives each feature a View beside its Management. Each
+// project gains the View templates, and each of its roles holding Project
+// View gains them all before Project View narrows to the project itself, its
+// members and roles, so no one loses what they could read. The platform gains
+// the templates it lacks.
+func migrateFeatureViews(ctx context.Context, p *rbacServiceImpl) error {
+	narrowed := map[string][]string{}
+	for _, temp := range defaultProjectPermissionTemplate {
+		if temp.Name == "project-view" {
+			narrowed["project-view"] = temp.Resources
+		}
+	}
+	all, err := p.Store.List(ctx, &model.Permission{}, nil)
+	if err != nil {
+		return err
+	}
+	have := map[string]bool{}
+	for _, entity := range all {
+		perm := entity.(*model.Permission)
+		have[perm.Project+"/"+perm.Name] = true
+		if resources, ok := narrowed[perm.Name]; ok && perm.Project != "" {
+			formatted, _ := withProjectResources(nil, resources, perm.Project)
+			if !apiserverutils.EqualSlice(perm.Resources, formatted) {
+				perm.Resources = formatted
+				if err := p.Store.Put(ctx, perm); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	roles, err := p.Store.List(ctx, &model.Role{}, nil)
+	if err != nil {
+		return err
+	}
+	for _, entity := range roles {
+		role := entity.(*model.Role)
+		if role.Project == "" || !slices.Contains(role.Permissions, "project-view") {
+			continue
+		}
+		changed := false
+		for _, view := range featureViews {
+			if !slices.Contains(role.Permissions, view) {
+				role.Permissions = append(role.Permissions, view)
+				changed = true
+			}
+		}
+		if changed {
+			if err := p.Store.Put(ctx, role); err != nil {
+				return err
+			}
+		}
+	}
+
+	projects, err := p.Store.List(ctx, &model.Project{}, nil)
+	if err != nil {
+		return err
+	}
+	var batch []datastore.Entity
+	for _, entity := range projects {
+		batch = append(batch, missingProjectPermissions(entity.(*model.Project).Name, featureViews, have)...)
+	}
+	batch = append(batch, missingPlatformPermissions(have)...)
+	if len(batch) == 0 {
+		return nil
+	}
+	return p.Store.BatchAdd(ctx, batch)
+}
+
+// missingProjectPermissions are the project templates named in names that the
+// project lacks, have holding "project/name" for each permission there is.
+func missingProjectPermissions(project string, names []string, have map[string]bool) []datastore.Entity {
+	var out []datastore.Entity
+	for _, temp := range defaultProjectPermissionTemplate {
+		if !slices.Contains(names, temp.Name) || have[project+"/"+temp.Name] {
+			continue
+		}
+		resources, _ := withProjectResources(nil, temp.Resources, project)
+		out = append(out, &model.Permission{Name: temp.Name, Alias: temp.Alias, Project: project, Resources: resources, Actions: temp.Actions, Effect: temp.Effect})
+	}
+	return out
+}
+
+// missingPlatformPermissions are the platform templates there is no
+// permission of the name of.
+func missingPlatformPermissions(have map[string]bool) []datastore.Entity {
+	var out []datastore.Entity
+	for _, temp := range defaultPlatformPermission {
+		if !have["/"+temp.Name] {
+			out = append(out, &model.Permission{Name: temp.Name, Alias: temp.Alias, Resources: temp.Resources, Actions: temp.Actions, Effect: temp.Effect})
+		}
+	}
+	return out
 }
 
 // migrateFeaturePermissions gives each feature its own permissions. Project
@@ -650,21 +848,9 @@ func migrateFeaturePermissions(ctx context.Context, p *rbacServiceImpl) error {
 	}
 	var batch []datastore.Entity
 	for _, entity := range projects {
-		project := entity.(*model.Project)
-		for _, temp := range defaultProjectPermissionTemplate {
-			if !slices.Contains(created, temp.Name) || have[project.Name+"/"+temp.Name] {
-				continue
-			}
-			resources, _ := withProjectResources(nil, temp.Resources, project.Name)
-			batch = append(batch, &model.Permission{Name: temp.Name, Alias: temp.Alias, Project: project.Name, Resources: resources, Actions: temp.Actions, Effect: temp.Effect})
-		}
+		batch = append(batch, missingProjectPermissions(entity.(*model.Project).Name, created, have)...)
 	}
-	for _, temp := range defaultPlatformPermission {
-		if have["/"+temp.Name] {
-			continue
-		}
-		batch = append(batch, &model.Permission{Name: temp.Name, Alias: temp.Alias, Resources: temp.Resources, Actions: temp.Actions, Effect: temp.Effect})
-	}
+	batch = append(batch, missingPlatformPermissions(have)...)
 	if len(batch) == 0 {
 		return nil
 	}
@@ -1279,17 +1465,17 @@ func (p *rbacServiceImpl) SyncDefaultRoleAndUsersForProject(ctx context.Context,
 		batchData = append(batchData, &model.Role{
 			Name:        "app-developer",
 			Alias:       "App Developer",
-			Permissions: []string{"project-view", "app-management", "workflow-management", "definition-management", "env-management", "config-management", "pipeline-management"},
+			Permissions: []string{"project-view", "app-view", "env-view", "workflow-view", "definition-view", "config-view", "pipeline-view", "report-view", "app-management", "workflow-management", "definition-management", "env-management", "config-management", "pipeline-management"},
 			Project:     project.Name,
 		}, &model.Role{
 			Name:        "project-admin",
 			Alias:       "Project Admin",
-			Permissions: []string{"project-view", "app-management", "workflow-management", "definition-management", "env-management", "pipeline-management", "config-management", "role-management"},
+			Permissions: []string{"project-view", "app-view", "env-view", "workflow-view", "definition-view", "config-view", "pipeline-view", "report-view", "app-management", "workflow-management", "definition-management", "env-management", "config-management", "pipeline-management", "role-management"},
 			Project:     project.Name,
 		}, &model.Role{
 			Name:        "project-viewer",
 			Alias:       "Project Viewer",
-			Permissions: []string{"project-view"},
+			Permissions: []string{"project-view", "app-view", "env-view", "workflow-view", "definition-view", "config-view", "pipeline-view", "report-view"},
 			Project:     project.Name,
 		})
 		if project.Owner != "" {
