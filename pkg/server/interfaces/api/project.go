@@ -228,7 +228,7 @@ func (n *project) GetWebServiceRoute() *restful.WebService {
 	ws.Route(ws.GET("/{projectName}/reports").To(n.listReports).
 		Doc("the reports a project can run: its own, then the global ones").
 		Metadata(restfulspec.KeyOpenAPITags, tags).
-		Filter(n.RbacService.CheckPerm("project/application", "list")).
+		Filter(n.RbacService.CheckPerm("project/report", "list")).
 		Param(ws.PathParameter("projectName", "identifier of the project").DataType("string").Required(true)).
 		Returns(200, "OK", apis.ListReportsResponse{}).
 		Writes(apis.ListReportsResponse{}))
@@ -236,7 +236,7 @@ func (n *project) GetWebServiceRoute() *restful.WebService {
 	ws.Route(ws.POST("/{projectName}/reports/{reportID}").To(n.runReport).
 		Doc("run a report over the project's applications and namespaces").
 		Metadata(restfulspec.KeyOpenAPITags, tags).
-		Filter(n.RbacService.CheckPerm("project/application", "list")).
+		Filter(n.RbacService.CheckPerm("project/report", "detail")).
 		Param(ws.PathParameter("projectName", "identifier of the project").DataType("string").Required(true)).
 		Param(ws.PathParameter("reportID", "the report").DataType("string").Required(true)).
 		Reads(apis.RunReportRequest{}).

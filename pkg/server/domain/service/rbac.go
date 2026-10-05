@@ -71,6 +71,8 @@ var defaultProjectPermissionTemplate = []*model.PermissionTemplate{
 			"project:{projectName}/pipeline:*/*",
 			"project:{projectName}/workflow:*",
 			"project:{projectName}/definition:*",
+			"project:{projectName}/report:*",
+			"project:{projectName}/query:*",
 		},
 		Actions: []string{"detail", "list"},
 		Effect:  "Allow",
@@ -79,7 +81,23 @@ var defaultProjectPermissionTemplate = []*model.PermissionTemplate{
 	{
 		Name:      "app-management",
 		Alias:     "App Management",
-		Resources: []string{"project:{projectName}/application:*/*", "project:{projectName}/workflow:*", "project:{projectName}/definition:*"},
+		Resources: []string{"project:{projectName}/application:*/*"},
+		Actions:   []string{"*"},
+		Effect:    "Allow",
+		Scope:     "project",
+	},
+	{
+		Name:      "workflow-management",
+		Alias:     "Workflow Management",
+		Resources: []string{"project:{projectName}/workflow:*"},
+		Actions:   []string{"*"},
+		Effect:    "Allow",
+		Scope:     "project",
+	},
+	{
+		Name:      "definition-management",
+		Alias:     "Definition Management",
+		Resources: []string{"project:{projectName}/definition:*"},
 		Actions:   []string{"*"},
 		Effect:    "Allow",
 		Scope:     "project",
@@ -194,6 +212,46 @@ var defaultPlatformPermission = []*model.PermissionTemplate{
 		Scope:     "platform",
 	},
 	{
+		Name:      "global-definition-view",
+		Alias:     "Global Definition View",
+		Resources: []string{"definition:*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "platform",
+	},
+	{
+		Name:      "global-definition-management",
+		Alias:     "Global Definition Management",
+		Resources: []string{"definition:*"},
+		Actions:   []string{"*"},
+		Effect:    "Allow",
+		Scope:     "platform",
+	},
+	{
+		Name:      "global-workflow-management",
+		Alias:     "Global Workflow Management",
+		Resources: []string{"sharedWorkflow:*"},
+		Actions:   []string{"*"},
+		Effect:    "Allow",
+		Scope:     "platform",
+	},
+	{
+		Name:      "defkit-management",
+		Alias:     "DefKit Management",
+		Resources: []string{"defkit:*"},
+		Actions:   []string{"*"},
+		Effect:    "Allow",
+		Scope:     "platform",
+	},
+	{
+		Name:      "package-view",
+		Alias:     "Package View",
+		Resources: []string{"package:*"},
+		Actions:   []string{"detail", "list"},
+		Effect:    "Allow",
+		Scope:     "platform",
+	},
+	{
 		Name:      AdminRole,
 		Alias:     "Admin",
 		Resources: []string{"*"},
@@ -255,6 +313,10 @@ var ResourceMaps = map[string]resourceMetadata{
 			"definition": {
 				pathName: "definitionName",
 			},
+			"report": {
+				pathName: "reportID",
+			},
+			"query": {},
 			"role": {
 				pathName: "roleName",
 			},
@@ -310,6 +372,10 @@ var ResourceMaps = map[string]resourceMetadata{
 	"sharedWorkflow": {
 		pathName: "workflowName",
 	},
+	"defkit": {
+		pathName: "name",
+	},
+	"package": {},
 	"configType": {
 		pathName: "configType",
 		subResources: map[string]resourceMetadata{
@@ -521,8 +587,8 @@ func (p *rbacServiceImpl) Init(ctx context.Context) error {
 		}
 	}
 
-	if err := p.addProjectPermissionResources(ctx); err != nil {
-		return fmt.Errorf("failed to add the new resources to the projects' permissions %w", err)
+	if err := p.migratePermissions(ctx); err != nil {
+		return fmt.Errorf("failed to bring the default permissions up to date %w", err)
 	}
 
 	if err := managePrivilegesForAdminUser(ctx, p.KubeClient, AdminRole, false); err != nil {
@@ -531,36 +597,126 @@ func (p *rbacServiceImpl) Init(ctx context.Context) error {
 	return nil
 }
 
-// addedProjectPermissionResources are resources added to the default project
-// permissions after projects were created with them. Templates are copied into
-// a project when it is created, so these are added to existing ones on start.
-var addedProjectPermissionResources = map[string][]string{
-	"project-view":   {"project:{projectName}/workflow:*", "project:{projectName}/definition:*"},
-	"app-management": {"project:{projectName}/workflow:*", "project:{projectName}/definition:*"},
+// permissionMigrations bring existing installs' default permissions up to
+// date, each once, recorded by name: templates are copied into a project when
+// it is created, and the platform's at first start, so a template changed since
+// reaches neither otherwise. What a migration changed is the admins' after.
+var permissionMigrations = []struct {
+	name  string
+	apply func(context.Context, *rbacServiceImpl) error
+}{
+	{"2026-10-05-feature-permissions", migrateFeaturePermissions},
 }
 
-// addProjectPermissionResources adds addedProjectPermissionResources to each
-// project's permission of that name that lacks them. It only adds: a project's
-// permissions are otherwise its admins'.
-func (p *rbacServiceImpl) addProjectPermissionResources(ctx context.Context) error {
+// migrateFeaturePermissions gives each feature its own permissions. Project
+// View reads workflows, definitions, reports and queries; workflow and
+// definition writes leave App Management for templates of their own, created
+// in each project; the platform gains the templates it lacks. Roles are left
+// alone: whoever should write workflows or definitions is given the new
+// templates by a project admin.
+func migrateFeaturePermissions(ctx context.Context, p *rbacServiceImpl) error {
+	add := map[string][]string{
+		"project-view": {"project:{projectName}/workflow:*", "project:{projectName}/definition:*", "project:{projectName}/report:*", "project:{projectName}/query:*"},
+	}
+	remove := map[string][]string{
+		"app-management": {"project:{projectName}/workflow:*", "project:{projectName}/definition:*"},
+	}
+	created := []string{"workflow-management", "definition-management"}
+
 	all, err := p.Store.List(ctx, &model.Permission{}, nil)
 	if err != nil {
 		return err
 	}
+	have := map[string]bool{}
 	for _, entity := range all {
 		perm := entity.(*model.Permission)
-		added, ok := addedProjectPermissionResources[perm.Name]
-		if !ok || perm.Project == "" {
+		have[perm.Project+"/"+perm.Name] = true
+		if perm.Project == "" {
 			continue
 		}
-		if resources, changed := withProjectResources(perm.Resources, added, perm.Project); changed {
+		resources, added := withProjectResources(perm.Resources, add[perm.Name], perm.Project)
+		resources, removed := withoutProjectResources(resources, remove[perm.Name], perm.Project)
+		if added || removed {
 			perm.Resources = resources
 			if err := p.Store.Put(ctx, perm); err != nil {
 				return err
 			}
 		}
 	}
+
+	projects, err := p.Store.List(ctx, &model.Project{}, nil)
+	if err != nil {
+		return err
+	}
+	var batch []datastore.Entity
+	for _, entity := range projects {
+		project := entity.(*model.Project)
+		for _, temp := range defaultProjectPermissionTemplate {
+			if !slices.Contains(created, temp.Name) || have[project.Name+"/"+temp.Name] {
+				continue
+			}
+			resources, _ := withProjectResources(nil, temp.Resources, project.Name)
+			batch = append(batch, &model.Permission{Name: temp.Name, Alias: temp.Alias, Project: project.Name, Resources: resources, Actions: temp.Actions, Effect: temp.Effect})
+		}
+	}
+	for _, temp := range defaultPlatformPermission {
+		if have["/"+temp.Name] {
+			continue
+		}
+		batch = append(batch, &model.Permission{Name: temp.Name, Alias: temp.Alias, Resources: temp.Resources, Actions: temp.Actions, Effect: temp.Effect})
+	}
+	if len(batch) == 0 {
+		return nil
+	}
+	return p.Store.BatchAdd(ctx, batch)
+}
+
+// migratePermissions applies each permission migration not yet recorded.
+func (p *rbacServiceImpl) migratePermissions(ctx context.Context) error {
+	for _, m := range permissionMigrations {
+		done, err := p.Store.IsExist(ctx, &model.Migration{Name: m.name})
+		if err != nil {
+			return err
+		}
+		if done {
+			continue
+		}
+		if err := m.apply(ctx, p); err != nil {
+			return fmt.Errorf("%s: %w", m.name, err)
+		}
+		if err := p.Store.Add(ctx, &model.Migration{Name: m.name}); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// withoutProjectResources is resources without each of removed, for the
+// project named projectName.
+func withoutProjectResources(resources, removed []string, projectName string) ([]string, bool) {
+	drop := map[string]bool{}
+	for _, r := range removed {
+		drop[projectResource(r, projectName)] = true
+	}
+	out := resources[:0:0]
+	for _, r := range resources {
+		if !drop[r] {
+			out = append(out, r)
+		}
+	}
+	return out, len(out) != len(resources)
+}
+
+// projectResource is resource with its project named.
+func projectResource(resource, projectName string) string {
+	var rra RequestResourceAction
+	rra.SetResourceWithName(resource, func(name string) string {
+		if name == ResourceMaps["project"].pathName {
+			return projectName
+		}
+		return ""
+	})
+	return rra.GetResource().String()
 }
 
 // withProjectResources is resources with each of added, for the project named
@@ -568,14 +724,7 @@ func (p *rbacServiceImpl) addProjectPermissionResources(ctx context.Context) err
 func withProjectResources(resources, added []string, projectName string) ([]string, bool) {
 	changed := false
 	for _, resource := range added {
-		var rra RequestResourceAction
-		rra.SetResourceWithName(resource, func(name string) string {
-			if name == ResourceMaps["project"].pathName {
-				return projectName
-			}
-			return ""
-		})
-		formatted := rra.GetResource().String()
+		formatted := projectResource(resource, projectName)
 		if !slices.Contains(resources, formatted) {
 			resources = append(resources, formatted)
 			changed = true
@@ -1130,12 +1279,12 @@ func (p *rbacServiceImpl) SyncDefaultRoleAndUsersForProject(ctx context.Context,
 		batchData = append(batchData, &model.Role{
 			Name:        "app-developer",
 			Alias:       "App Developer",
-			Permissions: []string{"project-view", "app-management", "env-management", "config-management", "pipeline-management"},
+			Permissions: []string{"project-view", "app-management", "workflow-management", "definition-management", "env-management", "config-management", "pipeline-management"},
 			Project:     project.Name,
 		}, &model.Role{
 			Name:        "project-admin",
 			Alias:       "Project Admin",
-			Permissions: []string{"project-view", "app-management", "env-management", "pipeline-management", "config-management", "role-management"},
+			Permissions: []string{"project-view", "app-management", "workflow-management", "definition-management", "env-management", "pipeline-management", "config-management", "role-management"},
 			Project:     project.Name,
 		}, &model.Role{
 			Name:        "project-viewer",
