@@ -20,6 +20,7 @@ import { locale } from '../../utils/locale';
 import DistributeConfigDialog from '../ProjectSummary/components/Configs/config-distribute';
 import CreateConfigDialog from './components/CreateConfigDialog';
 import { templateIcon } from './icons';
+import { templateOptions } from './templates';
 import './index.less';
 
 type Props = {
@@ -319,11 +320,8 @@ class Configs extends Component<Props, State> {
                 onChange={(value: string) => this.setTemplate(value || '')}
                 hasClear
                 locale={locale().Select}
-                dataSource={templates.map((t) => ({ label: t.alias || t.name, value: t.name }))}
-                itemRender={(item: any) => {
-                  const t = this.templateOf(item.value);
-                  return t ? templateLabel(t) : item.label;
-                }}
+                dataSource={templateOptions(templates, list).map((t) => ({ label: t.alias || t.name, value: t.name }))}
+                itemRender={(item: any) => templateLabel({ name: item.value, alias: item.label } as ConfigTemplate)}
               />
               <Button onClick={() => this.listConfigs()} title={i18n.t('Refresh').toString()}>
                 <HiOutlineRefresh />
