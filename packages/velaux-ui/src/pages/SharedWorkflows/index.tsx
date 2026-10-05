@@ -1,8 +1,8 @@
-import { Balloon, Button, Dialog, Message } from '@alifd/next';
+import { Balloon, Button, Dialog, Input, Message } from '@alifd/next';
 import { connect } from 'dva';
 import { Link, routerRedux } from 'dva/router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { AiOutlineCopy, AiOutlineDelete, AiOutlineEdit, AiOutlineEye } from 'react-icons/ai';
+import { AiOutlineCopy, AiOutlineDelete, AiOutlineEdit, AiOutlineEye, AiOutlineSearch } from 'react-icons/ai';
 import { BsDiagram3 } from 'react-icons/bs';
 
 import type { ListSharedWorkflowsResponse, LoginUserInfo, SharedWorkflow } from '@velaux/data';
@@ -17,10 +17,13 @@ import { SettingsSummary } from '../../components/WorkflowStudio/settings';
 import i18n from '../../i18n';
 import { allProjects } from '../../utils/currentProject';
 import { locale } from '../../utils/locale';
+import type { SharedUsage, SharedWhere } from '../../utils/sharedWorkflows';
+import { filterShared, inUse } from '../../utils/sharedWorkflows';
 import type { SharedWorkflowDraft } from './draft';
 import { canChange, canCreate, studioPath } from './draft';
 import type { NewSharedWorkflow } from './NewDialog';
 import { NewDialog } from './NewDialog';
+import '../Packages/index.less';
 import './index.less';
 
 type Props = {
@@ -74,6 +77,9 @@ const SharedWorkflows = (props: Props) => {
   const project = props.currentProject?.resolved ? props.currentProject.current : undefined;
   const [list, setList] = useState<ListSharedWorkflowsResponse>();
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
+  const [where, setWhere] = useState<SharedWhere>('all');
+  const [usage, setUsage] = useState<SharedUsage>('all');
   // creating is the dialog's starting values, with the workflow being copied.
   const [creating, setCreating] = useState<{ initial: NewSharedWorkflow; from?: SharedWorkflow }>();
 
@@ -127,6 +133,23 @@ const SharedWorkflows = (props: Props) => {
   };
 
   const workflows = list?.workflows || [];
+  const shown = filterShared(workflows, query, where, usage);
+  // segmented is a filter as a row of buttons, one of them pressed.
+  const segmented = <T extends string>(label: string, value: T, set: (v: T) => void, options: [T, string][]) => (
+    <div className="packages-source" role="group" aria-label={i18n.t(label).toString()}>
+      {options.map(([v, text]) => (
+        <button
+          key={v}
+          type="button"
+          className={value === v ? 'active' : ''}
+          aria-pressed={value === v}
+          onClick={() => set(v)}
+        >
+          <Translation>{text}</Translation>
+        </button>
+      ))}
+    </div>
+  );
   return (
     <div className="shared-workflows">
       <ListTitle
@@ -152,106 +175,128 @@ const SharedWorkflows = (props: Props) => {
       ) : !loading && workflows.length === 0 ? (
         <Empty message={<Translation>No shared workflows for this project, nor global ones</Translation>} />
       ) : (
-        <div className="row-list shared-workflow-list">
-          <div className="row-list-head">
-            <span>
-              <Translation>Name</Translation>
-            </span>
-            <span>
-              <Translation>Where</Translation>
-            </span>
-            <span>
-              <Translation>Runs</Translation>
-            </span>
-            <span>
-              <Translation>Used by</Translation>
-            </span>
-            <span />
+        <>
+          <div className="packages-toolbar">
+            <Input
+              innerBefore={<AiOutlineSearch className="packages-search-icon" />}
+              hasClear
+              placeholder={i18n.t('Search by name, alias or description').toString()}
+              value={query}
+              onChange={(v) => setQuery(v)}
+              className="packages-search"
+            />
+            {segmented<SharedWhere>('Where', where, setWhere, [
+              ['all', 'All'],
+              ['project', 'Project'],
+              ['global', 'Global'],
+            ])}
+            {segmented<SharedUsage>('Usage', usage, setUsage, [
+              ['all', 'All'],
+              ['used', 'In use'],
+              ['unused', 'Not used'],
+            ])}
           </div>
-          {list?.globalUnavailable && (
-            <div className="row-list-row shared-notice">
-              <Translation>Global shared workflows could not be loaded.</Translation>
+          {shown.length === 0 ? (
+            <Empty message={<Translation>No workflows match the filters</Translation>} />
+          ) : (
+            <div className="row-list shared-workflow-list">
+              <div className="row-list-head">
+                <span>
+                  <Translation>Name</Translation>
+                </span>
+                <span>
+                  <Translation>Where</Translation>
+                </span>
+                <span>
+                  <Translation>Runs</Translation>
+                </span>
+                <span>
+                  <Translation>Used by</Translation>
+                </span>
+                <span />
+              </div>
+              {list?.globalUnavailable && (
+                <div className="row-list-row shared-notice">
+                  <Translation>Global shared workflows could not be loaded.</Translation>
+                </div>
+              )}
+              {shown.map((w) => {
+                const editable = canChange(project, w.scope, props.userInfo);
+                return (
+                  <div key={`${w.scope}/${w.name}`} className={`row-list-row ${w.hidden ? 'shared-hidden' : ''}`}>
+                    <div className="row-list-main">
+                      <Link className="row-list-name" to={studioPath(project, w.scope, w.name)}>
+                        <BsDiagram3 className="row-list-icon" />
+                        <span>
+                          <span className="row-list-title">{w.alias || w.name}</span>
+                          <span className="row-list-type">
+                            {w.alias ? w.name : ''}
+                            {w.alias && w.description ? ' · ' : ''}
+                            {w.description}
+                          </span>
+                        </span>
+                      </Link>
+                      <span>
+                        <StatusBadge
+                          tone={w.scope === 'global' ? 'neutral' : 'progressing'}
+                          label={w.scope === 'global' ? 'Global' : 'Project'}
+                        />
+                        {w.hidden && (
+                          <span className="row-list-muted shared-hidden-note">
+                            <Translation>{"hidden by the project's"}</Translation>
+                          </span>
+                        )}
+                      </span>
+                      <span>
+                        <SettingsSummary mode={w.mode || 'StepByStep'} subMode={w.subMode || 'DAG'} />
+                        <span className="row-list-muted">
+                          {' · '}
+                          {w.steps.length} {i18n.t(w.steps.length === 1 ? 'step' : 'steps').toString()}
+                        </span>
+                      </span>
+                      <span>
+                        <UsedBy workflow={w} />
+                      </span>
+                      <span className="row-list-actions">
+                        <Link to={studioPath(project, w.scope, w.name)}>
+                          <RowAction
+                            icon={editable ? <AiOutlineEdit /> : <AiOutlineEye />}
+                            label={editable ? 'Edit' : 'View'}
+                          />
+                        </Link>
+                        {(canProject || canGlobal) && (
+                          <RowAction
+                            icon={<AiOutlineCopy />}
+                            label="Copy"
+                            onClick={() =>
+                              setCreating({
+                                initial: {
+                                  name: `${w.name}-copy`,
+                                  alias: w.alias,
+                                  scope: canProject ? 'project' : 'global',
+                                },
+                                from: w,
+                              })
+                            }
+                          />
+                        )}
+                        {editable && (
+                          <RowAction
+                            icon={<AiOutlineDelete />}
+                            label={inUse(w) ? 'In use, so it cannot be deleted' : 'Delete'}
+                            danger
+                            disabled={inUse(w)}
+                            onClick={() => remove(w)}
+                          />
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
-          {workflows.map((w) => {
-            const editable = canChange(project, w.scope, props.userInfo);
-            return (
-              <div key={`${w.scope}/${w.name}`} className={`row-list-row ${w.hidden ? 'shared-hidden' : ''}`}>
-                <div className="row-list-main">
-                  <Link className="row-list-name" to={studioPath(project, w.scope, w.name)}>
-                    <BsDiagram3 className="row-list-icon" />
-                    <span>
-                      <span className="row-list-title">{w.alias || w.name}</span>
-                      <span className="row-list-type">
-                        {w.alias ? w.name : ''}
-                        {w.alias && w.description ? ' · ' : ''}
-                        {w.description}
-                      </span>
-                    </span>
-                  </Link>
-                  <span>
-                    <StatusBadge
-                      tone={w.scope === 'global' ? 'neutral' : 'progressing'}
-                      label={w.scope === 'global' ? 'Global' : 'Project'}
-                    />
-                    {w.hidden && (
-                      <span className="row-list-muted shared-hidden-note">
-                        <Translation>{"hidden by the project's"}</Translation>
-                      </span>
-                    )}
-                  </span>
-                  <span>
-                    <SettingsSummary mode={w.mode || 'StepByStep'} subMode={w.subMode || 'DAG'} />
-                    <span className="row-list-muted">
-                      {' · '}
-                      {w.steps.length} {i18n.t(w.steps.length === 1 ? 'step' : 'steps').toString()}
-                    </span>
-                  </span>
-                  <span>
-                    <UsedBy workflow={w} />
-                  </span>
-                  <span className="row-list-actions">
-                    <Link to={studioPath(project, w.scope, w.name)}>
-                      <RowAction
-                        icon={editable ? <AiOutlineEdit /> : <AiOutlineEye />}
-                        label={editable ? 'Edit' : 'View'}
-                      />
-                    </Link>
-                    {(canProject || canGlobal) && (
-                      <RowAction
-                        icon={<AiOutlineCopy />}
-                        label="Copy"
-                        onClick={() =>
-                          setCreating({
-                            initial: {
-                              name: `${w.name}-copy`,
-                              alias: w.alias,
-                              scope: canProject ? 'project' : 'global',
-                            },
-                            from: w,
-                          })
-                        }
-                      />
-                    )}
-                    {editable && (
-                      <RowAction
-                        icon={<AiOutlineDelete />}
-                        label={
-                          (w.usedBy?.length || 0) + (w.usedElsewhere || 0) > 0
-                            ? 'In use, so it cannot be deleted'
-                            : 'Delete'
-                        }
-                        danger
-                        disabled={(w.usedBy?.length || 0) + (w.usedElsewhere || 0) > 0}
-                        onClick={() => remove(w)}
-                      />
-                    )}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        </>
       )}
       {creating && (
         <NewDialog
