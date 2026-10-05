@@ -42,6 +42,8 @@ func TestMigrateFeaturePermissions(t *testing.T) {
 		&model.Permission{Name: "app-management", Project: "shop", Resources: []string{"project:shop/application:*/*", "project:shop/workflow:*", "project:shop/definition:*"}, Actions: []string{"*"}},
 		&model.Permission{Name: "custom", Project: "shop", Resources: []string{"project:shop/workflow:*"}, Actions: []string{"*"}},
 		&model.Permission{Name: "admin", Resources: []string{"*"}, Actions: []string{"*"}},
+		&model.Role{Name: "app-developer", Project: "shop", Permissions: []string{"project-view", "app-management"}},
+		&model.Role{Name: "auditor", Project: "shop", Permissions: []string{"custom"}},
 	} {
 		require.NoError(t, store.Add(ctx, e))
 	}
@@ -53,8 +55,26 @@ func TestMigrateFeaturePermissions(t *testing.T) {
 		require.NoError(t, store.Get(ctx, perm))
 		return perm
 	}
-	t.Run("project view reads workflows, definitions, reports and queries", func(t *testing.T) {
-		assert.Equal(t, []string{"project:shop", "project:shop/workflow:*", "project:shop/definition:*", "project:shop/report:*", "project:shop/query:*"}, get("project-view", "shop").Resources)
+	t.Run("project view narrows to the project, its members and roles", func(t *testing.T) {
+		assert.ElementsMatch(t, []string{"project:shop", "project:shop/role:*", "project:shop/projectUser:*", "project:shop/permission:*"}, get("project-view", "shop").Resources)
+	})
+	t.Run("each feature has a view", func(t *testing.T) {
+		assert.ElementsMatch(t, []string{"project:shop/application:*/*:*", "project:shop/query:*"}, get("app-view", "shop").Resources, "as project creation formats it")
+		assert.Equal(t, []string{"detail", "list"}, get("app-view", "shop").Actions)
+		assert.Equal(t, []string{"project:shop/report:*"}, get("report-view", "shop").Resources)
+		for _, view := range featureViews {
+			get(view, "shop")
+		}
+	})
+	t.Run("a role holding project view keeps what it read, through the views", func(t *testing.T) {
+		role := &model.Role{Name: "app-developer", Project: "shop"}
+		require.NoError(t, store.Get(ctx, role))
+		for _, view := range featureViews {
+			assert.Contains(t, role.Permissions, view)
+		}
+		auditor := &model.Role{Name: "auditor", Project: "shop"}
+		require.NoError(t, store.Get(ctx, auditor))
+		assert.Equal(t, []string{"custom"}, auditor.Permissions, "a role without project view is left alone")
 	})
 	t.Run("app management keeps applications alone", func(t *testing.T) {
 		assert.Equal(t, []string{"project:shop/application:*/*"}, get("app-management", "shop").Resources)
@@ -70,6 +90,8 @@ func TestMigrateFeaturePermissions(t *testing.T) {
 		assert.Equal(t, []string{"package:*"}, get("package-view", "").Resources)
 		assert.Equal(t, []string{"defkit:*"}, get("defkit-management", "").Resources)
 		assert.Equal(t, []string{"sharedWorkflow:*"}, get("global-workflow-management", "").Resources)
+		assert.Equal(t, []string{"defkit:*"}, get("defkit-view", "").Resources)
+		assert.Equal(t, []string{"detail", "list"}, get("cluster-view", "").Actions)
 		assert.Equal(t, []string{"*"}, get("admin", "").Resources)
 	})
 	t.Run("it runs once: an admin's change afterwards stands", func(t *testing.T) {
