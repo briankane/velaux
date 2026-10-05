@@ -130,7 +130,7 @@ const SharedWorkflows = (props: Props) => {
   return (
     <div className="shared-workflows">
       <ListTitle
-        title="Shared Workflows"
+        title="Workflows"
         subTitle="Workflows the project's applications can run in place of their own steps"
         extButtons={[
           <Button

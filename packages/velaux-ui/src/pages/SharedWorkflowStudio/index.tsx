@@ -219,7 +219,7 @@ class SharedWorkflowStudio extends React.Component<Props, State> {
           <Col span={24} className="breadcrumb">
             <Breadcrumb
               items={[
-                { to: '/shared-workflows', title: i18n.t('Shared Workflows').toString() },
+                { to: '/shared-workflows', title: i18n.t('Workflows').toString() },
                 { title: title },
                 { title: draft ? i18n.t('New').toString() : 'Studio' },
               ]}
