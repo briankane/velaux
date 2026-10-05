@@ -20,7 +20,7 @@ import { locale } from '../../utils/locale';
 import DistributeConfigDialog from '../ProjectSummary/components/Configs/config-distribute';
 import CreateConfigDialog from './components/CreateConfigDialog';
 import { templateIcon } from './icons';
-import { templateOptions } from './templates';
+import { templateFilterItems, templateOptions } from './templates';
 import './index.less';
 
 type Props = {
@@ -320,7 +320,10 @@ class Configs extends Component<Props, State> {
                 onChange={(value: string) => this.setTemplate(value || '')}
                 hasClear
                 locale={locale().Select}
-                dataSource={templateOptions(templates, list).map((t) => ({ label: t.alias || t.name, value: t.name }))}
+                dataSource={templateFilterItems(
+                  templateOptions(templates, list),
+                  inProject ? { project: i18n.t('Project').toString(), global: i18n.t('Global').toString() } : undefined
+                )}
                 itemRender={(item: any) => templateLabel({ name: item.value, alias: item.label } as ConfigTemplate)}
               />
               <Button onClick={() => this.listConfigs()} title={i18n.t('Refresh').toString()}>
