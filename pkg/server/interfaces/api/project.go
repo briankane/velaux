@@ -217,7 +217,7 @@ func (n *project) GetWebServiceRoute() *restful.WebService {
 		Doc("Detail a template").
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Operation("getConfigTemplateByTemplateName").
-		Filter(n.RbacService.CheckPerm("project/config", "get")).
+		Filter(n.RbacService.CheckPerm("project/config", "detail")).
 		Param(ws.PathParameter("projectName", "identifier of the project").DataType("string").Required(true)).
 		Param(ws.PathParameter("templateName", "identifier of the config template").DataType("string")).
 		Param(ws.QueryParameter("namespace", "the name of the namespace").DataType("string")).
@@ -259,7 +259,7 @@ func (n *project) GetWebServiceRoute() *restful.WebService {
 		Doc("create a config in a project").
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Operation("createProjectConfig").
-		Filter(n.RbacService.CheckPerm("project/config", "list")).
+		Filter(n.RbacService.CheckPerm("project/config", "create")).
 		Param(ws.PathParameter("projectName", "identifier of the project").DataType("string").Required(true)).
 		Reads(apis.CreateConfigRequest{}).
 		Returns(200, "OK", apis.Config{}).
@@ -270,7 +270,7 @@ func (n *project) GetWebServiceRoute() *restful.WebService {
 		Doc("delete a config from a project").
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Operation("deleteProjectConfig").
-		Filter(n.RbacService.CheckPerm("project/config", "list")).
+		Filter(n.RbacService.CheckPerm("project/config", "delete")).
 		Param(ws.PathParameter("projectName", "identifier of the project").DataType("string").Required(true)).
 		Param(ws.PathParameter("configName", "identifier of the config").DataType("string").Required(true)).
 		Returns(200, "OK", apis.EmptyResponse{}).
@@ -281,7 +281,7 @@ func (n *project) GetWebServiceRoute() *restful.WebService {
 		Doc("update a config in a project").
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Operation("updateProjectConfig").
-		Filter(n.RbacService.CheckPerm("project/config", "list")).
+		Filter(n.RbacService.CheckPerm("project/config", "update")).
 		Param(ws.PathParameter("projectName", "identifier of the project").DataType("string").Required(true)).
 		Param(ws.PathParameter("configName", "identifier of the config").DataType("string").Required(true)).
 		Returns(200, "OK", apis.Config{}).
@@ -292,7 +292,7 @@ func (n *project) GetWebServiceRoute() *restful.WebService {
 	ws.Route(ws.GET("/{projectName}/configs/{configName}").To(n.detailConfig).
 		Doc("detail a config in a project").
 		Metadata(restfulspec.KeyOpenAPITags, tags).
-		Filter(n.RbacService.CheckPerm("project/config", "list")).
+		Filter(n.RbacService.CheckPerm("project/config", "detail")).
 		Param(ws.PathParameter("projectName", "identifier of the project").DataType("string").Required(true)).
 		Param(ws.PathParameter("configName", "identifier of the config").DataType("string").Required(true)).
 		Returns(200, "OK", apis.Config{}).
@@ -313,7 +313,7 @@ func (n *project) GetWebServiceRoute() *restful.WebService {
 	ws.Route(ws.GET("/{projectName}/distributions").To(n.listDistributions).
 		Doc("list the distribution jobs of the config").
 		Metadata(restfulspec.KeyOpenAPITags, tags).
-		Filter(n.RbacService.CheckPerm("project/config", "distribute")).
+		Filter(n.RbacService.CheckPerm("project/config", "list")).
 		Param(ws.PathParameter("projectName", "identifier of the project").DataType("string").Required(true)).
 		Returns(200, "OK", apis.ListConfigDistributionResponse{}).
 		Returns(400, "Bad Request", bcode.Bcode{}).
