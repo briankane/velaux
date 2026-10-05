@@ -258,16 +258,17 @@ func (c *applicationServiceImpl) ListApplications(ctx context.Context, listOptio
 	if err != nil {
 		return nil, err
 	}
+	var statuses map[string][]*apisv1.ApplicationStatusResponse
+	if listOptions.WithStatus {
+		if statuses, err = c.statusesOfApps(ctx, apps); err != nil {
+			klog.Warningf("summarising the status of the applications: %s", err.Error())
+		}
+	}
 	var list []*apisv1.ApplicationBase
 	for _, app := range apps {
 		appBase := assembler.ConvertAppModelToBase(app, projects)
-		if listOptions.WithStatus {
-			statuses, err := c.GetApplicationStatusFromAllEnvs(ctx, app)
-			if err != nil {
-				klog.Warningf("summarising the status of application %s: %s", app.Name, err.Error())
-			} else {
-				appBase.Status = SummariseAppStatus(statuses)
-			}
+		if statuses != nil {
+			appBase.Status = SummariseAppStatus(statuses[app.PrimaryKey()])
 		}
 		list = append(list, appBase)
 	}
