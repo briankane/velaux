@@ -11,6 +11,7 @@ import i18n from '../../i18n';
 import { locale } from '../../utils/locale';
 import { Translation } from '../Translation';
 import { forEachProblem, forEachWarning, itemColumns } from './loop-edit';
+import { stepScope } from './step-scope';
 
 type Source = 'list' | 'from' | 'expression';
 
@@ -64,7 +65,10 @@ const ItemsTable = (props: { items: unknown[]; onChange: (items: unknown[]) => v
   };
   return (
     <div className="loop-items-table">
-      <div className="loop-items-row head" style={{ gridTemplateColumns: `32px repeat(${plain ? 1 : columns.length}, 1fr) 32px` }}>
+      <div
+        className="loop-items-row head"
+        style={{ gridTemplateColumns: `32px repeat(${plain ? 1 : columns.length}, 1fr) 32px` }}
+      >
         <span>#</span>
         {plain ? (
           <span>
@@ -109,7 +113,9 @@ const ItemsTable = (props: { items: unknown[]; onChange: (items: unknown[]) => v
           size="small"
           text
           type="primary"
-          onClick={() => onChange([...items, plain && items.length > 0 ? '' : Object.fromEntries(columns.map((c) => [c, '']))])}
+          onClick={() =>
+            onChange([...items, plain && items.length > 0 ? '' : Object.fromEntries(columns.map((c) => [c, '']))])
+          }
         >
           {'+\u00a0'}
           <Translation>Add item</Translation>
@@ -195,7 +201,9 @@ export const LoopItems = (props: Props) => {
   (steps || []).forEach((s) => {
     const add = (owner: { name: string; alias?: string; outputs?: Array<{ name: string }> }) =>
       owner.name !== stepName &&
-      (owner.outputs || []).forEach((o) => outputs.push({ value: o.name, label: `${owner.alias || owner.name} › ${o.name}` }));
+      (owner.outputs || []).forEach((o) =>
+        outputs.push({ value: o.name, label: `${owner.alias || owner.name} › ${o.name}` })
+      );
     add(s);
     (s.subSteps || []).forEach(add);
   });
@@ -242,7 +250,9 @@ export const LoopItems = (props: Props) => {
               onChange={(v: string) => onChange(withMode({ from: v }))}
             />
             <div className="loop-items-help">
-              <Translation>Read when the loop starts, then kept for the rest of the run. The loop waits for that step.</Translation>
+              <Translation>
+                Read when the loop starts, then kept for the rest of the run. The loop waits for that step.
+              </Translation>
             </div>
           </>
         )}
@@ -251,6 +261,7 @@ export const LoopItems = (props: Props) => {
             <ExpressionEditor
               appName={appName}
               surface="workflowstep"
+              step={{ step: stepName, steps: stepScope(steps || [], stepName).steps }}
               value={typeof value.items === 'string' ? value.items : ''}
               onChange={(v: string) => onChange(withMode({ items: v }))}
             />
@@ -262,7 +273,11 @@ export const LoopItems = (props: Props) => {
       </div>
 
       {problem && <div className="loop-items-error">{i18n.t(problem).toString()}</div>}
-      {warning && <Message type="warning" size="medium">{i18n.t(warning).toString()}</Message>}
+      {warning && (
+        <Message type="warning" size="medium">
+          {i18n.t(warning).toString()}
+        </Message>
+      )}
 
       <div className="loop-items-label">
         <Translation>Run items</Translation>
@@ -273,7 +288,9 @@ export const LoopItems = (props: Props) => {
         dataSource={[
           {
             value: 'StepByStep',
-            label: `${i18n.t('One at a time').toString()}, ${i18n.t('the next item starts once this one succeeds').toString()}`,
+            label: `${i18n.t('One at a time').toString()}, ${i18n
+              .t('the next item starts once this one succeeds')
+              .toString()}`,
           },
           {
             value: 'DAG',

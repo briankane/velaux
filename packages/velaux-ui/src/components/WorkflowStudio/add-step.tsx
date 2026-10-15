@@ -14,6 +14,7 @@ import { WorkflowEditContext } from '../../context';
 import { forEachProblem } from './loop-edit';
 import { LoopItems } from './loop-items';
 import StepForm from './step-form';
+import { stepScope } from './step-scope';
 import { StepTypeIcon } from './step-icon';
 
 import './index.less';
@@ -353,7 +354,14 @@ class AddStep extends React.Component<Props, State> {
             />
           </Form.Item>
         )}
-        <StepForm ref={this.form} inline step={draft.step} onUpdate={() => {}} onClose={this.props.onClose} />
+        <StepForm
+          ref={this.form}
+          inline
+          step={draft.step}
+          scope={stepScope(draft.steps, draft.step.name)}
+          onUpdate={() => {}}
+          onClose={this.props.onClose}
+        />
       </WorkflowEditContext.Provider>
     );
   };
@@ -363,7 +371,12 @@ class AddStep extends React.Component<Props, State> {
     const stages = this.stages();
     const stage = stages[this.state.stage];
     const group = this.chosen()?.name === 'step-group';
-    const titles: Record<Stage, string> = { type: 'Type', details: 'Details', items: 'Items', properties: 'Properties' };
+    const titles: Record<Stage, string> = {
+      type: 'Type',
+      details: 'Details',
+      items: 'Items',
+      properties: 'Properties',
+    };
     const last = this.state.stage === stages.length - 1;
     return (
       <Dialog
@@ -392,7 +405,9 @@ class AddStep extends React.Component<Props, State> {
             ) : (
               <Button
                 type="primary"
-                disabled={(stage === 'type' && !this.chosen()) || (stage === 'items' && !!forEachProblem(this.state.forEach))}
+                disabled={
+                  (stage === 'type' && !this.chosen()) || (stage === 'items' && !!forEachProblem(this.state.forEach))
+                }
                 onClick={this.next}
               >
                 <Translation>Next</Translation>
