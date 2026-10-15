@@ -141,8 +141,8 @@ github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
 github.com/briandowns/spinner v1.23.0 h1:alDF2guRWqa/FOZZYWjlMIx2L6H0wyewPxo/CH4Pt2A=
 github.com/briandowns/spinner v1.23.0/go.mod h1:rPG4gmXeN3wQV/TsAY4w8lPdIM6RX3yqeBQJSrbXjuE=
-github.com/briankane/kubevela v0.0.0-20261015102315-2a41b08912ba h1:lKyFxUKUhGJ+lQS09zwelUW4kSQ8xf/XmQSoa6Q/I94=
-github.com/briankane/kubevela v0.0.0-20261015102315-2a41b08912ba/go.mod h1:ses9YW3NVhAuzy/TUI/2LW9SyF6lQ28WM7LNO8bwwGA=
+github.com/briankane/kubevela v0.0.0-20261015105341-0c55c110ce56 h1:aXTe0ZwdviiyTSaG2SE5/n65URKruO5WQoH/wKbv6Dc=
+github.com/briankane/kubevela v0.0.0-20261015105341-0c55c110ce56/go.mod h1:ses9YW3NVhAuzy/TUI/2LW9SyF6lQ28WM7LNO8bwwGA=
 github.com/briankane/workflow v0.6.5-0.20261015101502-2443bd61f47f h1:XGB87asjercsVxSPxXwntUl1LU5XmQYnnHZuedML07I=
 github.com/briankane/workflow v0.6.5-0.20261015101502-2443bd61f47f/go.mod h1:PRV7dDvuejHnx5cgmFSMOrWRWLLgTZn3amXv0dFnz/0=
 github.com/buger/jsonparser v1.1.1 h1:2PnMjfWD7wBILjqQbt530v576A/cAbQvEW9gGIpYMUs=
