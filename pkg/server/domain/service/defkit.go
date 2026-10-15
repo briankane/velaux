@@ -30,8 +30,8 @@ import (
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/common"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	"github.com/oam-dev/kubevela/apis/types"
+	"github.com/oam-dev/kubevela/pkg/appkeeper"
 	"github.com/oam-dev/kubevela/pkg/oam"
-	"github.com/oam-dev/kubevela/pkg/resourcetracker"
 	"github.com/oam-dev/kubevela/pkg/workflow/operation"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -359,7 +359,7 @@ func (s *defkitServiceImpl) installed(ctx context.Context, app *v1beta1.Applicat
 // tracked is what the module's ResourceTrackers hold, not deleted, of the kinds
 // keep accepts, each once, sorted by kind and name.
 func (s *defkitServiceImpl) tracked(ctx context.Context, app *v1beta1.Application, keep func(kind string) bool) []common.ClusterObjectReference {
-	root, current, history, _, err := resourcetracker.ListApplicationResourceTrackers(ctx, s.KubeClient, app)
+	root, current, history, _, err := appkeeper.ListApplicationResourceTrackers(ctx, s.KubeClient, app)
 	if err != nil {
 		return nil
 	}

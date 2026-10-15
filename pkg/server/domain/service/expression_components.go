@@ -30,10 +30,10 @@ import (
 	"github.com/kubevela/pkg/multicluster"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	"github.com/oam-dev/kubevela/apis/types"
+	"github.com/oam-dev/kubevela/pkg/appkeeper"
 	"github.com/oam-dev/kubevela/pkg/definition/celexpr"
 	"github.com/oam-dev/kubevela/pkg/definition/propexpr"
 	"github.com/oam-dev/kubevela/pkg/oam"
-	"github.com/oam-dev/kubevela/pkg/resourcetracker"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -211,7 +211,7 @@ func (e *expressionServiceImpl) deployedApplications(ctx context.Context, app *m
 func (e *expressionServiceImpl) liveOutputs(ctx context.Context, crs []*v1beta1.Application) map[string]liveOutput {
 	out := map[string]liveOutput{}
 	for _, cr := range crs {
-		root, current, _, _, err := resourcetracker.ListApplicationResourceTrackers(ctx, e.KubeClient, cr)
+		root, current, _, _, err := appkeeper.ListApplicationResourceTrackers(ctx, e.KubeClient, cr)
 		if err != nil {
 			klog.V(4).Infof("no resource trackers for %s/%s: %v", cr.Namespace, cr.Name, err)
 			continue
@@ -489,7 +489,7 @@ func (e *expressionServiceImpl) componentIssues(ctx context.Context, app *model.
 		out = append(out, &apisv1.ExpressionIssue{Message: msg, Start: start, End: start + len(expr)})
 	}
 	for _, r := range refs {
-		if !r.IsComponent() || len(r.Path) == 0 {
+		if !propexpr.IsComponent(r) || len(r.Path) == 0 {
 			continue
 		}
 		name := r.Path[0]
