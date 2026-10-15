@@ -303,10 +303,20 @@ interface StepStatus {
   reason?: string;
   firstExecuteTime?: string;
   lastExecuteTime?: string;
+  // iteration is the index of the item a loop's pass ran for.
+  iteration?: number;
 }
 
 export interface WorkflowStepStatus extends StepStatus {
   subSteps?: StepStatus[];
+  // loop is set on a loop step; its subSteps are then its passes.
+  loop?: LoopStatus;
+}
+
+// LoopStatus is a loop's mode and the items it resolved, once it starts.
+export interface LoopStatus {
+  mode: WorkflowMode;
+  items?: any[];
 }
 
 export type WorkflowMode = 'StepByStep' | 'DAG';
